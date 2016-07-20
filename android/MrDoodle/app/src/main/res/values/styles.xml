@@ -1,0 +1,99 @@
+<resources>
+
+	<!-- Base application theme. -->
+	<style name="MrDoodle" parent="Theme.AppCompat.Light.NoActionBar">
+		<item name="actionBarStyle">@style/DefaultToolbarStyle</item>
+		<item name="alertDialogTheme">@style/AlertDialogStyle</item>
+
+
+		<!-- Set AppCompat’s color theme attrs -->
+		<item name="colorPrimary">@color/primary</item>
+		<item name="colorPrimaryDark">@color/primaryDark</item>
+		<item name="colorAccent">@color/accent</item>
+
+		<item name="android:windowBackground">@color/windowBackground</item>
+		<item name="android:textColor">@color/textColor</item>
+	</style>
+
+	<style name="MrDoodle.Home">
+	</style>
+
+	<style name="MrDoodle.DoodleActivity">
+		<item name="actionBarStyle">@style/ImmersiveToolbarStyle</item>
+		<item name="colorPrimary">@color/windowBackground</item>
+		<item name="colorPrimaryDark">@color/primaryLight</item>
+	</style>
+
+	<style name="DefaultToolbarStyle" parent="Widget.AppCompat.Toolbar">
+		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
+		<item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
+		<item name="android:background">@color/primary</item>
+		<item name="android:layout_width">match_parent</item>
+		<item name="android:layout_height">wrap_content</item>
+		<item name="android:minHeight">?attr/actionBarSize</item>
+	</style>
+
+	<style name="ImmersiveToolbarTheme" parent="@style/ThemeOverlay.AppCompat.Light">
+		<item name="colorControlNormal">@color/primary</item>
+	</style>
+
+	<style name="ImmersiveToolbarStyle" parent="Widget.AppCompat.Toolbar">
+		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
+		<item name="android:theme">@style/ImmersiveToolbarTheme</item>
+		<item name="android:background">@color/windowBackground</item>
+		<item name="android:layout_width">match_parent</item>
+		<item name="android:layout_height">wrap_content</item>
+		<item name="android:minHeight">?attr/actionBarSize</item>
+	</style>
+
+
+	<style name="Display1" parent="TextAppearance.AppCompat.Display1">
+		<item name="android:textColor">@color/textColor</item>
+	</style>
+
+	<style name="Display2" parent="TextAppearance.AppCompat.Display2">
+		<item name="android:textColor">@color/textColor</item>
+	</style>
+
+	<style name="Display3" parent="TextAppearance.AppCompat.Display3">
+		<item name="android:textColor">@color/textColor</item>
+	</style>
+
+	<style name="Display4" parent="TextAppearance.AppCompat.Display4">
+		<item name="android:textColor">@color/textColor</item>
+	</style>
+
+	<style name="Body1" parent="TextAppearance.AppCompat.Body1">
+		<item name="android:textColor">@color/textColor</item>
+	</style>
+
+	<style name="Body2" parent="TextAppearance.AppCompat.Body2">
+		<item name="android:textColor">@color/textColor</item>
+	</style>
+
+	<style name="ImmersiveAppBarEditText" parent="Widget.AppCompat.EditText">
+		<item name="android:textColor">@color/primary</item>
+		<item name="colorControlNormal">@color/actionbarEditText_colorControlNormal</item>
+		<item name="colorControlActivated">@color/actionbarEditText_colorControlActivated</item>
+		<item name="colorControlHighlight">@color/actionbarEditText_colorControlHighlight</item>
+	</style>
+
+	<style name="ImmersiveTitleTextStyle"
+	       parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
+		<item name="android:textColor">@color/primary</item>
+	</style>
+
+	<style name="EmptyDoodleGridText" parent="Base.TextAppearance.AppCompat.Large">
+		<item name="android:textColor">@color/textColorLight</item>
+		<item name="android:gravity">center</item>
+		<item name="android:layout_margin">48dp</item>
+	</style>
+
+	<style name="AlertDialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
+		<item name="colorAccent">@color/primary</item>
+		<item name="android:textColorPrimary">@color/textColor</item>
+	</style>
+
+
+
+</resources>

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical">
+
+	<android.support.v7.widget.Toolbar
+		android:id="@+id/toolbar"
+		style="@style/DefaultToolbarStyle"
+		/>
+
+	<FrameLayout android:id="@+id/container"
+	             xmlns:android="http://schemas.android.com/apk/res/android"
+	             xmlns:tools="http://schemas.android.com/tools"
+	             android:layout_width="match_parent"
+	             android:layout_height="match_parent"
+	             android:paddingLeft="@dimen/activity_horizontal_margin"
+	             android:paddingRight="@dimen/activity_horizontal_margin"
+	             android:paddingTop="@dimen/activity_vertical_margin"
+	             android:paddingBottom="@dimen/activity_vertical_margin"
+	             tools:ignore="MergeRootFrame">
+
+		<LinearLayout
+			android:id="@+id/signedOut"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center_vertical|center_horizontal"
+			android:orientation="vertical"
+			android:visibility="gone"
+			tools:visibility="gone">
+
+			<TextView
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				style="@style/Body1"
+				android:gravity="center_horizontal"
+				android:layout_margin="24dp"
+				android:text="@string/sign_in_message"/>
+
+			<com.google.android.gms.common.SignInButton
+				android:id="@+id/signInButton"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical|center_horizontal"
+				/>
+		</LinearLayout>
+
+		<LinearLayout
+			android:id="@+id/signedIn"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:orientation="vertical"
+			android:visibility="gone"
+			tools:visibility="visible">
+
+			<LinearLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:orientation="horizontal">
+
+				<org.zakariya.mrdoodle.view.CircularImageView
+					android:id="@+id/avatarImageView"
+					android:layout_width="48dp"
+					android:layout_height="48dp"/>
+
+				<LinearLayout
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_weight="1"
+					android:layout_marginStart="8dp"
+					android:orientation="vertical"
+					android:layout_gravity="start|center_vertical">
+
+					<TextView
+						android:id="@+id/userNameTextView"
+						android:layout_width="match_parent"
+						android:layout_height="wrap_content"
+						style="@style/Display1"
+						android:textSize="18sp"
+						tools:text="Shamyl Zakariya"/>
+
+					<TextView
+						android:id="@+id/userEmailTextView"
+						android:layout_width="match_parent"
+						android:layout_height="wrap_content"
+						style="@style/Body1"
+						tools:text="shamyl@gmail.com"/>
+
+				</LinearLayout>
+
+
+			</LinearLayout>
+
+			<LinearLayout
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:orientation="horizontal"
+				android:layout_marginTop="24dp">
+
+				<TextView
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:text="@string/sync_history"
+					android:textAllCaps="true"
+					style="@style/Body2"
+					android:textColor="@color/primaryLight"
+					android:layout_gravity="center_vertical"
+					android:layout_weight="1"/>
+
+				<Button
+					android:id="@+id/syncNowButton"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					style="@style/Widget.AppCompat.Button"
+					android:text="@string/sync_now_button"/>
+
+				<Button
+					android:id="@+id/resetAndSyncButton"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					style="@style/Widget.AppCompat.Button"
+					android:text="@string/sync_reset_button"/>
+
+			</LinearLayout>
+
+			<android.support.v7.widget.RecyclerView
+				android:id="@+id/syncHistoryRecyclerView"
+				android:layout_width="match_parent"
+				android:layout_height="0dp"
+				android:layout_weight="1"/>
+
+
+		</LinearLayout>
+
+
+	</FrameLayout>
+
+</LinearLayout>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+	<style name="MrDoodle" parent="Theme.AppCompat.Light.NoActionBar">
+		<item name="actionBarStyle">@style/DefaultToolbarStyle</item>
+		<item name="alertDialogTheme">@style/AlertDialogStyle</item>
+
+		<item name="android:colorPrimary">@color/primary</item>
+		<item name="android:colorPrimaryDark">@color/primaryDark</item>
+		<item name="android:colorAccent">@color/accent</item>
+
+		<item name="android:windowBackground">@color/windowBackground</item>
+		<item name="android:textColor">@color/textColor</item>
+	</style>
+
+	<style name="MrDoodle.Home">
+		<!-- TODO Figure out how to make translucent nav bar without breaking layout of status bar/fab -->
+		<!--<item name="android:navigationBarColor">@color/translucent_status_bar</item>-->
+		<!--<item name="android:windowTranslucentNavigation">true</item>-->
+	</style>
+
+	<style name="MrDoodle.DoodleActivity">
+		<item name="actionBarStyle">@style/ImmersiveToolbarStyle</item>
+		<item name="android:colorPrimary">@color/windowBackground</item>
+		<item name="android:colorPrimaryDark">@color/primaryDark</item>
+		<item name="android:statusBarColor">@color/primary</item>
+	</style>
+
+	<style name="ImmersiveAppBarEditText" parent="Widget.AppCompat.EditText">
+		<item name="android:textColor">@color/textColor</item>
+		<item name="android:colorControlNormal">@color/actionbarEditText_colorControlNormal</item>
+		<item name="android:colorControlActivated">@color/actionbarEditText_colorControlActivated</item>
+		<item name="android:colorControlHighlight">@color/actionbarEditText_colorControlHighlight</item>
+	</style>
+
+	<style name="ImmersiveActionBarTheme" parent="ThemeOverlay.AppCompat.ActionBar">
+		<item name="android:colorControlNormal">@color/primary</item>
+	</style>
+
+</resources>

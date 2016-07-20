@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<declare-styleable name="BorderedImageView">
+		<attr name="leftBorderWidth" format="dimension"/>
+		<attr name="rightBorderWidth" format="dimension"/>
+		<attr name="topBorderWidth" format="dimension"/>
+		<attr name="bottomBorderWidth" format="dimension"/>
+		<attr name="borderColor" format="color"/>
+	</declare-styleable>
+</resources>

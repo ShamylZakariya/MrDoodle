@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+
+	<org.zakariya.mrdoodle.view.ColorPickerView
+		android:id="@+id/colorPicker"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:paddingLeft="32dp"
+		android:paddingTop="32dp"
+		android:paddingRight="32dp"
+		android:paddingBottom="32dp"
+		android:color="#FF0000"
+		android:layout_gravity="bottom|center"
+		app:hueRingDiameter="320dp"
+		app:gravity="center"
+		app:precision="8"/>
+
+
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:focusable="true"
+		android:focusableInTouchMode="true"
+		android:layout_gravity="center_horizontal|top"
+		android:gravity="center_vertical"
+		android:orientation="horizontal"
+		android:padding="16dp">
+
+		<org.zakariya.mrdoodle.view.ColorSwatchView
+			android:id="@+id/inColorSwatch"
+			android:layout_width="48dp"
+			android:layout_height="48dp"
+			android:padding="8dp"
+			/>
+
+		<android.support.design.widget.TextInputLayout
+			android:id="@+id/inTextInputLayout"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_marginRight="16dp"
+			android:layout_weight="1">
+
+			<EditText
+				android:id="@+id/inEditText"
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				android:hint="Input Color"/>
+		</android.support.design.widget.TextInputLayout>
+
+		<org.zakariya.mrdoodle.view.ColorSwatchView
+			android:id="@+id/outColorSwatch"
+			android:layout_width="48dp"
+			android:layout_height="48dp"
+			android:layout_marginLeft="16dp"
+			android:padding="8dp"/>
+
+		<TextView
+			android:id="@+id/outTextView"
+			android:layout_width="0dp"
+			android:layout_height="wrap_content"
+			android:layout_weight="1"/>
+
+
+	</LinearLayout>
+
+</FrameLayout>

@@ -1,0 +1,57 @@
+<resources>
+	<string name="app_name">MrDoodle</string>
+
+	<string name="menu_item_sync">Sync Settings</string>
+	<string name="menu_item_about">About</string>
+
+	<string name="activity_title_about">About</string>
+	<string name="activity_title_sync">Sync</string>
+	<string name="activity_title_flyout_menu_test">Flyout Menus</string>
+
+	<string name="clear">Clear</string>
+	<string name="redraw">Redraw</string>
+	<string name="undo">Undo</string>
+	<string name="saveAndReload">Save &amp; Reload</string>
+
+	<string name="tool_name_brush">Brush</string>
+	<string name="tool_name_pencil">Pencil</string>
+	<string name="tool_name_large_eraser">Large Eraser</string>
+	<string name="tool_name_small_eraser">Small Eraser</string>
+
+	<string name="doodle_menu_undo">Undo</string>
+	<string name="doodle_menu_clear">Clear</string>
+
+	<string name="doodle_menu_scale_to_fit">Fit Canvas</string>
+	<string name="doodle_menu_center">Center Canvas</string>
+
+	<string name="sync_menu_sign_out">Sign Out</string>
+
+	<string name="color_dialog_title">Color</string>
+
+	<string name="no_camera_dialog_title">Can\'t take a photo</string>
+	<string name="no_camera_dialog_message">This device can\'t take photos, either it has no camera app or it has no camera device.</string>
+	<string name="no_camera_dialog_positive_button_title">Shucks</string>
+
+	<string name="dialog_rename_document_title">Rename</string>
+	<string name="untitled_document">Untitled Doodle</string>
+
+	<string name="dialog_delete_document_message">Discard doodle?</string>
+	<string name="dialog_delete_document_destructive_button_title">Discard</string>
+	<string name="snackbar_document_deleted">Discarded</string>
+	<string name="snackbar_document_deleted_undo">Undo</string>
+
+	<string name="doodle_document_grid_menu_new_doodle">New</string>
+
+	<string name="doodle_document_grid_empty_text">Oh no!\nYou really ought to get doodling.</string>
+	<string name="doodle_document_grid_info_text">%1$s\n%2$s\n%3$s\n%4$s</string>
+
+	<string name="about_attributions">https://github.com/ShamylZakariya/PhotoDoodle</string>
+	<string name="about_version_version_and_build">%1$s build %2$d</string>
+	<string name="about_version_build">build %1$d</string>
+
+	<string name="sign_in_message">Sign in to enable sync</string>
+	<string name="sync_history">Sync History</string>
+	<string name="sync_now_button">Sync</string>
+	<string name="sync_reset_button">Reset &amp; Sync</string>
+
+</resources>

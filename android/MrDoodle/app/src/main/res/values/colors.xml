@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<color name="primary">#7D3D8C</color>
+	<color name="primaryDark">#43164D</color>
+	<color name="primaryLight">#BE61D3</color>
+	<color name="accent">#00E6FF</color>
+	<color name="accentLight">#9DF5FF</color>
+	<color name="windowBackground">#F0F0F0</color>
+	<color name="immersiveStatusBar">#997D3D8C</color>
+	<color name="actionBarText">#ffffffff</color>
+	<color name="actionBarIcon">#ffffffff</color>
+	<color name="immersiveActionBarIcon">#7D3D8C</color>
+	<color name="textColor">#444444</color>
+	<color name="textColorLight">#999999</color>
+	<color name="placeholderIconTint">#999999</color>
+	<color name="popupBackground">#ffffff</color>
+	<color name="popupItemTint">#7D3D8C</color>
+	<color name="popupItemTextTint">#7D3D8C</color>
+	<color name="selectedPopupItemBackground">#447D3D8C</color>
+	<color name="doodleGridThumbnailBorder">#F0F0F0</color>
+
+	<color name="actionbarEditText_colorControlNormal">#997D3D8C</color>
+	<color name="actionbarEditText_colorControlActivated">#00E6FF</color>
+	<color name="actionbarEditText_colorControlHighlight">#9DF5FF</color>
+
+	<color name="doodleBackground">#FFFFFFFF</color>
+
+</resources>

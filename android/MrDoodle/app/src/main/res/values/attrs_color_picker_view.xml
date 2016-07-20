@@ -1,0 +1,8 @@
+<resources>
+	<declare-styleable name="ColorPickerView">
+		<attr name="precision" format="integer"/>
+		<attr name="gravity" format="string"/>
+		<attr name="hueRingDiameter" format="dimension"/>
+		<attr name="android:color"/>
+	</declare-styleable>
+</resources>

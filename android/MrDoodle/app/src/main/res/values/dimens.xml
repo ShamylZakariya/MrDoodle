@@ -1,0 +1,20 @@
+<resources>
+	<!-- Default screen margins, per the Android Design guidelines. -->
+	<dimen name="activity_horizontal_margin">16dp</dimen>
+	<dimen name="activity_vertical_margin">16dp</dimen>
+
+	<dimen name="dialog_horizontal_padding">20dp</dimen>
+	<dimen name="dialog_vertical_padding">16dp</dimen>
+
+	<dimen name="doodle_drawing_tool_button_size">56dp</dimen>
+	<dimen name="doodle_drawing_tool_button_margin">16dp</dimen>
+
+	<dimen name="fab_margin">16dp</dimen>
+	<dimen name="fab_size">56dp</dimen>
+
+	<dimen name="max_doodle_grid_item_size">360dp</dimen>
+	<dimen name="doodle_grid_item_border_width">8dp</dimen>
+
+	<dimen name="doodle_fit_canvas_contents_padding">16dp</dimen>
+
+</resources>
