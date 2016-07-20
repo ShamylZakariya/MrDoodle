@@ -1,6 +1,12 @@
 apply plugin: 'com.android.application'
 apply plugin: 'realm-android'
 
+// query git for the SHA, Tag and commit count. Use these to automate versioning.
+//def gitSha = 'git rev-parse --short HEAD'.execute([], project.rootDir).text.trim()
+def gitTag = 'git describe --tags'.execute([], project.rootDir).text.trim()
+def gitCommitCount = Integer.parseInt('git rev-list --count HEAD'.execute([], project.rootDir).text.trim())
+
+
 android {
 	compileSdkVersion 24
 	buildToolsVersion "24.0.1"
@@ -9,8 +15,8 @@ android {
 		applicationId "org.zakariya.mrdoodle"
 		minSdkVersion 17
 		targetSdkVersion 24
-		versionCode 1
-		versionName "1.0"
+		versionCode gitCommitCount
+		versionName gitTag
 	}
 	buildTypes {
 		release {
