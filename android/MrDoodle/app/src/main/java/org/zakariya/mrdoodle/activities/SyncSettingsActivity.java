@@ -52,6 +52,9 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Bind(R.id.userEmailTextView)
 	TextView userEmailTextView;
 
+	@Bind(R.id.userIdTokenTextView)
+	TextView userIdTokenTextView;
+
 	@Bind(R.id.userNameTextView)
 	TextView userNameTextView;
 
@@ -180,5 +183,6 @@ public class SyncSettingsActivity extends BaseActivity {
 		Picasso.with(this).load(account.getPhotoUrl()).into(avatarImageView);
 		userEmailTextView.setText(account.getEmail());
 		userNameTextView.setText(account.getDisplayName());
+		userIdTokenTextView.setText(account.getIdToken());
 	}
 }

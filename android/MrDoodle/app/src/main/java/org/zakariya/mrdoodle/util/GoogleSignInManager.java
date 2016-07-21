@@ -105,7 +105,7 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 			if (googleSignInResult.isSuccess()) {
 				googleSignInAccount = googleSignInResult.getSignInAccount();
 				if (googleSignInAccount != null) {
-					Log.i(TAG, "setGoogleSignInResult: SIGNED IN to: " + googleSignInAccount.getEmail());
+					Log.i(TAG, "setGoogleSignInResult: SIGNED IN to: " + googleSignInAccount.getEmail() + " userIdToken: " + googleSignInAccount.getIdToken());
 					BusProvider.postOnMainThread(BusProvider.getBus(), new GoogleSignInEvent(googleSignInAccount));
 				} else {
 					Log.w(TAG, "setGoogleSignInResult: SIGNED IN, but no account data????");
