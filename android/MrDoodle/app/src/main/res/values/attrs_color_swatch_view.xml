@@ -1,9 +1,0 @@
-<resources>
-	<declare-styleable name="ColorSwatchView">
-		<attr name="android:color"/>
-		<attr name="selectionThickness" format="dimension"/>
-		<attr name="isSelected" format="boolean"/>
-		<attr name="selectionColor" format="color"/>
-		<attr name="alphaCheckerSize" format="dimension" />
-	</declare-styleable>
-</resources>

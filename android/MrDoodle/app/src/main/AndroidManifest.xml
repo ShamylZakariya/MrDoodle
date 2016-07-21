@@ -52,13 +52,6 @@
 			android:parentActivityName="org.zakariya.mrdoodle.activities.MainActivity">
 		</activity>
 
-		<activity
-			android:name="org.zakariya.mrdoodle.activities.ColorPickerTestActivity"
-			android:label="ColorPickerView"
-			android:exported="true"
-			android:launchMode="singleTop">
-		</activity>
-
 
 	</application>
 
