@@ -181,7 +181,8 @@ public class InputStroke implements Parcelable, KryoSerializable {
 			float dot = PointFUtil.dot(previousSegmentDir, newSegmentDir);
 
 			if (dot < AUTO_OPTIMIZE_CORNER_THRESHOLD) {
-				didOptimize = optimize(autoOptimizationThreshold) > 0;
+				int delta = optimize(autoOptimizationThreshold);
+				didOptimize = delta > 0;
 			}
 		}
 

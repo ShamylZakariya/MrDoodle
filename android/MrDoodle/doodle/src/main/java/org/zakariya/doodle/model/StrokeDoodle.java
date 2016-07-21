@@ -67,7 +67,6 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 
 	// one finger touch state
 	private float[] strokeTouchPoint = {0f, 0f};
-	private long strokeTouchTimestamp = 0;
 
 	// two finger touch state
 	private boolean performingPinchOperations = false;
@@ -409,7 +408,7 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 
 	@Override
 	public float getInputStrokeOptimizationThreshold() {
-		return 3;
+		return 1.5f;
 	}
 
 	@Override
@@ -492,7 +491,6 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 		// in onTouchEventMove we'll start the line
 
 		if (event.getPointerCount() == 1) {
-			strokeTouchTimestamp = System.currentTimeMillis();
 			strokeTouchPoint[0] = event.getX(0);
 			strokeTouchPoint[1] = event.getY(0);
 		} else if (event.getPointerCount() == 2) {
@@ -525,7 +523,7 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 				screenToCanvasMatrix.mapPoints(strokeTouchPoint);
 
 				incrementalInputStrokeTessellator = new IncrementalInputStrokeTessellator(this);
-				incrementalInputStrokeTessellator.add(strokeTouchPoint[0], strokeTouchPoint[1], strokeTouchTimestamp);
+				incrementalInputStrokeTessellator.add(strokeTouchPoint[0], strokeTouchPoint[1]);
 			} else {
 
 				// NOTE: We don't care about event.getHistorical{X,Y} - it prevents line smoothing

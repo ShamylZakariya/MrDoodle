@@ -69,7 +69,6 @@ public class IncrementalInputStrokeTessellator {
 	private ArrayList<InputStroke> inputStrokes = new ArrayList<>();
 	private InputStrokeTessellator inputStrokeTessellator;
 	private WeakReference<Listener> listenerWeakReference;
-	private float optimizationThreshold;
 	private Path livePath;
 	private ArrayList<Path> staticPaths = new ArrayList<>();
 	private RectF livePathBounds = new RectF();
@@ -83,8 +82,7 @@ public class IncrementalInputStrokeTessellator {
 	 */
 	public IncrementalInputStrokeTessellator(Listener listener) {
 		listenerWeakReference = new WeakReference<>(listener);
-		optimizationThreshold = listener.getInputStrokeOptimizationThreshold();
-		inputStroke = new InputStroke(optimizationThreshold);
+		inputStroke = new InputStroke(listener.getInputStrokeOptimizationThreshold());
 		inputStrokeTessellator = new InputStrokeTessellator(inputStroke, listener.getStrokeMinWidth(), listener.getStrokeMaxWidth(), listener.getStrokeMaxVelDPps());
 	}
 
