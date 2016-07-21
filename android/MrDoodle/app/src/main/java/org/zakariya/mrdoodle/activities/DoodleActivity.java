@@ -449,7 +449,7 @@ public class DoodleActivity extends BaseActivity {
 	}
 
 	void updateBrush() {
-		doodle.setBrush(new Brush(getBrushColor(), getBrushSize(), getBrushSize(), 600, isBrushEraser()));
+		doodle.setBrush(new Brush(getBrushColor(), getBrushSize()/2, getBrushSize(), 600, isBrushEraser()));
 	}
 
 	float dp2px(float dp) {
@@ -477,8 +477,8 @@ public class DoodleActivity extends BaseActivity {
 		toolSelectorFlyoutMenu.setLayout(new FlyoutMenuView.GridLayout(count, FlyoutMenuView.GridLayout.UNSPECIFIED));
 		toolSelectorFlyoutMenu.setAdapter(new FlyoutMenuView.ArrayAdapter<>(items));
 
-		float toolInset = dp2px(4);
-		final ToolFlyoutButtonRenderer toolButtonRenderer = new ToolFlyoutButtonRenderer(toolInset, 1, false, alphaCheckerSize, TOOL_MENU_FILL_COLOR);
+		float toolInsetPx = dp2px(0);
+		final ToolFlyoutButtonRenderer toolButtonRenderer = new ToolFlyoutButtonRenderer(toolInsetPx, 1, false, alphaCheckerSize, TOOL_MENU_FILL_COLOR);
 		toolSelectorFlyoutMenu.setButtonRenderer(toolButtonRenderer);
 
 		toolSelectorFlyoutMenu.setSelectionListener(new FlyoutMenuView.SelectionListener() {
@@ -532,8 +532,7 @@ public class DoodleActivity extends BaseActivity {
 
 		paletteFlyoutMenu.setAdapter(new FlyoutMenuView.ArrayAdapter<>(items));
 
-		float insetDp = 8;
-		float insetPx = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, insetDp, getResources().getDisplayMetrics());
+		float insetPx = dp2px(0);
 		final PaletteFlyoutButtonRenderer renderer = new PaletteFlyoutButtonRenderer(insetPx);
 		paletteFlyoutMenu.setButtonRenderer(renderer);
 
@@ -593,7 +592,7 @@ public class DoodleActivity extends BaseActivity {
 			paint.setColor(currentColor);
 			canvas.drawOval(insetButtonBounds, paint);
 
-			if (currentColorLuminance > 0.7) {
+			if (inset > 0 && currentColorLuminance > 0.7) {
 				paint.setStyle(Paint.Style.STROKE);
 				paint.setColor(0x33000000);
 				canvas.drawOval(insetButtonBounds, paint);
