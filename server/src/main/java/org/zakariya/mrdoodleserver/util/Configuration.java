@@ -11,8 +11,12 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Created by shamyl on 8/1/16.
+ * Basic Configuration management.
+ * Load an arbitrary JSON file, and query for values in it as string, int or double. Deep paths
+ * can be read via directory-like paths, such as "path/to/value".
+ * Multiple JSON files can be loaded, with later loads "overriding" values in earlier loads.
  */
+@SuppressWarnings("WeakerAccess")
 public class Configuration {
 
 	private List<JsonNode> rootNodes = new ArrayList<JsonNode>();
@@ -24,10 +28,10 @@ public class Configuration {
 	 * Add a configuration JSON file to the configuration. Each configuration added can "override" values in
 	 * previous configurations. So if a file with value "foo" is set to "bar" is added first, and a second file
 	 * is added where "foo" is set to "baz", "baz" will win.
+	 *
 	 * @param configurationJsonFile path to a JSON file
 	 */
 	public void addConfigJsonFilePath(String configurationJsonFile) {
-
 		try {
 			InputStream is = new FileInputStream(configurationJsonFile);
 			BufferedInputStream bis = new BufferedInputStream(is);
@@ -45,12 +49,13 @@ public class Configuration {
 
 	/**
 	 * Get the string value of the item at a given path. The path can contain directory separators, as such: "a/b/c/leaf"
+	 *
 	 * @param path the deep path into configuration
 	 * @return the string value of the item at the end of the path, or null
 	 */
 	@Nullable
 	public String get(String path) {
-		String []parts = path.split("/");
+		String[] parts = path.split("/");
 
 		// walk from last to first root node, since "newer" ones override older ones
 		for (int i = rootNodes.size() - 1; i >= 0; i--) {
@@ -73,7 +78,8 @@ public class Configuration {
 
 	/**
 	 * Get the integer value of the item specified by `path`, or the default value if the item didn't exist, or could not be parsed into an integer.
-	 * @param path deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
+	 *
+	 * @param path         deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
 	 * @param defaultValue the default value to return if the item specified did not exist, or could not be converted to int
 	 * @return the integer value of the item specified by the path
 	 */
@@ -92,7 +98,8 @@ public class Configuration {
 
 	/**
 	 * Get the double value of the item specified by `path`, or the default value if the item didn't exist, or could not be parsed into a double.
-	 * @param path deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
+	 *
+	 * @param path         deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
 	 * @param defaultValue the default value to return if the item specified did not exist, or could not be converted to double
 	 * @return the double value of the item specified by the path
 	 */
