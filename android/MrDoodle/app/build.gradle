@@ -43,6 +43,9 @@ dependencies {
 	compile 'com.squareup.picasso:picasso:2.5.2'
 	compile 'org.zakariya.flyoutmenus:flyoutmenu:0.5.2'
 
+	// https://mvnrepository.com/artifact/com.google.code.gson/gson
+	compile group: 'com.google.code.gson', name: 'gson', version: '2.7'
+
 	compile project(path: ':doodle')
 }
 
