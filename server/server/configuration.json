@@ -1,3 +1,5 @@
 {
-
+	"authenticator":{
+		"whitelist_grace_period_seconds":3600
+	}
 }
