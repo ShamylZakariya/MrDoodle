@@ -3,6 +3,7 @@ package org.zakariya.mrdoodleserver.auth;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 import static org.zakariya.mrdoodleserver.util.Preconditions.*;
 
@@ -20,20 +21,28 @@ public class Whitelist {
 
 	private static final int CHECK_COUNT_PER_PRUNE_PASS = 100;
 
-	private long defaultGraceperiodSeconds;
-	private HashMap<String, Long> expirationTimestampsByToken = new HashMap<>();
+	private double defaultGraceperiodSeconds;
+	private HashMap<String, Double> expirationTimestampsByToken = new HashMap<>();
 	private int checkCount = 0;
 
-	public Whitelist(long defaultGraceperiodSeconds) {
+	public Whitelist(double defaultGraceperiodSeconds) {
 		this.defaultGraceperiodSeconds = defaultGraceperiodSeconds;
 	}
 
-	public long getDefaultGraceperiodSeconds() {
+	public double getDefaultGraceperiodSeconds() {
 		return defaultGraceperiodSeconds;
 	}
 
-	public void setDefaultGraceperiodSeconds(long defaultGraceperiodSeconds) {
+	public void setDefaultGraceperiodSeconds(double defaultGraceperiodSeconds) {
 		this.defaultGraceperiodSeconds = defaultGraceperiodSeconds;
+	}
+
+	/**
+	 * Remove all whitelisted items
+	 */
+	public void clear() {
+		expirationTimestampsByToken.clear();
+		checkCount = 0;
 	}
 
 	/**
@@ -45,15 +54,15 @@ public class Whitelist {
 		addTokenToWhitelist(token, this.getDefaultGraceperiodSeconds());
 	}
 
-	public void addTokenToWhitelist(String token, long customGraceperiodSeconds) {
-		checkArgument(token != null && token.length() > 0, "token must be non-null & non-empty");
+	public void addTokenToWhitelist(String token, double customGraceperiodSeconds) {
+		checkArgument(token != null && !token.isEmpty(), "token must be non-null & non-empty");
 
-		long expiration = nowSeconds() + defaultGraceperiodSeconds;
+		double expiration = nowSeconds() + customGraceperiodSeconds;
 		expirationTimestampsByToken.put(token, expiration);
 	}
 
 	public void removeTokenFromWhitelist(String token) {
-		checkArgument(token != null && token.length() > 0, "token must be non-null & non-empty");
+		checkArgument(token != null && !token.isEmpty(), "token must be non-null & non-empty");
 		expirationTimestampsByToken.remove(token);
 	}
 
@@ -64,7 +73,7 @@ public class Whitelist {
 	 * @return true iff the token has been added to the whitelist and the grace period has not expired
 	 */
 	public boolean isInWhitelist(String token) {
-		checkArgument(token != null && token.length() > 0, "token must be non-null & non-empty");
+		checkArgument(token != null && !token.isEmpty(), "token must be non-null & non-empty");
 
 		// periodically prune the whitelist
 		checkCount++;
@@ -74,7 +83,7 @@ public class Whitelist {
 		}
 
 		if (expirationTimestampsByToken.containsKey(token)) {
-			long expiration = expirationTimestampsByToken.get(token);
+			double expiration = expirationTimestampsByToken.get(token);
 			if (nowSeconds() > expiration) {
 				// token expired, remove it
 				expirationTimestampsByToken.remove(token);
@@ -87,8 +96,8 @@ public class Whitelist {
 		}
 	}
 
-	private static long nowSeconds(){
-		return (new Date()).getTime() / 1000;
+	private static double nowSeconds(){
+		return ((double)(new Date()).getTime()) / 1000.0;
 	}
 
 	/**
@@ -96,13 +105,12 @@ public class Whitelist {
 	 */
 	private void prune() {
 
-		long now = nowSeconds();
-		ArrayList<String> expiredTokens = new ArrayList<>();
-		for (String token : expirationTimestampsByToken.keySet()) {
-			if (expirationTimestampsByToken.get(token) > now) {
-				expiredTokens.add(token);
-			}
-		}
+		double now = nowSeconds();
+		ArrayList<String> expiredTokens = expirationTimestampsByToken
+				.keySet()
+				.stream()
+				.filter(token -> expirationTimestampsByToken.get(token) > now)
+				.collect(Collectors.toCollection(ArrayList::new));
 
 		for (String expiredToken : expiredTokens) {
 			expirationTimestampsByToken.remove(expiredToken);
