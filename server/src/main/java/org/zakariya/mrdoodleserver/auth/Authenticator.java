@@ -8,10 +8,13 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import org.eclipse.jetty.websocket.common.util.TextUtil;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.zakariya.mrdoodleserver.util.Preconditions.*;
 
@@ -28,6 +31,7 @@ public class Authenticator {
 	private GoogleIdTokenVerifier googleIdTokenVerifier;
 	private Whitelist whitelist;
 	private Whitelist verifiedTokensWhitelist;
+	private Map<String,String> googleIdsByToken = new HashMap<>();
 
 	public Authenticator(String oathClientId, Whitelist whitelist) {
 		checkArgument(oathClientId != null && oathClientId.length() > 0, "oath client id must be non-null & non-empty");
@@ -45,17 +49,23 @@ public class Authenticator {
 		return whitelist;
 	}
 
-	public boolean verify(String token) {
+	/**
+	 * Verifies a google JWT token, returning the google user ID if the token's valid (or whitelisted), or null if not
+	 * @param token a google ID token
+	 * @return the google user's ID if the token is valid, null otherwise
+	 */
+	@Nullable
+	public String verify(String token) {
 		checkArgument(token != null && token.length() > 0, "token must be non-null & non-empty");
 
 		// check if whitelist verifies this token
 		if (getWhitelist() != null && getWhitelist().isInWhitelist(token)) {
-			return true;
+			return getUserId(token);
 		}
 
 		// if this token was previously valid, and hasn't expired yet, skip the expensive tests
 		if (verifiedTokensWhitelist.isInWhitelist(token)) {
-			return true;
+			return getUserId(token);
 		}
 
 		try {
@@ -65,10 +75,10 @@ public class Authenticator {
 				long expirationSeconds = idToken.getPayload().getExpirationTimeSeconds();
 				long nowSeconds = (new Date()).getTime() / 1000;
 				verifiedTokensWhitelist.addTokenToWhitelist(token, expirationSeconds - nowSeconds);
-				return true;
+				return getUserId(token);
 			} else {
 				verifiedTokensWhitelist.removeTokenFromWhitelist(token);
-				return false;
+				return null;
 			}
 
 		} catch (GeneralSecurityException e) {
@@ -78,7 +88,36 @@ public class Authenticator {
 			System.out.println("verifyIdToken:IOException: " + e);
 			e.printStackTrace();
 		}
-		return false;
+
+		return null;
+	}
+
+	/**
+	 * Get the google user ID from a google auth token, without verifying token
+	 * @param token the google jwt auth token string
+	 * @return the google id encoded in the token, or null if it couldn't parse
+	 */
+	@Nullable
+	private String getUserId(String token) {
+
+		if (token == null || token.length() == 0) {
+			return null;
+		}
+
+		if (googleIdsByToken.containsKey(token)) {
+			return googleIdsByToken.get(token);
+		}
+
+		try {
+			GoogleIdToken idToken = GoogleIdToken.parse(jsonFactory, token);
+			String id = idToken.getPayload().getSubject();
+			googleIdsByToken.put(token, id);
+			return id;
+		} catch (IOException e) {
+			System.out.println("IDToken Audience: Could not parse ID Token:" + e);
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 }
