@@ -74,12 +74,14 @@ public class Authenticator {
 			if (idToken != null) {
 				long expirationSeconds = idToken.getPayload().getExpirationTimeSeconds();
 				long nowSeconds = (new Date()).getTime() / 1000;
-				verifiedTokensWhitelist.addTokenToWhitelist(token, expirationSeconds - nowSeconds);
-				return getUserId(token);
-			} else {
-				verifiedTokensWhitelist.removeTokenFromWhitelist(token);
-				return null;
+				if (expirationSeconds > nowSeconds) {
+					verifiedTokensWhitelist.addTokenToWhitelist(token, expirationSeconds - nowSeconds);
+					return getUserId(token);
+				}
 			}
+
+			verifiedTokensWhitelist.removeTokenFromWhitelist(token);
+			return null;
 
 		} catch (GeneralSecurityException e) {
 			System.out.println("verifyIdToken:GeneralSecurityException: " + e);
