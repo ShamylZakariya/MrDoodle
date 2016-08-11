@@ -9,8 +9,11 @@ import android.util.Log;
 
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
+import org.zakariya.mrdoodle.net.SyncServerConfiguration;
+import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
+import org.zakariya.mrdoodle.util.EmulatorDetection;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
 import io.realm.Realm;
@@ -27,11 +30,14 @@ public class MrDoodleApplication extends android.app.Application {
 
 	private BackgroundWatcher backgroundWatcher;
 	private RealmConfiguration realmConfiguration;
+	private SyncServerConfiguration syncServerConfiguration;
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
 		instance = this;
+
+		syncServerConfiguration = new SyncServerConfiguration(EmulatorDetection.isEmulator());
 
 		backgroundWatcher = new BackgroundWatcher(this, false);
 		realmConfiguration = new RealmConfiguration.Builder(this)
@@ -53,6 +59,10 @@ public class MrDoodleApplication extends android.app.Application {
 
 	public BackgroundWatcher getBackgroundWatcher() {
 		return backgroundWatcher;
+	}
+
+	public SyncServerConfiguration getSyncServerConfiguration() {
+		return syncServerConfiguration;
 	}
 
 	public void onApplicationBackgrounded() {
@@ -84,6 +94,9 @@ public class MrDoodleApplication extends android.app.Application {
 	private void initSingletons() {
 		DoodleThumbnailRenderer.init(this);
 		GoogleSignInManager.init(this);
+
+		boolean userIsSignedIn = GoogleSignInManager.getInstance().getGoogleSignInAccount() != null;
+		SyncServerConnection.init(getSyncServerConfiguration(), userIsSignedIn);
 	}
 
 

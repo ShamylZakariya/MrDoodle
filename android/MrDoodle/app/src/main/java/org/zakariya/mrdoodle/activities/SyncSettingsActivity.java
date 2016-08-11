@@ -3,6 +3,7 @@ package org.zakariya.mrdoodle.activities;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.annotation.StringRes;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.ActionBar;
 import android.support.v7.widget.RecyclerView;
@@ -25,6 +26,8 @@ import com.squareup.picasso.Picasso;
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.events.GoogleSignInEvent;
 import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
+import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
@@ -64,6 +67,9 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Bind(R.id.syncHistoryRecyclerView)
 	RecyclerView syncHistoryRecyclerView;
 
+	@Bind(R.id.connectedTextView)
+	TextView connectedTextView;
+
 	MenuItem signOutMenuItem;
 
 	@Override
@@ -76,6 +82,7 @@ public class SyncSettingsActivity extends BaseActivity {
 
 		setSupportActionBar(toolbar);
 		syncToCurrentSignedInState();
+		syncToCurrentServerConnectionState();
 
 		ActionBar actionBar = getSupportActionBar();
 		if (actionBar != null) {
@@ -130,14 +137,24 @@ public class SyncSettingsActivity extends BaseActivity {
 		startActivityForResult(signInIntent, RC_GET_SIGN_IN);
 	}
 
+	@OnClick(R.id.connectButton)
+	void connect() {
+		Log.i(TAG, "connect: connecting to sync server");
+		SyncServerConnection.getInstance().connect();
+	}
+
+	@OnClick(R.id.disconnectButton)
+	void disconnect() {
+		Log.i(TAG, "disconnect: disconnecting from sync server");
+		SyncServerConnection.getInstance().disconnect();
+	}
+
 	@OnClick(R.id.syncNowButton)
 	void syncNow() {
-		Log.i(TAG, "syncNow: ");
 	}
 
 	@OnClick(R.id.resetAndSyncButton)
 	void resetAndSync() {
-		Log.i(TAG, "resetAndSync: ");
 	}
 
 	void signOut() {
@@ -154,12 +171,58 @@ public class SyncSettingsActivity extends BaseActivity {
 		showSignedOutState();
 	}
 
+	@Subscribe
+	public void onSyncServerConnectionStatusChanged(SyncServerConnectionStatusEvent event) {
+
+		@StringRes int textId = 0;
+
+		switch (event.getStatus()) {
+			case DISCONNECTED:
+				textId = R.string.sync_server_connection_status_disconnected;
+				break;
+			case CONNECTING:
+				textId = R.string.sync_server_connection_status_connecting;
+				break;
+			case AUTHORIZING:
+				textId = R.string.sync_server_connection_status_authorizing;
+				break;
+			case CONNECTED:
+				textId = R.string.sync_server_connection_status_connected;
+				break;
+		}
+
+		Log.d(TAG, "onSyncServerConnectionStatusChanged: " + getString(textId));
+		connectedTextView.setText(textId);
+	}
+
+
 	private void syncToCurrentSignedInState() {
 		GoogleSignInAccount account = GoogleSignInManager.getInstance().getGoogleSignInAccount();
 		if (account != null) {
 			showSignedInState(account);
 		} else {
 			showSignedOutState();
+		}
+	}
+
+	private void syncToCurrentServerConnectionState() {
+		SyncServerConnection connection = SyncServerConnection.getInstance();
+
+		@StringRes int textId = 0;
+		if (connection.isConnecting()) {
+			textId = R.string.sync_server_connection_status_connecting;
+		} else if (connection.isConnected()) {
+			if (connection.isAuthenticating()) {
+				textId = R.string.sync_server_connection_status_authorizing;
+			} else if (connection.isAuthenticated()) {
+				textId = R.string.sync_server_connection_status_connected;
+			}
+		} else {
+			textId = R.string.sync_server_connection_status_disconnected;
+		}
+
+		if (textId != 0) {
+			connectedTextView.setText(textId);
 		}
 	}
 

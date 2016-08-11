@@ -54,4 +54,9 @@
 	<string name="sync_now_button">Sync</string>
 	<string name="sync_reset_button">Reset &amp; Sync</string>
 
+	<string name="sync_server_connection_status_disconnected">Disconnected</string>
+	<string name="sync_server_connection_status_connecting">Connecting…</string>
+	<string name="sync_server_connection_status_authorizing">Authorizing…</string>
+	<string name="sync_server_connection_status_connected">Connected</string>
+
 </resources>
