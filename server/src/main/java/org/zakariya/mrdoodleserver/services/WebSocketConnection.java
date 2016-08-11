@@ -12,10 +12,7 @@ import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.zakariya.mrdoodleserver.util.Preconditions.*;
 
@@ -82,14 +79,44 @@ public class WebSocketConnection {
 		checkNotNull(authenticator, "Authenticator must be assigned");
 	}
 
+	/**
+	 * @return set containing google id of all connected users
+	 */
+	public Set<String> getConnectedUserGoogleIds(){
+		return authenticatedUserGroupsByGoogleId.keySet();
+	}
+
+	/**
+	 * @return return count of connected devices. Since users may use multiple devices, this may be larger than number of users.
+	 */
+	public int getTotalConnectedDeviceCount() {
+		int count = 0;
+		for (String googleId : authenticatedUserGroupsByGoogleId.keySet()) {
+			count += authenticatedUserGroupsByGoogleId.get(googleId).userSessions.size();
+		}
+
+		return count;
+	}
+
+	/**
+	 * @param googleId google id of user in question
+	 * @return the number of devices this user has connected right now to sync service
+	 */
+	public int getTotalConnectedDevicesForGoogleId(String googleId) {
+		UserGroup group = authenticatedUserGroupsByGoogleId.get(googleId);
+		if (group != null) {
+			return group.userSessions.size();
+		}
+
+		return 0;
+	}
+
 	@OnWebSocketConnect
 	public void onConnect(Session userSession) throws Exception {
-		System.out.println("onConnect");
 	}
 
 	@OnWebSocketClose
 	public void onClose(Session userSession, int statusCode, String reason) {
-		System.out.println("onClose status: " + statusCode + " reason: " + reason);
 
 		// clean up
 		String googleId = googleIdByUserSession.get(userSession);
@@ -100,12 +127,12 @@ public class WebSocketConnection {
 				userGroup.userSessions.remove(userSession);
 			}
 		}
+
+		System.out.println("onClose status: " + statusCode + " reason: " + reason + " after cleanup, we have: " + getTotalConnectedDeviceCount() + " connected devices");
 	}
 
 	@OnWebSocketMessage
 	public void onMessage(Session userSession, String message) {
-		System.out.println("onMessage: " + message);
-
 		try {
 			JsonNode rootNode = objectMapper.readTree(message);
 
@@ -126,6 +153,8 @@ public class WebSocketConnection {
 			if (!isSessionAuthenticated(userSession)) {
 				didAuthenticate = authenticate(userSession, authToken);
 				sendAuthenticationResponse(userSession, didAuthenticate);
+
+				System.out.println("WebSocketConnection::onMessage - after handling authentication, we have: " + getTotalConnectedDeviceCount() + " connected devices");
 			}
 
 			// user may have successfully authenticated, so we can proceed
@@ -168,7 +197,7 @@ public class WebSocketConnection {
 				UserGroup userGroup = authenticatedUserGroupsByGoogleId.get(googleId);
 				if (userGroup == null) {
 					userGroup = new UserGroup(googleId);
-					authenticatedUserGroupsByGoogleId.put(authToken, userGroup);
+					authenticatedUserGroupsByGoogleId.put(googleId, userGroup);
 				}
 
 				userGroup.userSessions.add(userSession);
