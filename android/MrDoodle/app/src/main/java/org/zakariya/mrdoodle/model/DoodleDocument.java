@@ -4,6 +4,10 @@ import android.content.Context;
 import android.support.annotation.Nullable;
 
 import org.zakariya.doodle.model.StrokeDoodle;
+import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentDeletedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
+import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -55,15 +59,21 @@ public class DoodleDocument extends RealmObject {
 		doc.setName(name);
 		realm.commitTransaction();
 
+		BusProvider.postOnMainThread(new DoodleDocumentCreatedEvent(doc.getUuid()));
+
 		return doc;
 	}
 
 	public static void delete(Context context, Realm realm, DoodleDocument doc) {
+		String uuid = doc.getUuid();
+
 		doc.deleteSaveFile(context);
 
 		realm.beginTransaction();
 		doc.deleteFromRealm();
 		realm.commitTransaction();
+
+		BusProvider.postOnMainThread(new DoodleDocumentDeletedEvent(uuid));
 	}
 
 	public static RealmResults<DoodleDocument> all(Realm realm) {
@@ -129,10 +139,11 @@ public class DoodleDocument extends RealmObject {
 
 
 	/**
-	 * Set the document's modification date to now.
+	 * Set the document's modification date to now and notify that the document has been edited
 	 */
 	public void markModified() {
 		setModificationDate(new Date());
+		BusProvider.postOnMainThread(new DoodleDocumentEditedEvent(getUuid()));
 	}
 
 	public String getUuid() {

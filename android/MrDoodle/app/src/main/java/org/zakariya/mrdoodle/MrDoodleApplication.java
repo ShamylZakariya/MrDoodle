@@ -1,7 +1,6 @@
 package org.zakariya.mrdoodle;
 
 import android.app.Activity;
-import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -9,11 +8,10 @@ import android.util.Log;
 
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
-import org.zakariya.mrdoodle.net.SyncServerConfiguration;
-import org.zakariya.mrdoodle.net.SyncServerConnection;
+import org.zakariya.mrdoodle.sync.SyncConfiguration;
+import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
-import org.zakariya.mrdoodle.util.EmulatorDetection;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
 import io.realm.Realm;
@@ -28,16 +26,14 @@ public class MrDoodleApplication extends android.app.Application {
 
 	private static MrDoodleApplication instance;
 
+	private SyncManager syncManager;
 	private BackgroundWatcher backgroundWatcher;
 	private RealmConfiguration realmConfiguration;
-	private SyncServerConfiguration syncServerConfiguration;
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
 		instance = this;
-
-		syncServerConfiguration = new SyncServerConfiguration(EmulatorDetection.isEmulator());
 
 		backgroundWatcher = new BackgroundWatcher(this, false);
 		realmConfiguration = new RealmConfiguration.Builder(this)
@@ -61,10 +57,6 @@ public class MrDoodleApplication extends android.app.Application {
 		return backgroundWatcher;
 	}
 
-	public SyncServerConfiguration getSyncServerConfiguration() {
-		return syncServerConfiguration;
-	}
-
 	public void onApplicationBackgrounded() {
 		GoogleSignInManager.getInstance().disconnect();
 	}
@@ -86,7 +78,7 @@ public class MrDoodleApplication extends android.app.Application {
 	}
 
 	@Override
-	public void onConfigurationChanged(Configuration newConfig) {
+	public void onConfigurationChanged(android.content.res.Configuration newConfig) {
 		super.onConfigurationChanged(newConfig);
 		DoodleThumbnailRenderer.getInstance().onConfigurationChanged(newConfig);
 	}
@@ -95,8 +87,7 @@ public class MrDoodleApplication extends android.app.Application {
 		DoodleThumbnailRenderer.init(this);
 		GoogleSignInManager.init(this);
 
-		boolean userIsSignedIn = GoogleSignInManager.getInstance().getGoogleSignInAccount() != null;
-		SyncServerConnection.init(getSyncServerConfiguration(), userIsSignedIn);
+		SyncManager.init(this, new SyncConfiguration());
 	}
 
 

@@ -62,7 +62,7 @@
 				android:orientation="horizontal"
 				android:layout_marginBottom="24dp">
 
-				<org.zakariya.mrdoodle.view.CircularImageView
+				<org.zakariya.mrdoodle.ui.view.CircularImageView
 					android:id="@+id/avatarImageView"
 					android:layout_width="48dp"
 					android:layout_height="48dp"/>

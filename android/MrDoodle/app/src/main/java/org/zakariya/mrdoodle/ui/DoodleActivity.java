@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.activities;
+package org.zakariya.mrdoodle.ui;
 
 import android.annotation.TargetApi;
 import android.content.Intent;
@@ -36,7 +36,6 @@ import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import butterknife.Bind;
@@ -393,7 +392,7 @@ public class DoodleActivity extends BaseActivity {
 		if (!documentName.equals(document.getName())) {
 			realm.beginTransaction();
 			document.setName(documentName);
-			document.setModificationDate(new Date());
+			document.markModified();
 			realm.commitTransaction();
 		}
 	}

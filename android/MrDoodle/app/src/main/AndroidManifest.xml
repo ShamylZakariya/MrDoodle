@@ -15,7 +15,7 @@
 		android:theme="@style/MrDoodle">
 
 		<activity
-			android:name="org.zakariya.mrdoodle.activities.MainActivity"
+			android:name="org.zakariya.mrdoodle.ui.MainActivity"
 			android:label="@string/app_name"
 			android:theme="@style/MrDoodle.Home"
 			android:launchMode="singleTop">
@@ -28,30 +28,37 @@
 		</activity>
 
 		<activity
-			android:name="org.zakariya.mrdoodle.activities.DoodleActivity"
+			android:name="org.zakariya.mrdoodle.ui.DoodleActivity"
 			android:label="@string/app_name"
 			android:launchMode="singleTop"
 			android:exported="true"
 			android:theme="@style/MrDoodle.DoodleActivity"
-			android:parentActivityName="org.zakariya.mrdoodle.activities.MainActivity">
+			android:parentActivityName="org.zakariya.mrdoodle.ui.MainActivity">
 		</activity>
 
 		<activity
-			android:name="org.zakariya.mrdoodle.activities.AboutActivity"
+			android:name="org.zakariya.mrdoodle.ui.AboutActivity"
 			android:label="@string/activity_title_about"
 			android:launchMode="singleTop"
 			android:exported="true"
-			android:parentActivityName="org.zakariya.mrdoodle.activities.MainActivity">
+			android:parentActivityName="org.zakariya.mrdoodle.ui.MainActivity">
 		</activity>
 
 		<activity
-			android:name="org.zakariya.mrdoodle.activities.SyncSettingsActivity"
+			android:name="org.zakariya.mrdoodle.ui.SyncSettingsActivity"
 			android:label="@string/activity_title_sync"
 			android:launchMode="singleTop"
 			android:exported="true"
-			android:parentActivityName="org.zakariya.mrdoodle.activities.MainActivity">
+			android:parentActivityName="org.zakariya.mrdoodle.ui.MainActivity">
 		</activity>
 
+		<activity
+			android:name="org.zakariya.mrdoodle.ui.ModelOverviewActivity"
+			android:label="@string/activity_title_model_overview"
+			android:launchMode="singleTop"
+			android:exported="true"
+			android:parentActivityName="org.zakariya.mrdoodle.ui.MainActivity">
+		</activity>
 
 	</application>
 

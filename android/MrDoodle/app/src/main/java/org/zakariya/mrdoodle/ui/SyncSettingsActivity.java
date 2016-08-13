@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.activities;
+package org.zakariya.mrdoodle.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -28,6 +28,7 @@ import org.zakariya.mrdoodle.events.GoogleSignInEvent;
 import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
+import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
@@ -140,13 +141,13 @@ public class SyncSettingsActivity extends BaseActivity {
 	@OnClick(R.id.connectButton)
 	void connect() {
 		Log.i(TAG, "connect: connecting to sync server");
-		SyncServerConnection.getInstance().connect();
+		SyncManager.getInstance().getSyncServerConnection().connect();
 	}
 
 	@OnClick(R.id.disconnectButton)
 	void disconnect() {
 		Log.i(TAG, "disconnect: disconnecting from sync server");
-		SyncServerConnection.getInstance().disconnect();
+		SyncManager.getInstance().getSyncServerConnection().disconnect();
 	}
 
 	@OnClick(R.id.syncNowButton)
@@ -206,7 +207,7 @@ public class SyncSettingsActivity extends BaseActivity {
 	}
 
 	private void syncToCurrentServerConnectionState() {
-		SyncServerConnection connection = SyncServerConnection.getInstance();
+		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
 
 		@StringRes int textId = 0;
 		if (connection.isConnecting()) {

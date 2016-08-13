@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.fragments;
+package org.zakariya.mrdoodle.ui;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -29,9 +29,6 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import org.zakariya.mrdoodle.R;
-import org.zakariya.mrdoodle.activities.AboutActivity;
-import org.zakariya.mrdoodle.activities.DoodleActivity;
-import org.zakariya.mrdoodle.activities.SyncSettingsActivity;
 import org.zakariya.mrdoodle.adapters.DoodleDocumentAdapter;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 
@@ -104,6 +101,10 @@ public class DoodleDocumentGridFragment extends Fragment implements DoodleDocume
 
 			case R.id.menuItemAbout:
 				showAbout();
+				return true;
+
+			case R.id.menuItemShowModelOverview:
+				showModelOverview();
 				return true;
 		}
 
@@ -280,6 +281,10 @@ public class DoodleDocumentGridFragment extends Fragment implements DoodleDocume
 
 	void showSync() {
 		startActivity(new Intent(getContext(), SyncSettingsActivity.class));
+	}
+
+	void showModelOverview() {
+		startActivity(new Intent(getContext(), ModelOverviewActivity.class));
 	}
 
 	private class DividerItemDecoration extends RecyclerView.ItemDecoration {

@@ -36,7 +36,7 @@ android {
 		targetSdkVersion 24
 		versionCode gitCommitCount
 		versionName gitTag
-		buildConfigField 'String', 'LOCAL_IP', '"${getIP()}"'
+		buildConfigField 'String', 'LOCAL_IP', '\"' + getIP() + '\"'
 	}
 	buildTypes {
 		release {

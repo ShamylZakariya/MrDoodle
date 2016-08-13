@@ -31,4 +31,8 @@ public class BusProvider {
 			}
 		});
 	}
+
+	public static void postOnMainThread(final Object event) {
+		postOnMainThread(getBus(), event);
+	}
 }

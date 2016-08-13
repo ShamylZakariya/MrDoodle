@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.view;
+package org.zakariya.mrdoodle.ui.view;
 
 import android.annotation.TargetApi;
 import android.content.Context;

@@ -3,10 +3,12 @@
 
 	<string name="menu_item_sync">Sync Settings</string>
 	<string name="menu_item_about">About</string>
+	<string name="menu_item_show_model_overview">Model Overview</string>
 
 	<string name="activity_title_about">About</string>
 	<string name="activity_title_sync">Sync</string>
-	<string name="activity_title_flyout_menu_test">Flyout Menus</string>
+	<string name="activity_title_model_overview">Model Overview</string>
+
 
 	<string name="clear">Clear</string>
 	<string name="redraw">Redraw</string>

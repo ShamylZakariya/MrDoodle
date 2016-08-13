@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.fragments;
+package org.zakariya.mrdoodle.ui;
 
 import android.content.pm.PackageInfo;
 import android.os.Bundle;

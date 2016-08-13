@@ -28,22 +28,12 @@ import java.util.Map;
 public class SyncServerConnection extends WebSocketConnection {
 
 	private static final String TAG = SyncServerConnection.class.getSimpleName();
-	private static SyncServerConnection instance;
 	private boolean authenticating;
 	private boolean authenticated;
 	private boolean applicationIsActive;
 	private boolean userIsSignedIn;
 
-
-	public static void init(SyncServerConfiguration configuration, boolean userIsSignedIn) {
-		instance = new SyncServerConnection(configuration.getSyncServerConnectionUrl(), userIsSignedIn);
-	}
-
-	public static SyncServerConnection getInstance() {
-		return instance;
-	}
-
-	private SyncServerConnection(String host, boolean userIsSignedIn) {
+	public SyncServerConnection(String host, boolean userIsSignedIn) {
 		super(host);
 		BusProvider.getBus().register(this);
 
@@ -64,7 +54,7 @@ public class SyncServerConnection extends WebSocketConnection {
 		this.authenticating = false;
 		this.authenticated = authenticated;
 		if (authenticated) {
-			BusProvider.postOnMainThread(BusProvider.getBus(), new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTED));
+			BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTED));
 		} else {
 			Log.d(TAG, "setAuthenticated: NOT AUTHENTICATED, scheduling reconnect");
 			resetExponentialBackoff();
@@ -84,7 +74,7 @@ public class SyncServerConnection extends WebSocketConnection {
 				Log.d(TAG, "onIdTokenAvailable: authorizing...");
 
 				authenticating = true;
-				BusProvider.postOnMainThread(BusProvider.getBus(),new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.AUTHORIZING));
+				BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.AUTHORIZING));
 				send(new AuthorizationPayload(idToken));
 			}
 
@@ -175,13 +165,13 @@ public class SyncServerConnection extends WebSocketConnection {
 
 		switch( newStatus) {
 			case CONNECTING:
-				BusProvider.postOnMainThread(BusProvider.getBus(), new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTING));
+				BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTING));
 				break;
 
 			case DISCONNECTED:
 				authenticating = false;
 				authenticated = false;
-				BusProvider.postOnMainThread(BusProvider.getBus(), new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.DISCONNECTED));
+				BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.DISCONNECTED));
 				break;
 
 			default: break;

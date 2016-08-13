@@ -1,15 +1,20 @@
-package org.zakariya.mrdoodle.net;
+package org.zakariya.mrdoodle.sync;
 
 import org.zakariya.mrdoodle.BuildConfig;
+import org.zakariya.mrdoodle.util.EmulatorDetection;
 
 /**
  * Created by shamyl on 8/8/16.
  */
-public class SyncServerConfiguration {
+public class SyncConfiguration {
 
 	private boolean isEmulator;
 
-	public SyncServerConfiguration(boolean isEmulator) {
+	public SyncConfiguration(){
+		this(EmulatorDetection.isEmulator());
+	}
+
+	public SyncConfiguration(boolean isEmulator) {
 		this.isEmulator = isEmulator;
 	}
 
@@ -17,13 +22,13 @@ public class SyncServerConfiguration {
 		return isEmulator;
 	}
 
-	String getSyncServerHost() {
+	public String getSyncServerHost() {
 		return isEmulator
 				? "10.0.2.2:4567"
 				: BuildConfig.LOCAL_IP + ":4567";
 	}
 
-	String getSyncServerConnectionUrl() {
+	public String getSyncServerConnectionUrl() {
 		return "ws://" + getSyncServerHost() + "/connect/";
 	}
 

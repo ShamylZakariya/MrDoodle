@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:tools="http://schemas.android.com/tools"
+              android:orientation="horizontal"
+              android:paddingTop="16dp"
+              android:paddingBottom="16dp"
+              android:paddingLeft="@dimen/activity_horizontal_margin"
+              android:paddingRight="@dimen/activity_horizontal_margin"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/primaryText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            tools:text="Name of Object"
+            style="@style/Base.TextAppearance.AppCompat.Body2"/>
+
+        <TextView
+            android:id="@+id/secondaryText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            tools:text="UUID, etc"
+            style="@style/Base.TextAppearance.AppCompat.Caption"/>
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/orphanedMarker"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:src="@drawable/orphaned_marker_dot"/>
+
+</LinearLayout>

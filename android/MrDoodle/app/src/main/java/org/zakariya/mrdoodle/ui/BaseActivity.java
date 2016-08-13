@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.activities;
+package org.zakariya.mrdoodle.ui;
 
 import android.support.v7.app.AppCompatActivity;
 
@@ -29,5 +29,5 @@ public class BaseActivity extends AppCompatActivity {
 	public boolean isPaused() {
 		return paused;
 	}
-	
+
 }

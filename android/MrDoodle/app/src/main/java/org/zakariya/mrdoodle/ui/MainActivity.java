@@ -1,11 +1,9 @@
-package org.zakariya.mrdoodle.activities;
+package org.zakariya.mrdoodle.ui;
 
 import android.annotation.TargetApi;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-
-import org.zakariya.mrdoodle.fragments.DoodleDocumentGridFragment;
 
 /**
  * Created by shamyl on 12/16/15.
