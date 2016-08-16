@@ -10,6 +10,7 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
+import org.zakariya.mrdoodleserver.util.Configuration;
 
 import java.io.IOException;
 import java.util.*;
@@ -60,6 +61,10 @@ public class WebSocketConnection {
 		boolean isAuthorized() {
 			return authorized;
 		}
+	}
+
+	public static String getRoute(Configuration configuration) {
+		return "/api/" + configuration.get("version") + "/connect";
 	}
 
 	/**

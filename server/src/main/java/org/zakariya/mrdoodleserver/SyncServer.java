@@ -26,7 +26,7 @@ public class SyncServer {
 		Authenticator authenticator = new Authenticator(configuration.get("authenticator/oauth_server_id"), whitelist);
 
 		WebSocketConnection.authenticator = authenticator;
-		webSocket("/connect", WebSocketConnection.class);
+		webSocket(WebSocketConnection.getRoute(configuration), WebSocketConnection.class);
 
 		init();
 	}
