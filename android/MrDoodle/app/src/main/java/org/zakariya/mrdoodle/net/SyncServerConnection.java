@@ -7,12 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.neovisionaries.ws.client.WebSocket;
-import com.squareup.otto.Subscribe;
 
-import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
-import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
-import org.zakariya.mrdoodle.events.GoogleSignInEvent;
-import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
@@ -30,16 +25,9 @@ public class SyncServerConnection extends WebSocketConnection {
 	private static final String TAG = SyncServerConnection.class.getSimpleName();
 	private boolean authenticating;
 	private boolean authenticated;
-	private boolean applicationIsActive;
-	private boolean userIsSignedIn;
 
-	public SyncServerConnection(String host, boolean userIsSignedIn) {
+	public SyncServerConnection(String host) {
 		super(host);
-		BusProvider.getBus().register(this);
-
-		applicationIsActive = true;
-		this.userIsSignedIn = userIsSignedIn;
-		updateConnection();
 	}
 
 	public boolean isAuthenticated() {
@@ -113,51 +101,8 @@ public class SyncServerConnection extends WebSocketConnection {
 		}
 
 		if (isAuthenticated()) {
-
 			// TODO: Process messages sent to authenticated clients
-
 		}
-
-	}
-
-	protected void updateConnection() {
-		if (applicationIsActive && userIsSignedIn) {
-			Log.d(TAG, "updateConnection: active && signedIn! CONNECTING...");
-			connect();
-		} else {
-			Log.d(TAG, "updateConnection: applicationIsActive: " + applicationIsActive + " userIsSignedIn: " + userIsSignedIn + " - DISCONNECTING");
-			disconnect();
-		}
-	}
-
-	@Subscribe
-	public void onApplicationResumed(ApplicationDidResumeEvent event) {
-		Log.d(TAG, "onApplicationResumed() called with: " + "event = [" + event + "]");
-		applicationIsActive = true;
-		resetExponentialBackoff();
-		updateConnection();
-	}
-
-	@Subscribe
-	public void onApplicationBackgrounded(ApplicationDidBackgroundEvent event) {
-		Log.d(TAG, "onApplicationBackgrounded() called with: " + "event = [" + event + "]");
-		applicationIsActive = false;
-		updateConnection();
-	}
-
-	@Subscribe
-	public void onSignedIn(GoogleSignInEvent event) {
-		Log.d(TAG, "onSignedIn() called with: " + "event = [" + event + "]");
-		userIsSignedIn = true;
-		resetExponentialBackoff();
-		updateConnection();
-	}
-
-	@Subscribe
-	public void onSignedOut(GoogleSignOutEvent event) {
-		Log.d(TAG, "onSignedOut() called with: " + "event = [" + event + "]");
-		userIsSignedIn = false;
-		updateConnection();
 	}
 
 	@Override

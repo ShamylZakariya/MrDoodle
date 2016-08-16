@@ -200,7 +200,10 @@ public class WebSocketConnection extends WebSocketAdapter {
 		Log.e(TAG, "onUnexpectedError() called with: " + "websocket = [" + websocket + "], cause = [" + cause + "]");
 	}
 
-	protected void resetExponentialBackoff() {
+	/**
+	 * Reset the exponential backoff for connection retries
+	 */
+	public void resetExponentialBackoff() {
 		failureCount = 0;
 	}
 

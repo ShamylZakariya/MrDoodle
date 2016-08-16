@@ -28,8 +28,12 @@ public class SyncConfiguration {
 				: BuildConfig.LOCAL_IP + ":4567";
 	}
 
+	public String getApiPath() {
+		return "/api/v1";
+	}
+
 	public String getSyncServerConnectionUrl() {
-		return "ws://" + getSyncServerHost() + "/connect/";
+		return "ws://" + getSyncServerHost() + getApiPath() + "/connect/";
 	}
 
 }
