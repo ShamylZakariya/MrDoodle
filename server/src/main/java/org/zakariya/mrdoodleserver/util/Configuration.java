@@ -48,6 +48,16 @@ public class Configuration {
 	}
 
 	/**
+	 * Check if the configuration has a particular value
+	 * @param path the path to the value
+	 * @return true if the value exists and is non-empty (when treated as a string)
+	 */
+	public boolean has(String path) {
+		String value = get(path);
+		return value != null && !value.isEmpty();
+	}
+
+	/**
 	 * Get the string value of the item at a given path. The path can contain directory separators, as such: "a/b/c/leaf"
 	 *
 	 * @param path the deep path into configuration
