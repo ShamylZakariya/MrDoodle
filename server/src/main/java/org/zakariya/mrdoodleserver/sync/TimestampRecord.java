@@ -84,7 +84,15 @@ public class TimestampRecord {
 		return getTimestampsSince(-1);
 	}
 
+	public boolean isEmpty() {
+		return timestampByUuid.isEmpty();
+	}
+
 	private String getJedisKey() {
+		return getJedisKey(accountId);
+	}
+
+	public static String getJedisKey(String accountId) {
 		return accountId + ":timestamps";
 	}
 

@@ -14,6 +14,9 @@ import static org.junit.Assert.*;
  */
 public class TimestampRecordTest {
 
+	final JedisPool pool = new JedisPool("localhost");
+	final String accountId = "testAccount";
+
 
 	@Before
 	public void setUp() throws Exception {
@@ -21,7 +24,9 @@ public class TimestampRecordTest {
 
 	@After
 	public void tearDown() throws Exception {
-
+		try (Jedis jedis = pool.getResource()) {
+			jedis.del(TimestampRecord.getJedisKey(accountId));
+		}
 	}
 
 	@org.junit.Test
@@ -52,11 +57,8 @@ public class TimestampRecordTest {
 
 	@org.junit.Test
 	public void testTimestampPersistence() {
-		final JedisPool pool = new JedisPool("localhost");
-		final String account = "testAccount";
-
 		// create a persisting record
-		TimestampRecord tr0 = new TimestampRecord(pool, account);
+		TimestampRecord tr0 = new TimestampRecord(pool, accountId);
 		tr0.setTimestamp("A", 10);
 		tr0.setTimestamp("B", 11);
 		tr0.setTimestamp("C", 12);
@@ -68,7 +70,7 @@ public class TimestampRecordTest {
 		tr0.save();
 
 		// this record should have same entries as tr0
-		TimestampRecord tr1 = new TimestampRecord(pool, account);
+		TimestampRecord tr1 = new TimestampRecord(pool, accountId);
 		assertEquals("should have same value for uuid A", tr0.getTimestamp("A"), tr1.getTimestamp("A"));
 		assertEquals("should have same value for uuid B", tr0.getTimestamp("B"), tr1.getTimestamp("B"));
 		assertEquals("should have same value for uuid C", tr0.getTimestamp("C"), tr1.getTimestamp("C"));
@@ -77,6 +79,36 @@ public class TimestampRecordTest {
 		assertEquals("should have same value for uuid F", tr0.getTimestamp("F"), tr1.getTimestamp("F"));
 		assertEquals("should have same value for uuid G", tr0.getTimestamp("G"), tr1.getTimestamp("G"));
 		assertEquals("should have same value for uuid H", tr0.getTimestamp("H"), tr1.getTimestamp("H"));
+
+		try (Jedis jedis = pool.getResource()) {
+			jedis.del(TimestampRecord.getJedisKey(accountId));
+		}
+	}
+
+	@org.junit.Test
+	public void testTimestampSaveDebounce() throws Exception {
+
+
+		// create a persisting record
+		TimestampRecord tr0 = new TimestampRecord(pool, accountId);
+		tr0.setTimestamp("A", 10);
+		tr0.setTimestamp("B", 11);
+		tr0.setTimestamp("C", 12);
+		tr0.setTimestamp("D", 13);
+
+		// the debounced save will not have run yet, so this pool should be empty
+		TimestampRecord tr1 = new TimestampRecord(pool, accountId);
+		assertTrue("pool should be empty since debounced save hasn't had time to run", tr1.isEmpty());
+
+		Thread.sleep(3500);
+
+		tr1 = new TimestampRecord(pool, accountId);
+		assertTrue("after debounced save has run, new timestamp record should have same contents as saved one", tr0.getTimestamps().equals(tr1.getTimestamps()));
+
+		try (Jedis jedis = pool.getResource()) {
+			jedis.del(TimestampRecord.getJedisKey(accountId));
+		}
+
 	}
 
 }
