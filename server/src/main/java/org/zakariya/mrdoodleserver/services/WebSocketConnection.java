@@ -5,17 +5,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.jetty.websocket.api.Session;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
+import org.jetbrains.annotations.Nullable;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.util.Configuration;
 
 import java.io.IOException;
 import java.util.*;
 
-import static org.zakariya.mrdoodleserver.util.Preconditions.*;
+import static org.zakariya.mrdoodleserver.util.Preconditions.checkNotNull;
 
 /**
  * WebSocketConnection
@@ -37,6 +38,30 @@ import static org.zakariya.mrdoodleserver.util.Preconditions.*;
 
 @WebSocket
 public class WebSocketConnection {
+
+	public interface WebSocketConnectionCreatedListener {
+		void onWebSocketConnectionCreated(WebSocketConnection connection);
+	}
+
+	public interface OnUserSessionStatusChangeListener {
+		/**
+		 * Invoked when a user/device is connected and authenticated
+		 *
+		 * @param connection the websocket connection
+		 * @param session  the user/device websocket session
+		 * @param googleId the google id of the connected user/device
+		 */
+		void onUserSessionConnected(WebSocketConnection connection, Session session, String googleId);
+
+		/**
+		 * Invoked when a user/device disconnects
+		 *
+		 * @param connection the websocket connection
+		 * @param session  the user/device websocket session
+		 * @param googleId the google id of the connected user/device
+		 */
+		void onUserSessionDisconnected(WebSocketConnection connection, Session session, String googleId);
+	}
 
 	private static class UserGroup {
 		String googleId;
@@ -75,19 +100,54 @@ public class WebSocketConnection {
 	 */
 	public static Authenticator authenticator;
 
+	private static WebSocketConnection instance;
+	private static List<WebSocketConnectionCreatedListener> webSocketConnectionCreatedListeners = new ArrayList<>();
 
 	private ObjectMapper objectMapper = new ObjectMapper();
 	private Map<String, UserGroup> authenticatedUserGroupsByGoogleId = new HashMap<>();
 	private Map<Session, String> googleIdByUserSession = new HashMap<>();
+	private List<OnUserSessionStatusChangeListener> userSessionStatusChangeListeners = new ArrayList<>();
 
 	public WebSocketConnection() {
 		checkNotNull(authenticator, "Authenticator must be assigned");
+		instance = this;
+		for (WebSocketConnectionCreatedListener listener : webSocketConnectionCreatedListeners) {
+			listener.onWebSocketConnectionCreated(this);
+		}
+
+		webSocketConnectionCreatedListeners.clear();
 	}
+
+	public static WebSocketConnection getInstance() {
+		return instance;
+	}
+
+	public static void addOnWebSocketConnectionCreatedListener(WebSocketConnectionCreatedListener listener) {
+		// if we've already been created, just immediately notify
+		if (instance != null) {
+			listener.onWebSocketConnectionCreated(instance);
+		} else {
+			webSocketConnectionCreatedListeners.add(listener);
+		}
+	}
+
+	public static void removeOnWebSocketConnectionCreatedListener(WebSocketConnectionCreatedListener listener) {
+		webSocketConnectionCreatedListeners.remove(listener);
+	}
+
+	public void addUserSessionStatusChangeListener(OnUserSessionStatusChangeListener listener) {
+		userSessionStatusChangeListeners.add(listener);
+	}
+
+	public void removeUserSessionStatusChangeListener(OnUserSessionStatusChangeListener listener) {
+		userSessionStatusChangeListeners.remove(listener);
+	}
+
 
 	/**
 	 * @return set containing google id of all connected users
 	 */
-	public Set<String> getConnectedUserGoogleIds(){
+	public Set<String> getConnectedUserGoogleIds() {
 		return authenticatedUserGroupsByGoogleId.keySet();
 	}
 
@@ -131,6 +191,10 @@ public class WebSocketConnection {
 			if (userGroup != null) {
 				userGroup.userSessions.remove(userSession);
 			}
+
+			for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
+				listener.onUserSessionDisconnected(this, userSession, googleId);
+			}
 		}
 
 		System.out.println("onClose status: " + statusCode + " reason: " + reason + " after cleanup, we have: " + getTotalConnectedDeviceCount() + " connected devices");
@@ -156,9 +220,18 @@ public class WebSocketConnection {
 
 			boolean didAuthenticate = false;
 			if (!isSessionAuthenticated(userSession)) {
-				didAuthenticate = authenticate(userSession, authToken);
-				sendAuthenticationResponse(userSession, didAuthenticate);
+				String googleId = authenticate(userSession, authToken);
+				sendAuthenticationResponse(userSession, googleId  != null);
 
+				if (googleId != null) {
+					didAuthenticate = true;
+
+					// notify
+					for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
+						listener.onUserSessionConnected(this, userSession, googleId);
+					}
+				}
+				
 				System.out.println("WebSocketConnection::onMessage - after handling authentication, we have: " + getTotalConnectedDeviceCount() + " connected devices");
 			}
 
@@ -190,7 +263,8 @@ public class WebSocketConnection {
 		}
 	}
 
-	private boolean authenticate(Session userSession, String authToken) {
+	@Nullable
+	private String authenticate(Session userSession, String authToken) {
 		if (authToken != null && !authToken.isEmpty()) {
 
 			String googleId = authenticator.verify(authToken);
@@ -206,17 +280,17 @@ public class WebSocketConnection {
 				}
 
 				userGroup.userSessions.add(userSession);
-				return true;
+				return googleId;
 			} else {
 
 				// couldn't extract an ID from the token
 				System.err.println("Unable to extract google ID from auth token: " + authToken);
-				return false;
+				return null;
 			}
 
 		} else {
 			deauthenticate(userSession);
-			return false;
+			return null;
 		}
 	}
 
@@ -233,6 +307,10 @@ public class WebSocketConnection {
 			if (userGroup != null) {
 				userGroup.userSessions.remove(userSession);
 			}
+
+			for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
+				listener.onUserSessionDisconnected(this, userSession, googleId);
+			}
 		}
 
 		googleIdByUserSession.remove(userSession);
@@ -245,21 +323,7 @@ public class WebSocketConnection {
 	 * @param authenticated authentication status
 	 */
 	private void sendAuthenticationResponse(Session userSession, boolean authenticated) {
-
-		if (!userSession.isOpen()) {
-			return;
-		}
-
-		try {
-			String json = objectMapper.writeValueAsString(new AuthenticationResponse(authenticated));
-			userSession.getRemote().sendString(json);
-		} catch (JsonProcessingException e) {
-			System.err.println("Unable to serialize AuthenticationResponse to JSON");
-			e.printStackTrace();
-		} catch (IOException e) {
-			System.err.println("Unable to send AuthenticationResponse JSON to user session remote endpoint");
-			e.printStackTrace();
-		}
+		send(userSession, new AuthenticationResponse(authenticated));
 	}
 
 	/**
@@ -270,6 +334,29 @@ public class WebSocketConnection {
 	 */
 	private boolean isSessionAuthenticated(Session userSession) {
 		return googleIdByUserSession.containsKey(userSession);
+	}
+
+	/**
+	 * Send the message object POJO as JSON to the specific user/device represented by userSession
+	 *
+	 * @param userSession   a specific user/device connected to this server
+	 * @param messageObject a POJO to serialize and send as JSON
+	 */
+	public void send(Session userSession, Object messageObject) {
+		if (!userSession.isOpen()) {
+			return;
+		}
+
+		try {
+			String json = objectMapper.writeValueAsString(messageObject);
+			userSession.getRemote().sendString(json);
+		} catch (JsonProcessingException e) {
+			System.err.println("Unable to serialize message POJO to JSON");
+			e.printStackTrace();
+		} catch (IOException e) {
+			System.err.println("Unable to send message JSON to user session remote endpoint");
+			e.printStackTrace();
+		}
 	}
 
 	/**

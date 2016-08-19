@@ -126,5 +126,20 @@ public class Configuration {
 		}
 	}
 
+	/**
+	 * Get the boolean value of the item specified by `path`, or the default value if the item didn't exist
+	 * @param path deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
+	 * @param defaultValue the default value to return if the item specified did not exist
+	 * @return the bool value of the item specified by the path
+	 */
+	public boolean getBoolean(String path, boolean defaultValue) {
+		String v = get(path);
+		if (v != null) {
+			return Boolean.parseBoolean(v);
+		} else {
+			return defaultValue;
+		}
+	}
+
 
 }
