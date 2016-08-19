@@ -9,9 +9,11 @@ import com.google.gson.JsonSyntaxException;
 import com.neovisionaries.ws.client.WebSocket;
 
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.transport.Status;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,9 +24,14 @@ import java.util.Map;
  */
 public class SyncServerConnection extends WebSocketConnection {
 
+	public interface NotificationListener {
+		void onStatusReceived(Status status);
+	}
+
 	private static final String TAG = SyncServerConnection.class.getSimpleName();
 	private boolean authenticating;
 	private boolean authenticated;
+	private List<NotificationListener> notificationListeners = new ArrayList<>();
 
 	public SyncServerConnection(String host) {
 		super(host);
@@ -36,6 +43,21 @@ public class SyncServerConnection extends WebSocketConnection {
 
 	public boolean isAuthenticating() {
 		return authenticating;
+	}
+
+	/**
+	 * Add a listener to be notified as messages arrive from the web socket connection
+	 * @param listener listener to be notified as messages arrive from the web socket connection
+	 */
+	public void addNotificationListener(NotificationListener listener) {
+		notificationListeners.add(listener);
+	}
+
+	/**
+	 * @param listener listener to remove from notification list
+	 */
+	public void removeNotificationListener(NotificationListener listener) {
+		notificationListeners.remove(listener);
 	}
 
 	protected void setAuthenticated(boolean authenticated) {
@@ -96,12 +118,26 @@ public class SyncServerConnection extends WebSocketConnection {
 				}
 			} catch (JsonSyntaxException e) {
 				Log.e(TAG, "onTextMessage: unable to parse " + text + " as JSON", e);
+				e.printStackTrace();
 				setAuthenticated(false);
 			}
 		}
 
 		if (isAuthenticated()) {
-			// TODO: Process messages sent to authenticated clients
+
+			// right now, the only message ever sent by the server to the client over websocket
+			// is the net.transport.Status message
+			try {
+				Status status = gson.fromJson(text, Status.class);
+				if (status != null) {
+					for (NotificationListener listener : notificationListeners) {
+						listener.onStatusReceived(status);
+					}
+				}
+			} catch (JsonSyntaxException e) {
+				Log.e(TAG, "onTextMessage: unable to parse " + text + " as JSON", e );
+				e.printStackTrace();
+			}
 		}
 	}
 

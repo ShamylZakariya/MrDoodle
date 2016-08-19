@@ -10,13 +10,14 @@ import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
 import org.zakariya.mrdoodle.events.GoogleSignInEvent;
 import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
+import org.zakariya.mrdoodle.net.transport.Status;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
 /**
  * Top level access point for sync services
  */
-public class SyncManager {
+public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	private static final String TAG = SyncManager.class.getSimpleName();
 
@@ -47,6 +48,8 @@ public class SyncManager {
 		userIsSignedIn = GoogleSignInManager.getInstance().getGoogleSignInAccount() != null;
 
 		syncServerConnection = new SyncServerConnection(syncConfiguration.getSyncServerConnectionUrl());
+		syncServerConnection.addNotificationListener(this);
+
 		changeJournal = new ChangeJournal(context);
 		timestampRecorder = new TimestampRecorder(context);
 
@@ -108,6 +111,14 @@ public class SyncManager {
 			stop();
 		}
 	}
+
+	///////////////////////////////////////////////////////////////////
+
+	@Override
+	public void onStatusReceived(Status status) {
+		Log.i(TAG, "onStatusReceived: received Status notification from web socket connection: " + status.toString());
+	}
+
 
 	///////////////////////////////////////////////////////////////////
 
