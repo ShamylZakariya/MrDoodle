@@ -101,7 +101,6 @@ public class TimestampRecord {
 			return;
 		}
 
-		System.out.println("TimestampRecord::markDirty");
 		cancelDebouncedSave();
 		debouncedSave = debounceScheduler.schedule(saver, DEBOUNCE_MILLIS, java.util.concurrent.TimeUnit.MILLISECONDS);
 	}
@@ -118,7 +117,6 @@ public class TimestampRecord {
 			return;
 		}
 
-		System.out.println("TimestampRecord::save");
 		cancelDebouncedSave();
 		try (Jedis jedis = jedisPool.getResource()) {
 			String jsonString = objectMapper.writeValueAsString(timestampByUuid);
@@ -134,7 +132,6 @@ public class TimestampRecord {
 			return;
 		}
 
-		System.out.println("TimestampRecord::load");
 		try (Jedis jedis = jedisPool.getResource()) {
 			String jsonString = jedis.get(getJedisKey());
 			if (jsonString != null && !jsonString.isEmpty()) {
