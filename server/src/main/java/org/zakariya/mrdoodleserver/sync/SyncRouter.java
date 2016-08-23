@@ -23,7 +23,7 @@ import static spark.Spark.*;
  */
 public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreatedListener{
 
-	private static final String REQUEST_HEADER_AUTH = "X-Authorization";
+	private static final String REQUEST_HEADER_AUTH = "Authorization";
 
 	private Configuration configuration;
 	private Authenticator authenticator;
@@ -49,15 +49,23 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private void authenticate(Request request, Response response) {
 		if (authenticationEnabled) {
 			String googleIdToken = request.headers(REQUEST_HEADER_AUTH);
-			String verifiedId = this.authenticator.verify(googleIdToken);
-			String pathAccountId = request.params("accountId");
-			if (verifiedId != null) {
-				// token passed validation, but only allows access to :accountId subpath
-				if (!verifiedId.equals(pathAccountId)) {
-					halt(401, "Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
-				}
+			if (googleIdToken == null || googleIdToken.isEmpty()) {
+				halt(401, "Missing authorization token");
 			} else {
-				halt(401, "Invalid authorization token");
+				try {
+					String verifiedId = this.authenticator.verify(googleIdToken);
+					String pathAccountId = request.params("accountId");
+					if (verifiedId != null) {
+						// token passed validation, but only allows access to :accountId subpath
+						if (!verifiedId.equals(pathAccountId)) {
+							halt(401, "Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
+						}
+					} else {
+						halt(401, "Invalid authorization token");
+					}
+				} catch (Exception e) {
+					halt(500, "Unable to verify authorization token, error: " + e.getLocalizedMessage());
+				}
 			}
 		}
 	}
