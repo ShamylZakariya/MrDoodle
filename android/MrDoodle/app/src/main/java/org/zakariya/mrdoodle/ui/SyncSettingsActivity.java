@@ -28,6 +28,8 @@ import org.zakariya.mrdoodle.events.GoogleSignInEvent;
 import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
+import org.zakariya.mrdoodle.net.api.SyncService;
+import org.zakariya.mrdoodle.net.transport.Status;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
@@ -35,6 +37,9 @@ import org.zakariya.mrdoodle.util.GoogleSignInManager;
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * Created by shamyl on 1/2/16.
@@ -148,6 +153,30 @@ public class SyncSettingsActivity extends BaseActivity {
 	void disconnect() {
 		Log.i(TAG, "disconnect: disconnecting from sync server");
 		SyncManager.getInstance().getSyncServerConnection().disconnect();
+	}
+
+	@OnClick(R.id.statusButton)
+	void status() {
+		Log.i(TAG, "status: getting status from sync server");
+
+		SyncService service = SyncManager.getInstance().getSyncEngine().getSyncService();
+		GoogleSignInAccount account = GoogleSignInManager.getInstance().getGoogleSignInAccount();
+		Call<Status> response = service.getStatus(account.getId());
+		response.enqueue(new Callback<Status>() {
+			@Override
+			public void onResponse(Call<Status> call, Response<Status> response) {
+				if (response.isSuccessful()) {
+					Log.i(TAG, "onResponse: successful : status: " + response.body());
+				} else {
+					Log.e(TAG, "onResponse: not successful, code; " + response.code() + " message: " + response.message() );
+				}
+			}
+
+			@Override
+			public void onFailure(Call<Status> call, Throwable t) {
+				Log.e(TAG, "onFailure: error: ", t);
+			}
+		});
 	}
 
 	@OnClick(R.id.syncNowButton)

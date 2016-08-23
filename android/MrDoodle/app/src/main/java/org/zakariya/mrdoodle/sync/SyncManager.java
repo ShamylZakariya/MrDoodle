@@ -12,14 +12,9 @@ import org.zakariya.mrdoodle.events.GoogleSignInEvent;
 import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
 import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
-import org.zakariya.mrdoodle.net.api.SyncService;
 import org.zakariya.mrdoodle.net.transport.Status;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
-
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 /**
  * Top level access point for sync services
@@ -135,27 +130,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	@Override
 	public void onStatusReceived(Status status) {
 		Log.i(TAG, "onStatusReceived: received Status notification from web socket connection: " + status.toString());
-
-		Log.w(TAG, "onStatusReceived: NOW, running explicit call to SyncEngine to request status for testing");
-		SyncService service = getSyncEngine().getSyncService();
-
-		Call<Status> response = service.getStatus(googleSignInAccount.getId());
-		response.enqueue(new Callback<Status>() {
-			@Override
-			public void onResponse(Call<Status> call, Response<Status> response) {
-				if (response.isSuccessful()) {
-					Log.i(TAG, "onResponse: successful : status: " + response.body());
-				} else {
-					Log.e(TAG, "onResponse: not successful, code; " + response.code() + " message: " + response.message() );
-				}
-			}
-
-			@Override
-			public void onFailure(Call<Status> call, Throwable t) {
-				Log.e(TAG, "onFailure: error: ", t);
-			}
-		});
-
 	}
 
 
