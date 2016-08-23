@@ -5,6 +5,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.google.gson.Gson;
+import com.neovisionaries.ws.client.PayloadGenerator;
 import com.neovisionaries.ws.client.WebSocket;
 import com.neovisionaries.ws.client.WebSocketAdapter;
 import com.neovisionaries.ws.client.WebSocketException;
@@ -12,6 +13,7 @@ import com.neovisionaries.ws.client.WebSocketFactory;
 import com.neovisionaries.ws.client.WebSocketFrame;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -75,6 +77,13 @@ public class WebSocketConnection extends WebSocketAdapter {
 							.createSocket(host);
 
 					webSocket.addListener(this);
+					webSocket.setPingPayloadGenerator(new PayloadGenerator() {
+						@Override
+						public byte[] generate() {
+							return new Date().toString().getBytes();
+						}
+					});
+					webSocket.setPingInterval(60*1000);
 					webSocket.connectAsynchronously();
 				} catch (IOException e) {
 					e.printStackTrace();
