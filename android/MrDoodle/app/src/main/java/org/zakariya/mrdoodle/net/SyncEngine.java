@@ -1,7 +1,6 @@
 package org.zakariya.mrdoodle.net;
 
 import android.content.Context;
-import android.util.Log;
 
 import org.zakariya.mrdoodle.net.api.SyncService;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
@@ -21,6 +20,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class SyncEngine {
 
 	private static final String TAG = SyncEngine.class.getSimpleName();
+	private static final String REQUEST_HEADER_AUTH = "Authorization";
+	private static final String REQUEST_HEADER_USER_AGENT = "User-Agent";
 
 	private Context context;
 	private SyncConfiguration syncConfiguration;
@@ -33,27 +34,23 @@ public class SyncEngine {
 		this.context = context;
 		this.syncConfiguration = syncConfiguration;
 
+		// set up an interceptor to add Authorization headers
 		OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
 		httpClientBuilder.addInterceptor(new Interceptor() {
 			@Override
 			public Response intercept(Chain chain) throws IOException {
 				Request original = chain.request();
-
-				Log.d(TAG, "intercept: url: " + original.url());
-
 				Request request = original.newBuilder()
-						.header("User-Agent", "MrDoodle")
-						.header("Authorization", getGoogleIdToken())
+						.header(REQUEST_HEADER_USER_AGENT, "MrDoodle")
+						.header(REQUEST_HEADER_AUTH, getGoogleIdToken())
 						.build();
 
 				return chain.proceed(request);
 			}
 		});
 
-		Log.i(TAG, "SyncEngine: syncConfiguration.getSyncServiceUrl():" + syncConfiguration.getSyncServiceUrl());
 		httpClient = httpClientBuilder.build();
 		retrofit = new Retrofit.Builder()
-
 				.baseUrl(syncConfiguration.getSyncServiceUrl())
 				.addConverterFactory(GsonConverterFactory.create())
 				.client(httpClient)
