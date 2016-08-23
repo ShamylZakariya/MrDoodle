@@ -94,7 +94,7 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 	}
 
 	public void requestIdToken(GoogleIdTokenReceiver receiver) {
-		if (getGoogleSignInAccount() != null && isIdTokenValid(getGoogleSignInAccount().getIdToken())) {
+		if (!isRenewingConnection && getGoogleSignInAccount() != null && isIdTokenValid(getGoogleSignInAccount().getIdToken())) {
 			receiver.onIdTokenAvailable(getGoogleSignInAccount().getIdToken());
 		} else {
 			idTokenReceivers.add(receiver);

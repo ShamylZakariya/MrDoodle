@@ -3,16 +3,23 @@ package org.zakariya.mrdoodle.sync;
 import android.content.Context;
 import android.util.Log;
 
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.squareup.otto.Subscribe;
 
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
 import org.zakariya.mrdoodle.events.GoogleSignInEvent;
 import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
+import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
+import org.zakariya.mrdoodle.net.api.SyncService;
 import org.zakariya.mrdoodle.net.transport.Status;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 /**
  * Top level access point for sync services
@@ -23,12 +30,14 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	private static SyncManager instance;
 
-	private boolean applicationIsActive, userIsSignedIn, running;
+	private GoogleSignInAccount googleSignInAccount;
+	private boolean applicationIsActive, running;
 	private SyncConfiguration syncConfiguration;
 	private Context context;
 	private SyncServerConnection syncServerConnection;
 	private ChangeJournal changeJournal;
 	private TimestampRecorder timestampRecorder;
+	private SyncEngine syncEngine;
 
 	public static void init(Context context, SyncConfiguration syncConfiguration) {
 		if (instance == null) {
@@ -45,13 +54,18 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		this.syncConfiguration = syncConfiguration;
 
 		applicationIsActive = true;
-		userIsSignedIn = GoogleSignInManager.getInstance().getGoogleSignInAccount() != null;
+		googleSignInAccount = GoogleSignInManager.getInstance().getGoogleSignInAccount();
 
 		syncServerConnection = new SyncServerConnection(syncConfiguration.getSyncServerConnectionUrl());
 		syncServerConnection.addNotificationListener(this);
 
 		changeJournal = new ChangeJournal(context);
 		timestampRecorder = new TimestampRecorder(context);
+		syncEngine = new SyncEngine(context, syncConfiguration);
+
+		if (googleSignInAccount != null) {
+			syncEngine.setGoogleIdToken(googleSignInAccount.getIdToken());
+		}
 
 		BusProvider.getBus().register(this);
 		startOrStopSyncServices();
@@ -75,6 +89,10 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	public TimestampRecorder getTimestampRecorder() {
 		return timestampRecorder;
+	}
+
+	public SyncEngine getSyncEngine() {
+		return syncEngine;
 	}
 
 	/**
@@ -105,7 +123,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	///////////////////////////////////////////////////////////////////
 
 	private void startOrStopSyncServices() {
-		if (applicationIsActive && userIsSignedIn) {
+		if (applicationIsActive && googleSignInAccount != null) {
 			start();
 		} else {
 			stop();
@@ -117,6 +135,27 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	@Override
 	public void onStatusReceived(Status status) {
 		Log.i(TAG, "onStatusReceived: received Status notification from web socket connection: " + status.toString());
+
+		Log.w(TAG, "onStatusReceived: NOW, running explicit call to SyncEngine to request status for testing");
+		SyncService service = getSyncEngine().getSyncService();
+
+		Call<Status> response = service.getStatus(googleSignInAccount.getId());
+		response.enqueue(new Callback<Status>() {
+			@Override
+			public void onResponse(Call<Status> call, Response<Status> response) {
+				if (response.isSuccessful()) {
+					Log.i(TAG, "onResponse: successful : status: " + response.body());
+				} else {
+					Log.e(TAG, "onResponse: not successful, code; " + response.code() + " message: " + response.message() );
+				}
+			}
+
+			@Override
+			public void onFailure(Call<Status> call, Throwable t) {
+				Log.e(TAG, "onFailure: error: ", t);
+			}
+		});
+
 	}
 
 
@@ -140,15 +179,16 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	@Subscribe
 	public void onSignedIn(GoogleSignInEvent event) {
 		Log.d(TAG, "onSignedIn:");
-		userIsSignedIn = true;
+		googleSignInAccount = event.getGoogleSignInAccount();
 		syncServerConnection.resetExponentialBackoff();
+		syncEngine.setGoogleIdToken(event.getGoogleSignInAccount().getIdToken());
 		startOrStopSyncServices();
 	}
 
 	@Subscribe
 	public void onSignedOut(GoogleSignOutEvent event) {
 		Log.d(TAG, "onSignedOut:");
-		userIsSignedIn = false;
+		googleSignInAccount = null;
 		startOrStopSyncServices();
 	}
 

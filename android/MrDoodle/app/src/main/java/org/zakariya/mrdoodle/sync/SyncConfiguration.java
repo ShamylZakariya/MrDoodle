@@ -32,6 +32,10 @@ public class SyncConfiguration {
 		return "/api/v1";
 	}
 
+	public String getSyncServiceUrl() {
+		return "http://" + getSyncServerHost() + getApiPath() + '/';
+	}
+
 	public String getSyncServerConnectionUrl() {
 		return "ws://" + getSyncServerHost() + getApiPath() + "/connect/";
 	}
