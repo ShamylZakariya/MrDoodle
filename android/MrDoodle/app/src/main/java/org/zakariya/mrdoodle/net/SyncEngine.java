@@ -4,6 +4,7 @@ import android.content.Context;
 
 import org.zakariya.mrdoodle.net.api.SyncService;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
+import org.zakariya.mrdoodle.util.AsyncExecutor;
 
 import java.io.IOException;
 
@@ -29,10 +30,12 @@ public class SyncEngine {
 	private Retrofit retrofit;
 	private String googleIdToken;
 	private SyncService syncService;
+	private AsyncExecutor executor;
 
 	public SyncEngine(Context context, SyncConfiguration syncConfiguration) {
 		this.context = context;
 		this.syncConfiguration = syncConfiguration;
+		this.executor = new AsyncExecutor();
 
 		// set up an interceptor to add Authorization headers
 		OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
@@ -81,6 +84,10 @@ public class SyncEngine {
 
 	public String getGoogleIdToken() {
 		return googleIdToken;
+	}
+
+	public AsyncExecutor getExecutor() {
+		return executor;
 	}
 
 	/**

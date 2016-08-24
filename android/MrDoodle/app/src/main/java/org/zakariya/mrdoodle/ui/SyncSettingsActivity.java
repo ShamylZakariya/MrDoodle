@@ -27,18 +27,18 @@ import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.events.GoogleSignInEvent;
 import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.api.SyncService;
 import org.zakariya.mrdoodle.net.transport.Status;
 import org.zakariya.mrdoodle.sync.SyncManager;
+import org.zakariya.mrdoodle.util.AsyncExecutor;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import retrofit2.Call;
-import retrofit2.Callback;
 import retrofit2.Response;
 
 /**
@@ -159,24 +159,51 @@ public class SyncSettingsActivity extends BaseActivity {
 	void status() {
 		Log.i(TAG, "status: getting status from sync server");
 
-		SyncService service = SyncManager.getInstance().getSyncEngine().getSyncService();
-		GoogleSignInAccount account = GoogleSignInManager.getInstance().getGoogleSignInAccount();
-		Call<Status> response = service.getStatus(account.getId());
-		response.enqueue(new Callback<Status>() {
-			@Override
-			public void onResponse(Call<Status> call, Response<Status> response) {
-				if (response.isSuccessful()) {
-					Log.i(TAG, "onResponse: successful : status: " + response.body());
-				} else {
-					Log.e(TAG, "onResponse: not successful, code; " + response.code() + " message: " + response.message() );
-				}
-			}
+		SyncManager syncManager = SyncManager.getInstance();
+		SyncEngine syncEngine = syncManager.getSyncEngine();
+		final SyncService service = syncEngine.getSyncService();
+		AsyncExecutor executor = syncEngine.getExecutor();
+		final GoogleSignInAccount account = GoogleSignInManager.getInstance().getGoogleSignInAccount();
 
-			@Override
-			public void onFailure(Call<Status> call, Throwable t) {
-				Log.e(TAG, "onFailure: error: ", t);
-			}
-		});
+		if (account != null) {
+			executor.execute("test", new AsyncExecutor.Job<Response<Status>>() {
+				@Override
+				public Response<Status> execute() throws Exception {
+					return service.getStatus(account.getId()).execute();
+				}
+			}, new AsyncExecutor.JobListener<Response<Status>>() {
+				@Override
+				public void onComplete(Response<Status> response) {
+					if (response.isSuccessful()) {
+						Log.i(TAG, "AsyncExecutor::onResponse: successful : status: " + response.body());
+					} else {
+						Log.e(TAG, "AsyncExecutor::onResponse: not successful, code; " + response.code() + " message: " + response.message());
+					}
+				}
+
+				@Override
+				public void onError(Throwable error) {
+					Log.e(TAG, "AsyncExecutor::onError: ", error);
+				}
+			});
+		}
+
+//		Call<Status> response = service.getStatus(account.getId());
+//		response.enqueue(new Callback<Status>() {
+//			@Override
+//			public void onResponse(Call<Status> call, Response<Status> response) {
+//				if (response.isSuccessful()) {
+//					Log.i(TAG, "onResponse: successful : status: " + response.body());
+//				} else {
+//					Log.e(TAG, "onResponse: not successful, code; " + response.code() + " message: " + response.message());
+//				}
+//			}
+//
+//			@Override
+//			public void onFailure(Call<Status> call, Throwable t) {
+//				Log.e(TAG, "onFailure: error: ", t);
+//			}
+//		});
 	}
 
 	@OnClick(R.id.syncNowButton)
