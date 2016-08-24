@@ -40,8 +40,9 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	public void configureRoutes(){
-		before(getBasePath() + "/*", this::authenticate);
-		get(getBasePath() + "/status", this::getStatus);
+		String basePath = getBasePath();
+		before(basePath + "/*", this::authenticate);
+		get(basePath + "/status", this::getStatus);
 	}
 
 	///////////////////////////////////////////////////////////////////
