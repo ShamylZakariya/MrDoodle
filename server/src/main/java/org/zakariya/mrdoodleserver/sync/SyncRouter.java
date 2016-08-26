@@ -3,6 +3,8 @@ package org.zakariya.mrdoodleserver.sync;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.util.ByteStreams;
+import com.google.common.net.MediaType;
+import com.sun.xml.internal.messaging.saaj.util.ByteInputStream;
 import org.eclipse.jetty.websocket.api.Session;
 import org.jetbrains.annotations.Nullable;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
@@ -17,6 +19,7 @@ import spark.Response;
 
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -139,10 +142,34 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private String getBlob(Request request, Response response) {
 		try {
 			readWriteLock.readLock().lock();
-			return null;
+
+			String accountId = request.params("accountId");
+			String blobId = request.params("blobId");
+			SyncManager syncManager = getSyncManagerForAccount(accountId);
+			BlobStore blobStore = syncManager.getBlobStore();
+
+			BlobStore.Entry entry = blobStore.get(blobId);
+			if (entry != null) {
+				byte[] blobBytes = entry.getData();
+
+				response.type(MediaType.OCTET_STREAM.toString());
+				response.raw().setContentLength(blobBytes.length);
+				response.status(200);
+
+				ServletOutputStream os = response.raw().getOutputStream();
+				org.apache.commons.io.IOUtils.write(blobBytes, os);
+				os.close();
+			} else {
+				halt(404);
+			}
+
+		} catch (IOException e) {
+			haltWithError500("Unable to copy blob bytes to response", e);
 		} finally {
 			readWriteLock.readLock().unlock();
 		}
+
+		return null;
 	}
 
 	@Nullable
