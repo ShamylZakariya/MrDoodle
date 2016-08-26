@@ -5,18 +5,22 @@ import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
 import redis.clients.jedis.JedisPool;
 
+import java.util.Date;
+
 /**
  * SyncManager
  * Top level coordinator for sync activities for a specific google account
  */
-public class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener{
+public class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener {
 
 	private JedisPool jedisPool;
 	private TimestampRecord timestampRecord;
+	private BlobStore blobStore;
 
 	public SyncManager(JedisPool jedisPool, String accountId) {
 		this.jedisPool = jedisPool;
 		this.timestampRecord = new TimestampRecord(jedisPool, accountId);
+		this.blobStore = new BlobStore(jedisPool, accountId);
 	}
 
 	public JedisPool getJedisPool() {
@@ -27,12 +31,18 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		return timestampRecord;
 	}
 
+	public BlobStore getBlobStore() {
+		return blobStore;
+	}
+
 	/**
 	 * Get the account status, which includes info like the current timestamp head, locked documents, etc
+	 *
 	 * @return the current account status
 	 */
 	public Status getStatus() {
 		Status status = new Status();
+		status.timestampHead = timestampRecord.getTimestampHead().getTimestamp();
 		return status;
 	}
 
@@ -44,5 +54,12 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 
 	@Override
 	public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String googleId) {
+	}
+
+	/**
+	 * @return the current timestamp, in seconds
+	 */
+	public long getTimestampSeconds() {
+		return (new Date()).getTime() / 1000;
 	}
 }
