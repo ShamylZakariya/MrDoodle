@@ -12,7 +12,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * Created by shamyl on 8/22/16.
+ * Like AsyncTask, but simpler.
+ * The only "interesting" aspect to AsyncExecutor is that jobs are given ids, and if a request to run
+ * a job with the same id comes in while a job with the same id is running, the new job won't be executed,
+ * but rather its listener will be handed to the previous job's callback list.
  */
 public class AsyncExecutor {
 
@@ -40,6 +43,16 @@ public class AsyncExecutor {
 		mainThreadHandler = new Handler(Looper.getMainLooper());
 	}
 
+	/**
+	 * Schedule a job for execution.
+	 * If a job "foo" is scheduled, and another job "foo" is scheduled while the first job is still running,
+	 * the later job will be ignored, but its listeners will be attached to be notified when the first job
+	 * completes or fails.
+	 * @param id identifier by which to refer to this job
+	 * @param job the job to run in a background thread
+	 * @param listener listener to be notified when job completes, or if it throws an exception while executing
+	 * @param <T> the type of data the job will pass to the listener on successful execution
+	 */
 	public <T> void execute(final String id, final Job<T> job, JobListener<T> listener) {
 		synchronized (jobsById) {
 			if (jobsById.containsKey(id)) {
@@ -68,6 +81,11 @@ public class AsyncExecutor {
 		}
 	}
 
+	/**
+	 * Check if a job with a given id is running and hasn't completed yet
+	 * @param id the identifier for a particular job
+	 * @return true if that job is running and hasn't completed yet
+	 */
 	public boolean isScheduled(String id) {
 		synchronized (jobsById) {
 			JobInfo info = jobsById.get(id);
@@ -75,6 +93,11 @@ public class AsyncExecutor {
 		}
 	}
 
+	/**
+	 * Terminate a job by its id. Listeners will be discarded and will not receive any notifications.
+	 * @param id the id of a particular job
+	 * @return true if the job existed, hadn't finished, and hadn't been canceled yet
+	 */
 	public boolean cancel(String id) {
 		synchronized (jobsById) {
 			if (jobsById.containsKey(id)) {

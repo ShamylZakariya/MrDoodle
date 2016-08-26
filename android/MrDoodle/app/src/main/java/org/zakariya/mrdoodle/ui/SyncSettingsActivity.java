@@ -166,7 +166,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		final GoogleSignInAccount account = GoogleSignInManager.getInstance().getGoogleSignInAccount();
 
 		if (account != null) {
-			executor.execute("test", new AsyncExecutor.Job<Response<Status>>() {
+			executor.execute("getStatus", new AsyncExecutor.Job<Response<Status>>() {
 				@Override
 				public Response<Status> execute() throws Exception {
 					return service.getStatus(account.getId()).execute();
@@ -187,23 +187,6 @@ public class SyncSettingsActivity extends BaseActivity {
 				}
 			});
 		}
-
-//		Call<Status> response = service.getStatus(account.getId());
-//		response.enqueue(new Callback<Status>() {
-//			@Override
-//			public void onResponse(Call<Status> call, Response<Status> response) {
-//				if (response.isSuccessful()) {
-//					Log.i(TAG, "onResponse: successful : status: " + response.body());
-//				} else {
-//					Log.e(TAG, "onResponse: not successful, code; " + response.code() + " message: " + response.message());
-//				}
-//			}
-//
-//			@Override
-//			public void onFailure(Call<Status> call, Throwable t) {
-//				Log.e(TAG, "onFailure: error: ", t);
-//			}
-//		});
 	}
 
 	@OnClick(R.id.syncNowButton)

@@ -13,6 +13,6 @@ public class Status {
 
 	@Override
 	public String toString() {
-		return "[Status timestampHead: " + timestampHead + " lockedUUIDs: " + TextUtils.join(", ", lockedUUIDs) + "]";
+		return "[Status timestampHead: " + timestampHead + " lockedUUIDs: [" + TextUtils.join(", ", lockedUUIDs) + "]]";
 	}
 }
