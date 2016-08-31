@@ -19,8 +19,11 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static spark.Spark.*;
@@ -33,7 +36,9 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	private static final String REQUEST_HEADER_AUTH = "Authorization";
 	private static final String REQUEST_HEADER_MODEL_CLASS = "X-Model-Class";
+	private static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
 	private static final boolean READ_WRITE_LOCK_IS_FAIR = true;
+	private static long SYNC_MANAGER_CLEANUP_DELAY_SECONDS = 300;
 
 	private Configuration configuration;
 	private Authenticator authenticator;
@@ -42,6 +47,9 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private ObjectMapper objectMapper = new ObjectMapper();
 	private boolean authenticationEnabled;
 	private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(READ_WRITE_LOCK_IS_FAIR);
+
+	private ScheduledExecutorService syncManagerCleanupScheduler = Executors.newSingleThreadScheduledExecutor();
+	private Map<String, ScheduledFuture> syncManagerCleanupFuturesByAccountId = new HashMap<>();
 
 	public SyncRouter(Configuration configuration, Authenticator authenticator, JedisPool jedisPool) {
 		this.configuration = configuration;
@@ -55,6 +63,11 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		before(basePath + "/*", this::authenticate);
 		get(basePath + "/status", this::getStatus);
 		get(basePath + "/changes", this::getChanges);
+
+		// get a write session token
+		get(basePath + "/writeSession/start", this::startWriteSession);
+		// end a write session using token received above
+		delete(basePath + "/writeSession/sessions/:token", this::commitWriteSession);
 
 		// blobs
 		get(basePath + "/blob/:blobId", this::getBlob);
@@ -142,6 +155,27 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	@Nullable
+	private String startWriteSession(Request request, Response response) {
+		String accountId = request.params("accountId");
+		SyncManager syncManager = getSyncManagerForAccount(accountId);
+		SyncManager.WriteSession session = syncManager.startWriteSession();
+		return session.getToken();
+	}
+
+	@Nullable
+	private String commitWriteSession(Request request, Response response) {
+		String accountId = request.params("accountId");
+		String token = request.params("token");
+
+		SyncManager syncManager = getSyncManagerForAccount(accountId);
+		if (!syncManager.commitWriteSession(token)) {
+			halt(403, "The write token provided is not valid");
+		}
+
+		return null;
+	}
+
+	@Nullable
 	private String getBlob(Request request, Response response) {
 		try {
 			readWriteLock.readLock().lock();
@@ -177,23 +211,36 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private String putBlob(Request request, Response response) {
+		request.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp"));
+
+		String modelClass = request.headers(REQUEST_HEADER_MODEL_CLASS);
+		if (modelClass == null || modelClass.isEmpty()) {
+			halt(400, "Missing model class header attribute (\"" + REQUEST_HEADER_MODEL_CLASS + "\")");
+			return null;
+		}
+
+		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
+		if (writeToken == null || writeToken.isEmpty()) {
+			halt(400, "Missing write token(\"" + REQUEST_HEADER_MODEL_CLASS + "\"); writes are disallowed without a write token");
+			return null;
+		}
+
+		String accountId = request.params("accountId");
+		String blobId = request.params("blobId");
+		SyncManager syncManager = getSyncManagerForAccount(accountId);
+		SyncManager.WriteSession session = syncManager.getWriteSession(writeToken);
+
+		if (session == null) {
+			halt(403, "The write token provided is not valid");
+			return null;
+		}
+
+		// now get timestamp record and blobstore for this write session
+		TimestampRecord timestampRecord = session.getTimestampRecord();
+		BlobStore blobStore = session.getBlobStore();
+
 		try {
 			readWriteLock.writeLock().lock();
-			request.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp"));
-
-			String modelClass = request.headers(REQUEST_HEADER_MODEL_CLASS);
-			if (modelClass == null || modelClass.isEmpty()) {
-				halt(400, "Missing \"" + REQUEST_HEADER_MODEL_CLASS + "\" model class header attribute");
-				return null;
-			}
-
-			String accountId = request.params("accountId");
-			String blobId = request.params("blobId");
-			SyncManager syncManager = getSyncManagerForAccount(accountId);
-			TimestampRecord timestampRecord = syncManager.getTimestampRecord();
-			BlobStore blobStore = syncManager.getBlobStore();
-
-
 			try (InputStream is = request.raw().getPart("blob").getInputStream()) {
 
 				long timestamp = syncManager.getTimestampSeconds();
@@ -215,16 +262,31 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private String deleteBlob(Request request, Response response) {
+
+		String accountId = request.params("accountId");
+		String blobId = request.params("blobId");
+
+		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
+		if (writeToken == null || writeToken.isEmpty()) {
+			halt(400, "Missing write token(\"" + REQUEST_HEADER_MODEL_CLASS + "\"); writes are disallowed without a write token");
+			return null;
+		}
+
+
+		SyncManager syncManager = getSyncManagerForAccount(accountId);
+		SyncManager.WriteSession session = syncManager.getWriteSession(writeToken);
+
+		if (session == null) {
+			halt(403, "The write token provided is not valid");
+			return null;
+		}
+
+		// now get timestamp record and blobstore for this write session
+		TimestampRecord timestampRecord = session.getTimestampRecord();
+		BlobStore blobStore = session.getBlobStore();
+
 		try {
 			readWriteLock.writeLock().lock();
-
-			String accountId = request.params("accountId");
-			String blobId = request.params("blobId");
-
-			SyncManager syncManager = getSyncManagerForAccount(accountId);
-			TimestampRecord timestampRecord = syncManager.getTimestampRecord();
-			BlobStore blobStore = syncManager.getBlobStore();
-
 			long timestamp = syncManager.getTimestampSeconds();
 			timestampRecord.record(blobId, timestamp, TimestampRecord.Action.DELETE);
 			blobStore.delete(blobId);
@@ -252,7 +314,27 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			syncManagersByAccountId.put(accountId, syncManager);
 		}
 
+		scheduleSyncManagerClose(syncManager);
 		return syncManager;
+	}
+
+	private void scheduleSyncManagerClose(SyncManager syncManager) {
+		String accountId = syncManager.getAccountId();
+
+		// cancel any scheduled cleanup
+		ScheduledFuture future = syncManagerCleanupFuturesByAccountId.get(accountId);
+		if (future != null && !future.isCancelled()) {
+			future.cancel(false);
+			syncManagerCleanupFuturesByAccountId.remove(accountId);
+		}
+
+		future = syncManagerCleanupScheduler.schedule(() -> {
+			syncManager.close();
+			syncManagerCleanupFuturesByAccountId.remove(accountId);
+			syncManagersByAccountId.remove(accountId);
+		}, SYNC_MANAGER_CLEANUP_DELAY_SECONDS, TimeUnit.SECONDS);
+
+		syncManagerCleanupFuturesByAccountId.put(accountId, future);
 	}
 
 	private void haltWithError500(String message, Exception e) {

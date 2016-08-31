@@ -1,53 +1,71 @@
 package org.zakariya.mrdoodleserver.sync;
 
-import com.sun.xml.internal.xsom.impl.scd.Iterators;
 import org.jetbrains.annotations.Nullable;
-import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.*;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+
+import static org.zakariya.mrdoodleserver.sync.BlobStore.Mode.DIRECT;
+import static org.zakariya.mrdoodleserver.sync.BlobStore.Mode.TEMP;
 
 /**
  * Created by shamyl on 8/25/16.
  */
-public class BlobStore {
+class BlobStore {
 
-	public static class Entry {
+	enum Mode {
+		// actions are written directly to account's data store
+		DIRECT,
+
+		// actions are written to a temp area in account's data store, and can be committed later via save()
+		TEMP
+	}
+
+	static class Entry {
 		byte [] data;
 		String uuid;
 		String modelClass;
 		long timestamp;
 
-		public Entry(String uuid, String modelClass, long timestamp, byte[] data) {
+		Entry(String uuid, String modelClass, long timestamp, byte[] data) {
 			this.data = data;
 			this.uuid = uuid;
 			this.modelClass = modelClass;
 			this.timestamp = timestamp;
 		}
 
-		public byte[] getData() {
+		byte[] getData() {
 			return data;
 		}
 
-		public String getUuid() {
+		String getUuid() {
 			return uuid;
 		}
 
-		public String getModelClass() {
+		String getModelClass() {
 			return modelClass;
 		}
 
-		public long getTimestamp() {
+		long getTimestamp() {
 			return timestamp;
 		}
 	}
 
 	private String accountId;
 	private JedisPool jedisPool;
+	private Mode mode;
+	private Set<String> writes;
+	private Set<String> deletions;
 
-	public BlobStore(JedisPool jedisPool, String accountId) {
+	BlobStore(JedisPool jedisPool, String accountId, Mode mode) {
 		this.jedisPool = jedisPool;
-		accountId = accountId;
+		this.accountId = accountId;
+		this.mode = mode;
+
+		if (mode == TEMP) {
+			deletions = new HashSet<>();
+		}
 	}
 
 	public String getAccountId() {
@@ -58,56 +76,128 @@ public class BlobStore {
 		return jedisPool;
 	}
 
-	public void set(String uuid, String modelClass, long timestamp, byte[] data) {
+	public Mode getMode() {
+		return mode;
+	}
+
+	void set(String uuid, String modelClass, long timestamp, byte[] data) {
 		try(Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
-			transaction.set(getEntryUuidRedisKey(uuid), uuid);
-			transaction.set(getEntryModelClassRedisKey(uuid), modelClass);
-			transaction.set(getEntryTimestampRedisKey(uuid), Long.toString(timestamp));
-			transaction.set(getEntryDataRedisKey(uuid).getBytes(), data);
+			transaction.set(getEntryUuidRedisKey(uuid, mode), uuid);
+			transaction.set(getEntryModelClassRedisKey(uuid, mode), modelClass);
+			transaction.set(getEntryTimestampRedisKey(uuid, mode), Long.toString(timestamp));
+			transaction.set(getEntryDataRedisKey(uuid, mode).getBytes(), data);
 			transaction.exec();
+
+			if (mode == TEMP) {
+				writes.add(uuid);
+			}
 		}
 	}
 
 	@Nullable
-	public Entry get(String uuid) {
+	Entry get(String uuid) {
 		try(Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
-			Response<String> uuidResponse = transaction.get(getEntryUuidRedisKey(uuid));
-			Response<String> modelClassResponse = transaction.get(getEntryModelClassRedisKey(uuid));
-			Response<String> timestampResponse = transaction.get(getEntryTimestampRedisKey(uuid));
-			Response<byte[]> byteResponse = transaction.get(getEntryDataRedisKey(uuid).getBytes());
+			Response<String> uuidResponse = transaction.get(getEntryUuidRedisKey(uuid, mode));
+			Response<String> modelClassResponse = transaction.get(getEntryModelClassRedisKey(uuid, mode));
+			Response<String> timestampResponse = transaction.get(getEntryTimestampRedisKey(uuid, mode));
+			Response<byte[]> byteResponse = transaction.get(getEntryDataRedisKey(uuid, mode).getBytes());
 			transaction.exec();
 
 			return new Entry(uuidResponse.get(), modelClassResponse.get(), Long.parseLong(timestampResponse.get()), byteResponse.get());
 		}
 	}
 
-	public void delete(String uuid) {
+	void delete(String uuid) {
 		try(Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
-			transaction.del(getEntryUuidRedisKey(uuid));
-			transaction.del(getEntryModelClassRedisKey(uuid));
-			transaction.del(getEntryTimestampRedisKey(uuid));
-			transaction.del(getEntryDataRedisKey(uuid));
+			transaction.del(getEntryUuidRedisKey(uuid, mode));
+			transaction.del(getEntryModelClassRedisKey(uuid, mode));
+			transaction.del(getEntryTimestampRedisKey(uuid, mode));
+			transaction.del(getEntryDataRedisKey(uuid, mode));
 			transaction.exec();
+
+			if (mode == TEMP) {
+				deletions.add(uuid);
+			}
 		}
 	}
 
-	private String getEntryUuidRedisKey(String uuid) {
-		return "blob/" + accountId + "/" + uuid + ":uuid";
+	void save(BlobStore store) {
+		if (mode == TEMP) {
+			try(Jedis jedis = store.getJedisPool().getResource()) {
+
+				// rename all our writes from our temp namespace to the actual one
+				if (!writes.isEmpty()) {
+					Transaction writeTransaction = jedis.multi();
+					for (String uuid : writes) {
+						writeTransaction.rename(getEntryUuidRedisKey(uuid, TEMP), getEntryUuidRedisKey(uuid,DIRECT));
+						writeTransaction.rename(getEntryModelClassRedisKey(uuid, TEMP), getEntryModelClassRedisKey(uuid,DIRECT));
+						writeTransaction.rename(getEntryTimestampRedisKey(uuid, TEMP), getEntryTimestampRedisKey(uuid,DIRECT));
+						writeTransaction.rename(getEntryDataRedisKey(uuid, TEMP), getEntryDataRedisKey(uuid,DIRECT));
+					}
+
+					writeTransaction.exec();
+				}
+
+				// now delete everything from our deletions record
+				if (!deletions.isEmpty()) {
+					Transaction deleteTransaction = jedis.multi();
+					for (String uuid : deletions) {
+						deleteTransaction.del(getEntryUuidRedisKey(uuid, DIRECT));
+						deleteTransaction.del(getEntryModelClassRedisKey(uuid, DIRECT));
+						deleteTransaction.del(getEntryTimestampRedisKey(uuid, DIRECT));
+						deleteTransaction.del(getEntryDataRedisKey(uuid, DIRECT));
+					}
+					deleteTransaction.exec();
+				}
+			}
+		}
 	}
 
-	private String getEntryDataRedisKey(String uuid) {
-		return "blob/" + accountId + "/" + uuid + ":data";
+	private String getEntryUuidRedisKey(String uuid, Mode mode) {
+		switch (mode) {
+			case TEMP:
+				return "blob/" + accountId + "/temp/" + uuid + ":uuid";
+			case DIRECT:
+				return "blob/" + accountId + "/" + uuid + ":uuid";
+		}
+
+		throw new IllegalStateException("BlobStore mode MUST be DIRECT or TEMP");
 	}
 
-	private String getEntryModelClassRedisKey(String uuid) {
-		return "blob/" + accountId + "/" + uuid + ":modelClass";
+	private String getEntryDataRedisKey(String uuid, Mode mode) {
+		switch (mode) {
+			case TEMP:
+				return "blob/" + accountId + "/temp/" + uuid + ":data";
+			case DIRECT:
+				return "blob/" + accountId + "/" + uuid + ":data";
+		}
+
+		throw new IllegalStateException("BlobStore mode MUST be DIRECT or TEMP");
 	}
 
-	private String getEntryTimestampRedisKey(String uuid) {
-		return "blob/" + accountId + "/" + uuid + ":timestamp";
+	private String getEntryModelClassRedisKey(String uuid, Mode mode) {
+		switch (mode) {
+			case TEMP:
+				return "blob/" + accountId + "/temp/" + uuid + ":modelClass";
+			case DIRECT:
+				return "blob/" + accountId + "/" + uuid + ":modelClass";
+		}
+
+		throw new IllegalStateException("BlobStore mode MUST be DIRECT or TEMP");
+	}
+
+	private String getEntryTimestampRedisKey(String uuid, Mode mode) {
+		switch (mode) {
+			case TEMP:
+				return "blob/" + accountId + "/temp/" + uuid + ":timestamp";
+			case DIRECT:
+				return "blob/" + accountId + "/" + uuid + ":timestamp";
+		}
+
+		throw new IllegalStateException("BlobStore mode MUST be DIRECT or TEMP");
 	}
 
 }

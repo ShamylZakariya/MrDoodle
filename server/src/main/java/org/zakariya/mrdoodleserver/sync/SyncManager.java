@@ -1,38 +1,104 @@
 package org.zakariya.mrdoodleserver.sync;
 
 import org.eclipse.jetty.websocket.api.Session;
+import org.jetbrains.annotations.Nullable;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
 import redis.clients.jedis.JedisPool;
 
+import java.security.Timestamp;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * SyncManager
  * Top level coordinator for sync activities for a specific google account
  */
-public class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener {
+class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener {
 
+	private String accountId;
 	private JedisPool jedisPool;
 	private TimestampRecord timestampRecord;
 	private BlobStore blobStore;
+	private Map<String, WriteSession> writeSessions = new HashMap<>();
+	
+	static class WriteSession {
+		private String token;
+		private TimestampRecord timestampRecord;
+		private BlobStore blobStore;
+		
+		WriteSession(JedisPool jedisPool) {
+			token = UUID.randomUUID().toString();
+			timestampRecord = new TimestampRecord();
+			blobStore = new BlobStore(jedisPool, token, BlobStore.Mode.TEMP);
+		}
 
-	public SyncManager(JedisPool jedisPool, String accountId) {
-		this.jedisPool = jedisPool;
-		this.timestampRecord = new TimestampRecord(jedisPool, accountId);
-		this.blobStore = new BlobStore(jedisPool, accountId);
+		public String getToken() {
+			return token;
+		}
+
+		public TimestampRecord getTimestampRecord() {
+			return timestampRecord;
+		}
+
+		public BlobStore getBlobStore() {
+			return blobStore;
+		}
+
+		void commit(TimestampRecord toTimestampRecord, BlobStore toBlobStore) {
+			timestampRecord.save(toTimestampRecord);
+			blobStore.save(toBlobStore);
+		}
 	}
 
-	public JedisPool getJedisPool() {
+	SyncManager(JedisPool jedisPool, String accountId) {
+		this.jedisPool = jedisPool;
+		this.accountId = accountId;
+		this.timestampRecord = new TimestampRecord(jedisPool, accountId);
+		this.blobStore = new BlobStore(jedisPool, accountId, BlobStore.Mode.DIRECT);
+	}
+
+	void close() {
+		jedisPool.close();
+	}
+
+	JedisPool getJedisPool() {
 		return jedisPool;
 	}
 
-	public TimestampRecord getTimestampRecord() {
+	public String getAccountId() {
+		return accountId;
+	}
+
+	TimestampRecord getTimestampRecord() {
 		return timestampRecord;
 	}
 
-	public BlobStore getBlobStore() {
+	BlobStore getBlobStore() {
 		return blobStore;
+	}
+
+	WriteSession startWriteSession() {
+		WriteSession session = new WriteSession(jedisPool);
+		writeSessions.put(session.getToken(), session);
+		return session;
+	}
+
+	@Nullable
+	WriteSession getWriteSession(String token) {
+		return writeSessions.get(token);
+	}
+
+	boolean commitWriteSession(String token) {
+		WriteSession session = writeSessions.get(token);
+		if (session != null) {
+			session.commit(timestampRecord, blobStore);
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/**
@@ -40,7 +106,7 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	 *
 	 * @return the current account status
 	 */
-	public Status getStatus() {
+	Status getStatus() {
 		Status status = new Status();
 		status.timestampHead = timestampRecord.getTimestampHead().getTimestampSeconds();
 		return status;
@@ -59,7 +125,7 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	/**
 	 * @return the current timestamp, in seconds
 	 */
-	public long getTimestampSeconds() {
+	long getTimestampSeconds() {
 		return (new Date()).getTime() / 1000;
 	}
 }

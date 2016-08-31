@@ -16,33 +16,33 @@ import java.util.concurrent.ScheduledFuture;
 /**
  *
  */
-public class TimestampRecord {
+class TimestampRecord {
 
-	public enum Action {
+	enum Action {
 		WRITE,
 		DELETE
 	}
 
-	public class Entry {
+	class Entry {
 		private String uuid;
 		private long timestampSeconds;
 		private int action;
 
-		public Entry(String uuid, long timestampSeconds, Action action) {
+		Entry(String uuid, long timestampSeconds, Action action) {
 			this.uuid = uuid;
 			this.timestampSeconds = timestampSeconds;
 			this.action = action.ordinal();
 		}
 
-		public String getUuid() {
+		String getUuid() {
 			return uuid;
 		}
 
-		public long getTimestampSeconds() {
+		long getTimestampSeconds() {
 			return timestampSeconds;
 		}
 
-		public Action getAction() {
+		Action getAction() {
 			return Action.values()[action];
 		}
 	}
@@ -63,21 +63,24 @@ public class TimestampRecord {
 	private ScheduledFuture debouncedSave;
 	private ObjectMapper objectMapper = new ObjectMapper();
 
-	public TimestampRecord(JedisPool jedisPool, String accountId) {
+	TimestampRecord(JedisPool jedisPool, String accountId) {
 		this.jedisPool = jedisPool;
 		this.accountId = accountId;
 		load();
 	}
 
-	public JedisPool getJedisPool() {
+	TimestampRecord() {
+	}
+
+	JedisPool getJedisPool() {
 		return jedisPool;
 	}
 
-	public String getAccountId() {
+	String getAccountId() {
 		return accountId;
 	}
 
-	public void record(String uuid, long seconds, Action action) {
+	void record(String uuid, long seconds, Action action) {
 		Entry entry = new Entry(uuid, seconds, action);
 		entriesByUuid.put(uuid, entry);
 
@@ -100,11 +103,11 @@ public class TimestampRecord {
 	 * @param uuid the uuid
 	 * @return the timestamp seconds associated with UUID, or -1 if none is set
 	 */
-	public long getTimestampSeconds(String uuid) {
+	long getTimestampSeconds(String uuid) {
 		return entriesByUuid.containsKey(uuid) ? entriesByUuid.get(uuid).getTimestampSeconds() : -1;
 	}
 
-	public Map<String, Entry> getEntriesSince(long since) {
+	Map<String, Entry> getEntriesSince(long since) {
 		if (since > 0) {
 
 			// filter to subset of uuid:timestampSeconds pairs AFTER `since
@@ -123,14 +126,14 @@ public class TimestampRecord {
 		}
 	}
 
-	public Map<String, Entry> getEntries() {
+	Map<String, Entry> getEntries() {
 		return getEntriesSince(-1);
 	}
 
 	/**
 	 * @return the id/timestampSeconds pair for the newest item in the record
 	 */
-	public Entry getTimestampHead() {
+	Entry getTimestampHead() {
 		if (head == null) {
 			head = findHeadEntry();
 		}
@@ -139,7 +142,7 @@ public class TimestampRecord {
 	}
 
 
-	public boolean isEmpty() {
+	boolean isEmpty() {
 		return entriesByUuid.isEmpty();
 	}
 
@@ -147,7 +150,7 @@ public class TimestampRecord {
 		return getJedisKey(accountId);
 	}
 
-	public static String getJedisKey(String accountId) {
+	static String getJedisKey(String accountId) {
 		return accountId + ":timestamps";
 	}
 
@@ -167,7 +170,17 @@ public class TimestampRecord {
 		}
 	}
 
-	public void save() {
+	/**
+	 * Write this TimestampRecord's values onto the target
+	 * @param target the TimestampRecord which will receive this TimestampRecord's values
+	 */
+	void save(TimestampRecord target) {
+		for (Entry entry : entriesByUuid.values()) {
+			target.entriesByUuid.put(entry.getUuid(), entry);
+		}
+	}
+
+	void save() {
 		if (jedisPool == null) {
 			return;
 		}
@@ -182,7 +195,7 @@ public class TimestampRecord {
 		}
 	}
 
-	public void load() {
+	void load() {
 		if (jedisPool == null) {
 			return;
 		}
