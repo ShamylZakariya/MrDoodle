@@ -93,18 +93,23 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private String getStatus(Request request, Response response) {
-		String accountId = request.params("accountId");
-		SyncManager syncManager = getSyncManagerForAccount(accountId);
-		Status status = syncManager.getStatus();
-
 		try {
-			return objectMapper.writeValueAsString(status);
-		} catch (JsonProcessingException e) {
-			haltWithError500("SyncRouter::getStatus - Unable to encode SyncManager.Status to JSON string, e: " + e.getLocalizedMessage(), e);
-		}
+			readWriteLock.readLock().lock();
+			String accountId = request.params("accountId");
+			SyncManager syncManager = getSyncManagerForAccount(accountId);
+			Status status = syncManager.getStatus();
 
-		// if we're here we already halted the response
-		return null;
+			try {
+				return objectMapper.writeValueAsString(status);
+			} catch (JsonProcessingException e) {
+				haltWithError500("SyncRouter::getStatus - Unable to encode SyncManager.Status to JSON string, e: " + e.getLocalizedMessage(), e);
+			}
+
+			// if we're here we already halted the response
+			return null;
+		} finally {
+			readWriteLock.readLock().unlock();
+		}
 	}
 
 	@Nullable
@@ -123,6 +128,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 					sinceTimestamp = Long.parseLong(since);
 				} catch (NumberFormatException nfe) {
 					haltWithError500("SyncRouter::getChanges - Unable to parse 'since' query parameter \"" + since + "\" as a number. error: " + nfe.getLocalizedMessage(), nfe);
+					return null;
 				}
 			}
 
