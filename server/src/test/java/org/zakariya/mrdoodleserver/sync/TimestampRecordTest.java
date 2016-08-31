@@ -1,10 +1,13 @@
 package org.zakariya.mrdoodleserver.sync;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
+import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.Assert.*;
@@ -27,6 +30,16 @@ public class TimestampRecordTest {
 		try (Jedis jedis = pool.getResource()) {
 			jedis.del(TimestampRecord.getJedisKey(accountId));
 		}
+	}
+
+	@org.junit.Test
+	public void testTimestampRecordEntryPersistence() throws IOException {
+		ObjectMapper mapper = new ObjectMapper();
+		TimestampRecord.Entry a = new TimestampRecord.Entry("a",10,TimestampRecord.Action.WRITE);
+		String json = mapper.writeValueAsString(a);
+		TimestampRecord.Entry b = mapper.readValue(json, TimestampRecord.Entry.class);
+
+		assertEquals("Deserialized entry should be equal", a,b);
 	}
 
 	@org.junit.Test

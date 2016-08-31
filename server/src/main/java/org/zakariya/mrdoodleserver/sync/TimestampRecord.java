@@ -23,10 +23,14 @@ class TimestampRecord {
 		DELETE
 	}
 
-	class Entry {
-		private String uuid;
-		private long timestampSeconds;
-		private int action;
+	public static class Entry {
+		public String uuid;
+		public long timestampSeconds;
+		public int action;
+
+		public Entry(){
+			super();
+		}
 
 		Entry(String uuid, long timestampSeconds, Action action) {
 			this.uuid = uuid;
@@ -44,6 +48,15 @@ class TimestampRecord {
 
 		Action getAction() {
 			return Action.values()[action];
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof Entry) {
+				Entry other = (Entry) obj;
+				return uuid.equals(other.uuid) && timestampSeconds == other.timestampSeconds && action == other.action;
+			}
+			return false;
 		}
 	}
 
@@ -204,9 +217,10 @@ class TimestampRecord {
 			String jsonString = jedis.get(getJedisKey());
 			if (jsonString != null && !jsonString.isEmpty()) {
 				try {
-					TypeReference<HashMap<String, Long>> typeRef = new TypeReference<HashMap<String, Long>>() {
-					};
-					entriesByUuid = objectMapper.readValue(jsonString, typeRef);
+					entriesByUuid = objectMapper.reader()
+							.forType(new TypeReference<Map<String,Entry>>() {})
+							.readValue(jsonString);
+
 					head = findHeadEntry();
 				} catch (IOException e) {
 					System.err.println("TimestampRecord::load - unable to load timestampsByUuid map from JSON");
