@@ -35,11 +35,11 @@ public class TimestampRecordTest {
 	@org.junit.Test
 	public void testTimestampRecordEntryPersistence() throws IOException {
 		ObjectMapper mapper = new ObjectMapper();
-		TimestampRecord.Entry a = new TimestampRecord.Entry("a",10,TimestampRecord.Action.WRITE);
+		TimestampRecord.Entry a = new TimestampRecord.Entry("a", 10, TimestampRecord.Action.WRITE);
 		String json = mapper.writeValueAsString(a);
 		TimestampRecord.Entry b = mapper.readValue(json, TimestampRecord.Entry.class);
 
-		assertEquals("Deserialized entry should be equal", a,b);
+		assertEquals("Deserialized entry should be equal", a, b);
 	}
 
 	@org.junit.Test
@@ -63,7 +63,7 @@ public class TimestampRecordTest {
 		assertEquals("should have 1 entries", 1, timestampRecord.getEntriesSince(13).size());
 		assertEquals("should have 0 entries", 0, timestampRecord.getEntriesSince(14).size());
 
-		Map<String,TimestampRecord.Entry> result = timestampRecord.getEntriesSince(12);
+		Map<String, TimestampRecord.Entry> result = timestampRecord.getEntriesSince(12);
 		assertEquals("timestamps since 12 should have \"C\" == 12", 12, result.get("C").getTimestampSeconds());
 		assertEquals("timestamps since 12 should have \"D\" == 13", 13, result.get("D").getTimestampSeconds());
 	}
@@ -122,6 +122,29 @@ public class TimestampRecordTest {
 			jedis.del(TimestampRecord.getJedisKey(accountId));
 		}
 
+	}
+
+	@org.junit.Test
+	public void testTimestampRecordMerge() {
+		TimestampRecord tr0 = new TimestampRecord();
+		tr0.record("A", 10, TimestampRecord.Action.WRITE);
+		tr0.record("B", 11, TimestampRecord.Action.WRITE);
+		tr0.record("C", 12, TimestampRecord.Action.WRITE);
+		tr0.record("D", 13, TimestampRecord.Action.WRITE);
+
+		TimestampRecord tr1 = new TimestampRecord();
+		tr1.record("E", 20, TimestampRecord.Action.WRITE);
+		tr1.record("A", 21, TimestampRecord.Action.DELETE);
+		tr1.save(tr0);
+
+		TimestampRecord reference = new TimestampRecord();
+		reference.record("A", 21, TimestampRecord.Action.DELETE);
+		reference.record("B", 11, TimestampRecord.Action.WRITE);
+		reference.record("C", 12, TimestampRecord.Action.WRITE);
+		reference.record("D", 13, TimestampRecord.Action.WRITE);
+		reference.record("E", 20, TimestampRecord.Action.WRITE);
+
+		assertTrue("After merge, tr0 should have same values as reference", tr0.getEntries().equals(reference.getEntries()));
 	}
 
 }
