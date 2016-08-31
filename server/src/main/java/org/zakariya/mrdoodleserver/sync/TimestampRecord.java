@@ -18,21 +18,32 @@ import java.util.concurrent.ScheduledFuture;
  */
 public class TimestampRecord {
 
+	public enum Action {
+		WRITE,
+		DELETE
+	}
+
 	public class Entry {
 		private String uuid;
-		private long timestamp;
+		private long timestampSeconds;
+		private int action;
 
-		public Entry(String uuid, long timestamp) {
+		public Entry(String uuid, long timestampSeconds, Action action) {
 			this.uuid = uuid;
-			this.timestamp = timestamp;
+			this.timestampSeconds = timestampSeconds;
+			this.action = action.ordinal();
 		}
 
 		public String getUuid() {
 			return uuid;
 		}
 
-		public long getTimestamp() {
-			return timestamp;
+		public long getTimestampSeconds() {
+			return timestampSeconds;
+		}
+
+		public Action getAction() {
+			return Action.values()[action];
 		}
 	}
 
@@ -40,7 +51,7 @@ public class TimestampRecord {
 
 	private JedisPool jedisPool;
 	private String accountId;
-	private Map<String, Long> timestampByUuid = new HashMap<>();
+	private Map<String, Entry> entriesByUuid = new HashMap<>();
 	private Entry head;
 	private Runnable saver = new Runnable() {
 		public void run() {
@@ -66,75 +77,70 @@ public class TimestampRecord {
 		return accountId;
 	}
 
-	public void setTimestamp(String uuid, long timestamp) {
-		timestampByUuid.put(uuid, timestamp);
+	public void record(String uuid, long seconds, Action action) {
+		Entry entry = new Entry(uuid, seconds, action);
+		entriesByUuid.put(uuid, entry);
 
 		// update head
 		if (head == null) {
-			findTimestampHead();
+			head = findHeadEntry();
 		}
 
-		if (timestamp > head.getTimestamp()) {
-			head = new Entry(uuid, timestamp);
+		// this is the new head
+		if (seconds > head.getTimestampSeconds()) {
+			head = entry;
 		}
 
 		markDirty();
 	}
 
-	public void removeTimestamp(String uuid) {
-		boolean needsUpdateTimestampHead = uuid.equals(getTimestampHead().getUuid());
-		timestampByUuid.remove(uuid);
-		if (needsUpdateTimestampHead) {
-			findTimestampHead();
-		}
-	}
-
 	/**
-	 * Get the timestamp for a given UUID
+	 * Get the timestampSeconds for a given UUID
 	 *
 	 * @param uuid the uuid
-	 * @return the timestamp associated with UUID, or -1 if none is set
+	 * @return the timestamp seconds associated with UUID, or -1 if none is set
 	 */
-	public long getTimestamp(String uuid) {
-		return timestampByUuid.containsKey(uuid) ? timestampByUuid.get(uuid) : -1;
+	public long getTimestampSeconds(String uuid) {
+		return entriesByUuid.containsKey(uuid) ? entriesByUuid.get(uuid).getTimestampSeconds() : -1;
 	}
 
-	public Map<String, Long> getTimestampsSince(long since) {
+	public Map<String, Entry> getEntriesSince(long since) {
 		if (since > 0) {
 
-			// filter to subset of uuid:timestamp pairs AFTER `since
-			Map<String, Long> timestamps = new HashMap<>();
-			for (String uuid : timestampByUuid.keySet()) {
-				long timestamp = timestampByUuid.get(uuid);
-				if (timestamp >= since) {
-					timestamps.put(uuid, timestamp);
+			// filter to subset of uuid:timestampSeconds pairs AFTER `since
+			Map<String, Entry> entries = new HashMap<>();
+			for (String uuid : entriesByUuid.keySet()) {
+				Entry entry  = entriesByUuid.get(uuid);
+				if (entry.getTimestampSeconds() >= since) {
+					entries.put(uuid, entry);
 				}
 			}
 
-			return timestamps;
+			return entries;
 
 		} else {
-			return new HashMap<>(timestampByUuid);
+			return new HashMap<>(entriesByUuid);
 		}
 	}
 
+	public Map<String, Entry> getEntries() {
+		return getEntriesSince(-1);
+	}
+
 	/**
-	 * @return the id/timestamp pair for the newest item in the record
+	 * @return the id/timestampSeconds pair for the newest item in the record
 	 */
 	public Entry getTimestampHead() {
 		if (head == null) {
-			findTimestampHead();
+			head = findHeadEntry();
 		}
 
 		return head;
 	}
 
-	public Map<String, Long> getTimestamps() {
-		return getTimestampsSince(-1);
-	}
 
 	public boolean isEmpty() {
-		return timestampByUuid.isEmpty();
+		return entriesByUuid.isEmpty();
 	}
 
 	private String getJedisKey() {
@@ -168,7 +174,7 @@ public class TimestampRecord {
 
 		cancelDebouncedSave();
 		try (Jedis jedis = jedisPool.getResource()) {
-			String jsonString = objectMapper.writeValueAsString(timestampByUuid);
+			String jsonString = objectMapper.writeValueAsString(entriesByUuid);
 			jedis.set(getJedisKey(), jsonString);
 		} catch (JsonProcessingException e) {
 			System.err.println("TimestampRecord::save - unable to serialize timestampsByUuid map to JSON");
@@ -187,8 +193,8 @@ public class TimestampRecord {
 				try {
 					TypeReference<HashMap<String, Long>> typeRef = new TypeReference<HashMap<String, Long>>() {
 					};
-					timestampByUuid = objectMapper.readValue(jsonString, typeRef);
-					findTimestampHead();
+					entriesByUuid = objectMapper.readValue(jsonString, typeRef);
+					head = findHeadEntry();
 				} catch (IOException e) {
 					System.err.println("TimestampRecord::load - unable to load timestampsByUuid map from JSON");
 					e.printStackTrace();
@@ -198,21 +204,21 @@ public class TimestampRecord {
 	}
 
 	/**
-	 * Walk the timestampByUuid map and find the newest entry, and assign it to `head
+	 * Walk the entriesByUuid map and find the newest entry, and assign it to `head
 	 */
-	private void findTimestampHead() {
-		String headUuid = null;
+	private Entry findHeadEntry() {
+		Entry headEntry = null;
 		long headTimestamp = 0;
 
-		for (String uuid : timestampByUuid.keySet()) {
-			long timestamp = timestampByUuid.get(uuid);
-			if (timestamp > headTimestamp) {
-				headUuid = uuid;
-				headTimestamp = timestamp;
+		for (String uuid : entriesByUuid.keySet()) {
+			Entry entry = entriesByUuid.get(uuid);
+			if (entry.getTimestampSeconds() > headTimestamp) {
+				headEntry = entry;
+				headTimestamp = entry.getTimestampSeconds();
 			}
 		}
 
-		head = new Entry(headUuid, headTimestamp);
+		return headEntry;
 	}
 
 }

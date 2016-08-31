@@ -2,9 +2,7 @@ package org.zakariya.mrdoodleserver.sync;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.api.client.util.ByteStreams;
 import com.google.common.net.MediaType;
-import com.sun.xml.internal.messaging.saaj.util.ByteInputStream;
 import org.eclipse.jetty.websocket.api.Session;
 import org.jetbrains.annotations.Nullable;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
@@ -13,7 +11,6 @@ import org.zakariya.mrdoodleserver.sync.transport.Status;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import org.zakariya.mrdoodleserver.util.Preconditions;
 import redis.clients.jedis.JedisPool;
-import redis.clients.util.IOUtils;
 import spark.Request;
 import spark.Response;
 
@@ -132,9 +129,9 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				}
 			}
 
-			Map<String, Long> timestamps = timestampRecord.getTimestampsSince(sinceTimestamp);
 			try {
-				return objectMapper.writeValueAsString(timestamps);
+				Map<String, TimestampRecord.Entry> entries = timestampRecord.getEntriesSince(sinceTimestamp);
+				return objectMapper.writeValueAsString(entries);
 			} catch (JsonProcessingException e) {
 				haltWithError500("SyncRouter::getChanges - unable to serialize timestamps map to JSON", e);
 				return null;
@@ -200,7 +197,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			try (InputStream is = request.raw().getPart("blob").getInputStream()) {
 
 				long timestamp = syncManager.getTimestampSeconds();
-				timestampRecord.setTimestamp(blobId, timestamp);
+				timestampRecord.record(blobId, timestamp, TimestampRecord.Action.WRITE);
 
 				byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
 				blobStore.set(blobId, modelClass, timestamp, data);
@@ -228,7 +225,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			TimestampRecord timestampRecord = syncManager.getTimestampRecord();
 			BlobStore blobStore = syncManager.getBlobStore();
 
-			timestampRecord.removeTimestamp(blobId);
+			long timestamp = syncManager.getTimestampSeconds();
+			timestampRecord.record(blobId, timestamp, TimestampRecord.Action.DELETE);
 			blobStore.delete(blobId);
 
 			return null;

@@ -42,7 +42,7 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	 */
 	public Status getStatus() {
 		Status status = new Status();
-		status.timestampHead = timestampRecord.getTimestampHead().getTimestamp();
+		status.timestampHead = timestampRecord.getTimestampHead().getTimestampSeconds();
 		return status;
 	}
 
