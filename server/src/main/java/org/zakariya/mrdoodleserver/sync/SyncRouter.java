@@ -166,13 +166,33 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private String commitWriteSession(Request request, Response response) {
 		String accountId = request.params("accountId");
 		String token = request.params("token");
-
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
-		if (!syncManager.commitWriteSession(token)) {
-			halt(403, "The write token provided is not valid");
-		}
 
-		return null;
+		try {
+			readWriteLock.writeLock().lock();
+			if (syncManager.commitWriteSession(token)) {
+
+				// sync session is complete! time to broadcast status (which includes updated
+				// timestampHead) to clients
+				Status status = syncManager.getStatus();
+
+				WebSocketConnection connection = WebSocketConnection.getInstance();
+				connection.broadcast(accountId, status);
+
+				try {
+					return objectMapper.writeValueAsString(status);
+				} catch (JsonProcessingException e) {
+					haltWithError500("SyncRouter::commitWriteSession - unable to serialize status to JSON", e);
+					return null;
+				}
+
+			} else {
+				halt(403, "The write token provided is not valid");
+				return null;
+			}
+		} finally {
+			readWriteLock.writeLock().unlock();
+		}
 	}
 
 	@Nullable

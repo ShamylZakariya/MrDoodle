@@ -95,6 +95,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 		WriteSession session = writeSessions.get(token);
 		if (session != null) {
 			session.commit(timestampRecord, blobStore);
+			writeSessions.remove(token);
 			return true;
 		} else {
 			return false;
