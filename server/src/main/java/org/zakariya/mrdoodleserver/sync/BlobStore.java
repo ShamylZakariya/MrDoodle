@@ -3,27 +3,17 @@ package org.zakariya.mrdoodleserver.sync;
 import org.jetbrains.annotations.Nullable;
 import redis.clients.jedis.*;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-
-import static org.zakariya.mrdoodleserver.sync.BlobStore.Mode.DIRECT;
-import static org.zakariya.mrdoodleserver.sync.BlobStore.Mode.TEMP;
 
 /**
  * Created by shamyl on 8/25/16.
  */
 class BlobStore {
 
-	enum Mode {
-		// actions are written directly to account's data store
-		DIRECT,
-
-		// actions are written to a temp area in account's data store, and can be committed later via save()
-		TEMP
-	}
-
 	static class Entry {
-		byte [] data;
+		byte[] data;
 		String uuid;
 		String modelClass;
 		long timestamp;
@@ -50,154 +40,157 @@ class BlobStore {
 		long getTimestamp() {
 			return timestamp;
 		}
-	}
 
-	private String accountId;
-	private JedisPool jedisPool;
-	private Mode mode;
-	private Set<String> writes;
-	private Set<String> deletions;
-
-	BlobStore(JedisPool jedisPool, String accountId, Mode mode) {
-		this.jedisPool = jedisPool;
-		this.accountId = accountId;
-		this.mode = mode;
-
-		if (mode == TEMP) {
-			deletions = new HashSet<>();
+		@Override
+		public boolean equals(Object obj) {
+			if (obj != null && obj instanceof Entry) {
+				Entry other = (Entry) obj;
+				return uuid.equals(other.uuid) && modelClass.equals(other.modelClass) && Arrays.equals(data, other.data);
+			} else {
+				return false;
+			}
 		}
 	}
 
-	public String getAccountId() {
+	private String accountId;
+	private String namespace;
+	private JedisPool jedisPool;
+	private Set<String> writes = new HashSet<>();
+	private Set<String> deletions = new HashSet<>();
+
+	BlobStore(JedisPool jedisPool, String accountId, String namespace) {
+		this.jedisPool = jedisPool;
+		this.accountId = accountId;
+		this.namespace = namespace;
+	}
+
+	BlobStore(JedisPool jedisPool, String accountId) {
+		this(jedisPool, accountId, "default");
+	}
+
+	String getAccountId() {
 		return accountId;
 	}
 
-	public JedisPool getJedisPool() {
+	JedisPool getJedisPool() {
 		return jedisPool;
 	}
 
-	public Mode getMode() {
-		return mode;
+	String getNamespace() {
+		return namespace;
+	}
+
+	void set(Entry e) {
+		set(e.getUuid(), e.getModelClass(), e.getTimestamp(), e.getData());
 	}
 
 	void set(String uuid, String modelClass, long timestamp, byte[] data) {
-		try(Jedis jedis = jedisPool.getResource()) {
+		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
-			transaction.set(getEntryUuidRedisKey(uuid, mode), uuid);
-			transaction.set(getEntryModelClassRedisKey(uuid, mode), modelClass);
-			transaction.set(getEntryTimestampRedisKey(uuid, mode), Long.toString(timestamp));
-			transaction.set(getEntryDataRedisKey(uuid, mode).getBytes(), data);
+			transaction.set(getEntryUuidKey(accountId, namespace, uuid), uuid);
+			transaction.set(getEntryModelClassKey(accountId, namespace, uuid), modelClass);
+			transaction.set(getEntryTimestampKey(accountId, namespace, uuid), Long.toString(timestamp));
+			transaction.set(getEntryDataKey(accountId, namespace, uuid).getBytes(), data);
 			transaction.exec();
-
-			if (mode == TEMP) {
-				writes.add(uuid);
-			}
+			writes.add(uuid);
 		}
 	}
 
 	@Nullable
 	Entry get(String uuid) {
-		try(Jedis jedis = jedisPool.getResource()) {
+		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
-			Response<String> uuidResponse = transaction.get(getEntryUuidRedisKey(uuid, mode));
-			Response<String> modelClassResponse = transaction.get(getEntryModelClassRedisKey(uuid, mode));
-			Response<String> timestampResponse = transaction.get(getEntryTimestampRedisKey(uuid, mode));
-			Response<byte[]> byteResponse = transaction.get(getEntryDataRedisKey(uuid, mode).getBytes());
+			Response<String> uuidResponse = transaction.get(getEntryUuidKey(accountId, namespace, uuid));
+			Response<String> modelClassResponse = transaction.get(getEntryModelClassKey(accountId, namespace, uuid));
+			Response<String> timestampResponse = transaction.get(getEntryTimestampKey(accountId, namespace, uuid));
+			Response<byte[]> byteResponse = transaction.get(getEntryDataKey(accountId, namespace, uuid).getBytes());
 			transaction.exec();
 
-			return new Entry(uuidResponse.get(), modelClassResponse.get(), Long.parseLong(timestampResponse.get()), byteResponse.get());
+			String uuid2 = uuidResponse.get();
+			String modelClass = modelClassResponse.get();
+			String timestampString = timestampResponse.get();
+			byte[] data = byteResponse.get();
+
+			if (uuid2 != null && uuid2.equals(uuid) && modelClass != null && !modelClass.isEmpty() && timestampString != null && !timestampString.isEmpty()) {
+				long timestamp = Long.parseLong(timestampString);
+				return new Entry(uuid2, modelClass, timestamp, data);
+			} else {
+				return null;
+			}
 		}
 	}
 
 	void delete(String uuid) {
-		try(Jedis jedis = jedisPool.getResource()) {
+		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
-			transaction.del(getEntryUuidRedisKey(uuid, mode));
-			transaction.del(getEntryModelClassRedisKey(uuid, mode));
-			transaction.del(getEntryTimestampRedisKey(uuid, mode));
-			transaction.del(getEntryDataRedisKey(uuid, mode));
+			transaction.del(getEntryUuidKey(accountId, namespace, uuid));
+			transaction.del(getEntryModelClassKey(accountId, namespace, uuid));
+			transaction.del(getEntryTimestampKey(accountId, namespace, uuid));
+			transaction.del(getEntryDataKey(accountId, namespace, uuid));
 			transaction.exec();
-
-			if (mode == TEMP) {
-				deletions.add(uuid);
-			}
+			deletions.add(uuid);
 		}
+	}
+
+	void flush() {
+		try (Jedis jedis = jedisPool.getResource()) {
+			Set<String> keys = jedis.keys(getEntryRootKey(accountId,namespace) + "*");
+			keys.forEach(jedis::del);
+		}
+
+		deletions.clear();
+		writes.clear();
 	}
 
 	void save(BlobStore store) {
-		if (mode == TEMP) {
-			try(Jedis jedis = store.getJedisPool().getResource()) {
+		try (Jedis jedis = store.getJedisPool().getResource()) {
 
-				// rename all our writes from our temp namespace to the actual one
-				if (!writes.isEmpty()) {
-					Transaction writeTransaction = jedis.multi();
-					for (String uuid : writes) {
-						writeTransaction.rename(getEntryUuidRedisKey(uuid, TEMP), getEntryUuidRedisKey(uuid,DIRECT));
-						writeTransaction.rename(getEntryModelClassRedisKey(uuid, TEMP), getEntryModelClassRedisKey(uuid,DIRECT));
-						writeTransaction.rename(getEntryTimestampRedisKey(uuid, TEMP), getEntryTimestampRedisKey(uuid,DIRECT));
-						writeTransaction.rename(getEntryDataRedisKey(uuid, TEMP), getEntryDataRedisKey(uuid,DIRECT));
-					}
-
-					writeTransaction.exec();
+			// rename all our writes from our temp namespace to the actual one
+			if (!writes.isEmpty()) {
+				Transaction writeTransaction = jedis.multi();
+				for (String uuid : writes) {
+					writeTransaction.rename(getEntryUuidKey(accountId, namespace, uuid), getEntryUuidKey(store.getAccountId(), store.getNamespace(), uuid));
+					writeTransaction.rename(getEntryModelClassKey(accountId, namespace, uuid), getEntryModelClassKey(store.getAccountId(), store.getNamespace(), uuid));
+					writeTransaction.rename(getEntryTimestampKey(accountId, namespace, uuid), getEntryTimestampKey(store.getAccountId(), store.getNamespace(), uuid));
+					writeTransaction.rename(getEntryDataKey(accountId, namespace, uuid), getEntryDataKey(store.getAccountId(), store.getNamespace(), uuid));
 				}
+				writeTransaction.exec();
+				store.writes.addAll(writes);
+			}
 
-				// now delete everything from our deletions record
-				if (!deletions.isEmpty()) {
-					Transaction deleteTransaction = jedis.multi();
-					for (String uuid : deletions) {
-						deleteTransaction.del(getEntryUuidRedisKey(uuid, DIRECT));
-						deleteTransaction.del(getEntryModelClassRedisKey(uuid, DIRECT));
-						deleteTransaction.del(getEntryTimestampRedisKey(uuid, DIRECT));
-						deleteTransaction.del(getEntryDataRedisKey(uuid, DIRECT));
-					}
-					deleteTransaction.exec();
+			// now delete everything from our deletions record
+			if (!deletions.isEmpty()) {
+				Transaction deleteTransaction = jedis.multi();
+				for (String uuid : deletions) {
+					deleteTransaction.del(getEntryUuidKey(store.getAccountId(), store.getNamespace(), uuid));
+					deleteTransaction.del(getEntryModelClassKey(store.getAccountId(), store.getNamespace(), uuid));
+					deleteTransaction.del(getEntryTimestampKey(store.getAccountId(), store.getNamespace(), uuid));
+					deleteTransaction.del(getEntryDataKey(store.getAccountId(), store.getNamespace(), uuid));
 				}
+				deleteTransaction.exec();
+				store.deletions.addAll(deletions);
 			}
 		}
 	}
 
-	private String getEntryUuidRedisKey(String uuid, Mode mode) {
-		switch (mode) {
-			case TEMP:
-				return "blob/" + accountId + "/temp/" + uuid + ":uuid";
-			case DIRECT:
-				return "blob/" + accountId + "/" + uuid + ":uuid";
-		}
-
-		throw new IllegalStateException("BlobStore mode MUST be DIRECT or TEMP");
+	static String getEntryRootKey(String accountId, String namespace) {
+		return "blob/" + accountId + "/" + namespace + "/";
 	}
 
-	private String getEntryDataRedisKey(String uuid, Mode mode) {
-		switch (mode) {
-			case TEMP:
-				return "blob/" + accountId + "/temp/" + uuid + ":data";
-			case DIRECT:
-				return "blob/" + accountId + "/" + uuid + ":data";
-		}
-
-		throw new IllegalStateException("BlobStore mode MUST be DIRECT or TEMP");
+	static String getEntryUuidKey(String accountId, String namespace, String uuid) {
+		return getEntryRootKey(accountId, namespace) + uuid + ":uuid";
 	}
 
-	private String getEntryModelClassRedisKey(String uuid, Mode mode) {
-		switch (mode) {
-			case TEMP:
-				return "blob/" + accountId + "/temp/" + uuid + ":modelClass";
-			case DIRECT:
-				return "blob/" + accountId + "/" + uuid + ":modelClass";
-		}
-
-		throw new IllegalStateException("BlobStore mode MUST be DIRECT or TEMP");
+	static String getEntryDataKey(String accountId, String namespace, String uuid) {
+		return getEntryRootKey(accountId, namespace) + uuid + ":data";
 	}
 
-	private String getEntryTimestampRedisKey(String uuid, Mode mode) {
-		switch (mode) {
-			case TEMP:
-				return "blob/" + accountId + "/temp/" + uuid + ":timestamp";
-			case DIRECT:
-				return "blob/" + accountId + "/" + uuid + ":timestamp";
-		}
+	static String getEntryModelClassKey(String accountId, String namespace, String uuid) {
+		return getEntryRootKey(accountId, namespace) + uuid + ":modelClass";
+	}
 
-		throw new IllegalStateException("BlobStore mode MUST be DIRECT or TEMP");
+	static String getEntryTimestampKey(String accountId, String namespace, String uuid) {
+		return getEntryRootKey(accountId, namespace) + uuid + ":timestamp";
 	}
 
 }

@@ -32,7 +32,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 		WriteSession(JedisPool jedisPool) {
 			token = UUID.randomUUID().toString();
 			timestampRecord = new TimestampRecord();
-			blobStore = new BlobStore(jedisPool, token, BlobStore.Mode.TEMP);
+			blobStore = new BlobStore(jedisPool, token, "temp");
 		}
 
 		public String getToken() {
@@ -57,7 +57,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 		this.jedisPool = jedisPool;
 		this.accountId = accountId;
 		this.timestampRecord = new TimestampRecord(jedisPool, accountId);
-		this.blobStore = new BlobStore(jedisPool, accountId, BlobStore.Mode.DIRECT);
+		this.blobStore = new BlobStore(jedisPool, accountId);
 	}
 
 	void close() {

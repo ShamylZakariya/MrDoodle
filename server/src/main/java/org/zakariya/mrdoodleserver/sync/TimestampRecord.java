@@ -52,7 +52,7 @@ class TimestampRecord {
 
 		@Override
 		public boolean equals(Object obj) {
-			if (obj instanceof Entry) {
+			if (obj != null && obj instanceof Entry) {
 				Entry other = (Entry) obj;
 				return uuid.equals(other.uuid) && timestampSeconds == other.timestampSeconds && action == other.action;
 			}
