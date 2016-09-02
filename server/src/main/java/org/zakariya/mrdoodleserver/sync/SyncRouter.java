@@ -87,7 +87,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		if (authenticationEnabled) {
 			String googleIdToken = request.headers(REQUEST_HEADER_AUTH);
 			if (googleIdToken == null || googleIdToken.isEmpty()) {
-				halt(401, "Missing authorization token");
+				halt(401, "SyncRouter::authenticate - Missing authorization token");
 			} else {
 				try {
 					String verifiedId = this.authenticator.verify(googleIdToken);
@@ -95,10 +95,10 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 					if (verifiedId != null) {
 						// token passed validation, but only allows access to :accountId subpath
 						if (!verifiedId.equals(pathAccountId)) {
-							halt(401, "Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
+							halt(401, "SyncRouter::authenticate - Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
 						}
 					} else {
-						halt(401, "Invalid authorization token");
+						halt(401, "SyncRouter::authenticate - Invalid authorization token");
 					}
 				} catch (Exception e) {
 					haltWithError500("SyncRouter::authenticate - Unable to verify authorization token, error: " + e.getLocalizedMessage(), e);
@@ -193,7 +193,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				}
 
 			} else {
-				halt(403, "The write token provided is not valid");
+				halt(403, "SyncRouter::commitWriteSession - The write token provided (" + token + ") was not valid");
 				return null;
 			}
 		} finally {
@@ -210,8 +210,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			String blobId = request.params("blobId");
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 			BlobStore blobStore = syncManager.getBlobStore();
-
 			BlobStore.Entry entry = blobStore.get(blobId);
+
 			if (entry != null) {
 				byte[] blobBytes = entry.getData();
 
@@ -227,7 +227,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			}
 
 		} catch (IOException e) {
-			haltWithError500("Unable to copy blob bytes to response", e);
+			haltWithError500("SyncRouter::getBlob - Unable to copy blob bytes to response", e);
 		} finally {
 			readWriteLock.readLock().unlock();
 		}
@@ -237,17 +237,19 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private String putBlob(Request request, Response response) {
+
+		// we need to do this to extract the blob form data
 		request.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp"));
 
 		String modelClass = request.headers(REQUEST_HEADER_MODEL_CLASS);
 		if (modelClass == null || modelClass.isEmpty()) {
-			halt(400, "Missing model class header attribute (\"" + REQUEST_HEADER_MODEL_CLASS + "\")");
+			halt(400, "SyncRouter::putBlob - Missing model class header attribute (\"" + REQUEST_HEADER_MODEL_CLASS + "\")");
 			return null;
 		}
 
 		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
 		if (writeToken == null || writeToken.isEmpty()) {
-			halt(400, "Missing write token(\"" + REQUEST_HEADER_MODEL_CLASS + "\"); writes are disallowed without a write token");
+			halt(400, "SyncRouter::putBlob - Missing write token(\"" + REQUEST_HEADER_MODEL_CLASS + "\"); writes are disallowed without a write token");
 			return null;
 		}
 
@@ -257,7 +259,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		SyncManager.WriteSession session = syncManager.getWriteSession(writeToken);
 
 		if (session == null) {
-			halt(403, "The write token provided is not valid");
+			halt(403, "SyncRouter::putBlob - The write token provided is not valid");
 			return null;
 		}
 
@@ -277,7 +279,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 				// Use the input stream to create a file
 			} catch (ServletException | IOException e) {
-				haltWithError500("Unable to read blob data from request", e);
+				haltWithError500("SyncRouter::putBlob - Unable to read blob data from request", e);
 			}
 
 			return null;
@@ -294,7 +296,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
 		if (writeToken == null || writeToken.isEmpty()) {
-			halt(400, "Missing write token(\"" + REQUEST_HEADER_MODEL_CLASS + "\"); writes are disallowed without a write token");
+			halt(400, "SyncRouter::deleteBlob - Missing write token(" + REQUEST_HEADER_MODEL_CLASS + "); writes are disallowed without a write token");
 			return null;
 		}
 
@@ -303,7 +305,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		SyncManager.WriteSession session = syncManager.getWriteSession(writeToken);
 
 		if (session == null) {
-			halt(403, "The write token provided is not valid");
+			halt(403, "SyncRouter::deleteBlob - The write token provided is not valid");
 			return null;
 		}
 
