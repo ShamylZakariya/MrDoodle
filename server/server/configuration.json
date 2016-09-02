@@ -1,9 +1,13 @@
 {
-	"version":"v1",
-	"redis": {
-		"host":"localhost"
-	},
-	"authenticator":{
-		"whitelist_grace_period_seconds":3600
-	}
+  "version": "v1",
+  "redis": {
+	"host": "localhost"
+  },
+  "authenticator": {
+	"whitelist_grace_period_seconds": 3600
+  },
+  "router": {
+  	"inactiveSyncManagerDisposalTimeoutSeconds":300,
+	"inactiveSyncManagerDisposalGracePeriodSeconds": 60
+  }
 }

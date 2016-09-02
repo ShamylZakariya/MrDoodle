@@ -38,7 +38,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private static final String REQUEST_HEADER_MODEL_CLASS = "X-Model-Class";
 	private static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
 	private static final boolean READ_WRITE_LOCK_IS_FAIR = true;
-	private static long SYNC_MANAGER_CLEANUP_DELAY_SECONDS = 300;
 
 	private Configuration configuration;
 	private Authenticator authenticator;
@@ -48,6 +47,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private boolean authenticationEnabled;
 	private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(READ_WRITE_LOCK_IS_FAIR);
 
+	private long syncManagerCleanupDelaySeconds = 300;
+	private long syncManagerCleanupDelayGracePeriodSeconds = 60;
 	private ScheduledExecutorService syncManagerCleanupScheduler = Executors.newSingleThreadScheduledExecutor();
 	private Map<String, ScheduledFuture> syncManagerCleanupFuturesByAccountId = new HashMap<>();
 
@@ -56,11 +57,16 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		this.authenticator = authenticator;
 		this.jedisPool = jedisPool;
 		this.authenticationEnabled = configuration.getBoolean("authenticator/enabled", true);
+		syncManagerCleanupDelaySeconds = configuration.getInt("router/inactiveSyncManagerDisposalTimeoutSeconds", (int)syncManagerCleanupDelaySeconds);
+		syncManagerCleanupDelayGracePeriodSeconds = configuration.getInt("router/inactiveSyncManagerDisposalGracePeriodSeconds", (int)syncManagerCleanupDelayGracePeriodSeconds);
 	}
 
 	public void configureRoutes() {
 		String basePath = getBasePath();
+
+		// all api calls must authenticate
 		before(basePath + "/*", this::authenticate);
+
 		get(basePath + "/status", this::getStatus);
 		get(basePath + "/changes", this::getChanges);
 
@@ -344,6 +350,14 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		// cancel any scheduled cleanup
 		ScheduledFuture future = syncManagerCleanupFuturesByAccountId.get(accountId);
 		if (future != null && !future.isCancelled()) {
+
+			// early exit if the future still has plenty of time remaining
+			// we do this so we don't re-schedule dozens of times for a batch of sync calls.
+			if (future.getDelay(TimeUnit.SECONDS) < (syncManagerCleanupDelaySeconds - syncManagerCleanupDelayGracePeriodSeconds)) {
+				return;
+			}
+
+			// the future is past its grace period. cancel it. We'll schedule a new one below.
 			future.cancel(false);
 			syncManagerCleanupFuturesByAccountId.remove(accountId);
 		}
@@ -352,7 +366,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			syncManager.close();
 			syncManagerCleanupFuturesByAccountId.remove(accountId);
 			syncManagersByAccountId.remove(accountId);
-		}, SYNC_MANAGER_CLEANUP_DELAY_SECONDS, TimeUnit.SECONDS);
+		}, syncManagerCleanupDelaySeconds, TimeUnit.SECONDS);
 
 		syncManagerCleanupFuturesByAccountId.put(accountId, future);
 	}
