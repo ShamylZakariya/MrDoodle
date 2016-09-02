@@ -35,15 +35,15 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 			blobStore = new BlobStore(jedisPool, token, "temp");
 		}
 
-		public String getToken() {
+		String getToken() {
 			return token;
 		}
 
-		public TimestampRecord getTimestampRecord() {
+		TimestampRecord getTimestampRecord() {
 			return timestampRecord;
 		}
 
-		public BlobStore getBlobStore() {
+		BlobStore getBlobStore() {
 			return blobStore;
 		}
 
@@ -68,7 +68,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 		return jedisPool;
 	}
 
-	public String getAccountId() {
+	String getAccountId() {
 		return accountId;
 	}
 
