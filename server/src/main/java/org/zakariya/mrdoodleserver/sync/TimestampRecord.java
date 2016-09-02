@@ -76,12 +76,20 @@ class TimestampRecord {
 	private ScheduledFuture debouncedSave;
 	private ObjectMapper objectMapper = new ObjectMapper();
 
+	/**
+	 * Create a TimestampRecord which persists to redis
+	 * @param jedisPool the pool where jedis instances will be extracted for reads and writes
+	 * @param accountId the account namespace for all writes/reads
+	 */
 	TimestampRecord(JedisPool jedisPool, String accountId) {
 		this.jedisPool = jedisPool;
 		this.accountId = accountId;
 		load();
 	}
 
+	/**
+	 * Create an in-memory TimestampRecord
+	 */
 	TimestampRecord() {
 	}
 
@@ -93,6 +101,12 @@ class TimestampRecord {
 		return accountId;
 	}
 
+	/**
+	 * Record an event into the timestamp record
+	 * @param uuid id of the thing that the action happened to
+	 * @param seconds the timestamp, in seconds, of the event
+	 * @param action the type of event (write/delete)
+	 */
 	void record(String uuid, long seconds, Action action) {
 		Entry entry = new Entry(uuid, seconds, action);
 		entriesByUuid.put(uuid, entry);
@@ -120,14 +134,19 @@ class TimestampRecord {
 		return entriesByUuid.containsKey(uuid) ? entriesByUuid.get(uuid).getTimestampSeconds() : -1;
 	}
 
-	Map<String, Entry> getEntriesSince(long since) {
-		if (since > 0) {
+	/**
+	 * Get a record of all events after sinceTimestampSeconds
+	 * @param sinceTimestampSeconds a timestamp in seconds
+	 * @return map of uuid->Entry of all events which occurred after said timestamp
+	 */
+	Map<String, Entry> getEntriesSince(long sinceTimestampSeconds) {
+		if (sinceTimestampSeconds > 0) {
 
-			// filter to subset of uuid:timestampSeconds pairs AFTER `since
+			// filter to subset of uuid:timestampSeconds pairs AFTER `sinceTimestampSeconds
 			Map<String, Entry> entries = new HashMap<>();
 			for (String uuid : entriesByUuid.keySet()) {
 				Entry entry  = entriesByUuid.get(uuid);
-				if (entry.getTimestampSeconds() >= since) {
+				if (entry.getTimestampSeconds() >= sinceTimestampSeconds) {
 					entries.put(uuid, entry);
 				}
 			}
@@ -139,12 +158,15 @@ class TimestampRecord {
 		}
 	}
 
+	/**
+	 * @return Get all entries in record, mapping the event's uuid to the event
+	 */
 	Map<String, Entry> getEntries() {
 		return getEntriesSince(-1);
 	}
 
 	/**
-	 * @return the id/timestampSeconds pair for the newest item in the record
+	 * @return the Entry representing the most recent event to be added to the record
 	 */
 	Entry getTimestampHead() {
 		if (head == null) {
@@ -208,7 +230,7 @@ class TimestampRecord {
 		}
 	}
 
-	void load() {
+	private void load() {
 		if (jedisPool == null) {
 			return;
 		}

@@ -12,6 +12,8 @@ import java.util.Set;
  */
 class BlobStore {
 
+	public static final String NAMESPACE_DEFAULT = "default";
+
 	static class Entry {
 		byte[] data;
 		String uuid;
@@ -58,14 +60,25 @@ class BlobStore {
 	private Set<String> writes = new HashSet<>();
 	private Set<String> deletions = new HashSet<>();
 
+	/**
+	 * Create a BlobStore which will persist to a given redis connection.
+	 * @param jedisPool pool brokering access to a redis connection
+	 * @param accountId the user account for the blobs which will be persisted
+	 * @param namespace the namespace under which blobs will be persisted
+	 */
 	BlobStore(JedisPool jedisPool, String accountId, String namespace) {
 		this.jedisPool = jedisPool;
 		this.accountId = accountId;
 		this.namespace = namespace;
 	}
 
+	/**
+	 * Create a BlobStore which will persist to a given redis connection. Blobs will be saved to the default namespace.
+	 * @param jedisPool pool brokering access to a redis connection
+	 * @param accountId the user account for the blobs which will be persisted
+	 */
 	BlobStore(JedisPool jedisPool, String accountId) {
-		this(jedisPool, accountId, "default");
+		this(jedisPool, accountId, NAMESPACE_DEFAULT);
 	}
 
 	String getAccountId() {
@@ -80,10 +93,21 @@ class BlobStore {
 		return namespace;
 	}
 
+	/**
+	 * Persist an entry to the store
+	 * @param e a BlobStore.Entry to persist
+	 */
 	void set(Entry e) {
 		set(e.getUuid(), e.getModelClass(), e.getTimestamp(), e.getData());
 	}
 
+	/**
+	 * Persist a blob and associated data to the store
+	 * @param uuid the id of the blob
+	 * @param modelClass the "type" of blob - this might map to a java object on the client side
+	 * @param timestamp the timestamp (generally in seconds) of the data
+	 * @param data the actual blob data
+	 */
 	void set(String uuid, String modelClass, long timestamp, byte[] data) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
@@ -96,6 +120,10 @@ class BlobStore {
 		}
 	}
 
+	/**
+	 * @param uuid the id of the blob
+	 * @return the Entry for a given blob in the store
+	 */
 	@Nullable
 	Entry get(String uuid) {
 		try (Jedis jedis = jedisPool.getResource()) {
@@ -120,6 +148,10 @@ class BlobStore {
 		}
 	}
 
+	/**
+	 * Remove a blob and associated data from the store
+	 * @param uuid the id of the blob to remove
+	 */
 	void delete(String uuid) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
@@ -132,6 +164,9 @@ class BlobStore {
 		}
 	}
 
+	/**
+	 * Deletes ALL blobs and associated data for this blob store's account and namespace
+	 */
 	void flush() {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Set<String> keys = jedis.keys(getEntryRootKey(accountId,namespace) + "*");
@@ -142,6 +177,13 @@ class BlobStore {
 		writes.clear();
 	}
 
+	/**
+	 * Save this BlobStore's writes and deletes to another BlobStore. What this means is, if we wrote a blob 'A', and deleted a blob 'B',
+	 * and the destination store has no blob 'A', and DOES have a blob 'B', after the save, the destination store will have 'A', and will
+	 * no longer have a blob 'B'. The purpose of this is to enable one blob store to represent a batch of "temp" writes and deletes, which
+	 * can be committed at a later date to the "real" blob store for that account.
+	 * @param store the store to copy changes from this store to
+	 */
 	void save(BlobStore store) {
 		try (Jedis jedis = store.getJedisPool().getResource()) {
 
@@ -173,7 +215,7 @@ class BlobStore {
 		}
 	}
 
-	static String getEntryRootKey(String accountId, String namespace) {
+	private static String getEntryRootKey(String accountId, String namespace) {
 		return "blob/" + accountId + "/" + namespace + "/";
 	}
 
