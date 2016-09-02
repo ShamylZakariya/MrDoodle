@@ -263,29 +263,25 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			return null;
 		}
 
-		// now get timestamp record and blobstore for this write session
+		// now get timestamp record and blobstore for this write session.
+		// note: because writes go into the session, we don't need to wrap this in a writeLock
 		TimestampRecord timestampRecord = session.getTimestampRecord();
 		BlobStore blobStore = session.getBlobStore();
 
-		try {
-			readWriteLock.writeLock().lock();
-			try (InputStream is = request.raw().getPart("blob").getInputStream()) {
+		try (InputStream is = request.raw().getPart("blob").getInputStream()) {
 
-				long timestamp = syncManager.getTimestampSeconds();
-				timestampRecord.record(blobId, timestamp, TimestampRecord.Action.WRITE);
+			long timestamp = syncManager.getTimestampSeconds();
+			timestampRecord.record(blobId, timestamp, TimestampRecord.Action.WRITE);
 
-				byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
-				blobStore.set(blobId, modelClass, timestamp, data);
+			byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
+			blobStore.set(blobId, modelClass, timestamp, data);
 
-				// Use the input stream to create a file
-			} catch (ServletException | IOException e) {
-				haltWithError500("SyncRouter::putBlob - Unable to read blob data from request", e);
-			}
-
-			return null;
-		} finally {
-			readWriteLock.writeLock().unlock();
+			// Use the input stream to create a file
+		} catch (ServletException | IOException e) {
+			haltWithError500("SyncRouter::putBlob - Unable to read blob data from request", e);
 		}
+
+		return null;
 	}
 
 	@Nullable
@@ -310,19 +306,15 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		}
 
 		// now get timestamp record and blobstore for this write session
+		// note: because writes go into the session, we don't need to wrap this in a writeLock
 		TimestampRecord timestampRecord = session.getTimestampRecord();
 		BlobStore blobStore = session.getBlobStore();
 
-		try {
-			readWriteLock.writeLock().lock();
-			long timestamp = syncManager.getTimestampSeconds();
-			timestampRecord.record(blobId, timestamp, TimestampRecord.Action.DELETE);
-			blobStore.delete(blobId);
+		long timestamp = syncManager.getTimestampSeconds();
+		timestampRecord.record(blobId, timestamp, TimestampRecord.Action.DELETE);
+		blobStore.delete(blobId);
 
-			return null;
-		} finally {
-			readWriteLock.writeLock().unlock();
-		}
+		return null;
 	}
 
 	///////////////////////////////////////////////////////////////////
