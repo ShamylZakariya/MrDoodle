@@ -10,6 +10,9 @@ import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zakariya.mrdoodleserver.SyncServer;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.util.Configuration;
 
@@ -38,6 +41,8 @@ import static org.zakariya.mrdoodleserver.util.Preconditions.checkNotNull;
 
 @WebSocket
 public class WebSocketConnection {
+
+	static final Logger logger = LoggerFactory.getLogger(WebSocketConnection.class);
 
 	public interface WebSocketConnectionCreatedListener {
 		void onWebSocketConnectionCreated(WebSocketConnection connection);
@@ -197,7 +202,7 @@ public class WebSocketConnection {
 			}
 		}
 
-		System.out.println("onClose status: " + statusCode + " reason: " + reason + " after cleanup, we have: " + getTotalConnectedDeviceCount() + " connected devices");
+		logger.info("onClose status: {} reason: {} - after cleanup we have {} connected devices remaining", statusCode, reason, getTotalConnectedDeviceCount());
 	}
 
 	@OnWebSocketMessage
@@ -232,7 +237,7 @@ public class WebSocketConnection {
 					}
 				}
 				
-				System.out.println("WebSocketConnection::onMessage - after handling authentication, we have: " + getTotalConnectedDeviceCount() + " connected devices");
+				logger.info("onMessage - after handling authentication, we have {} connected devices", getTotalConnectedDeviceCount());
 			}
 
 			// user may have successfully authenticated, so we can proceed
@@ -250,6 +255,7 @@ public class WebSocketConnection {
 						sendAuthenticationResponse(userSession, false);
 
 						// we're done here
+						//noinspection UnnecessaryReturnStatement
 						return;
 					}
 				}
@@ -258,8 +264,7 @@ public class WebSocketConnection {
 
 			}
 		} catch (IOException e) {
-			System.err.println("Unable to parse message as JSON");
-			e.printStackTrace();
+			logger.error("Unable to parse message as JSON", e);
 		}
 	}
 
@@ -284,7 +289,7 @@ public class WebSocketConnection {
 			} else {
 
 				// couldn't extract an ID from the token
-				System.err.println("Unable to extract google ID from auth token: " + authToken);
+				logger.error("Unable to extract google ID from auth token: {}", authToken);
 				return null;
 			}
 
@@ -351,11 +356,9 @@ public class WebSocketConnection {
 			String json = objectMapper.writeValueAsString(messageObject);
 			userSession.getRemote().sendString(json);
 		} catch (JsonProcessingException e) {
-			System.err.println("Unable to serialize message POJO to JSON");
-			e.printStackTrace();
+			logger.error("Unable to serialize message POJO to JSON", e);
 		} catch (IOException e) {
-			System.err.println("Unable to send message JSON to user session remote endpoint");
-			e.printStackTrace();
+			logger.error("Unable to send message JSON to user session remote endpoint", e);
 		}
 	}
 
@@ -374,12 +377,11 @@ public class WebSocketConnection {
 					try {
 						session.getRemote().sendString(messageJsonString);
 					} catch (IOException e) {
-						System.err.println("Unable to send message JSON to session: " + session);
-						e.printStackTrace();
+						logger.error("Unable to send message JSON to session: {}", session);
 					}
 				});
 			} catch (JsonProcessingException e) {
-				e.printStackTrace();
+				logger.error("Unable to transform POJO to JSON", e);
 			}
 		}
 	}

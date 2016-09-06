@@ -2,6 +2,8 @@ package org.zakariya.mrdoodleserver.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.*;
@@ -18,6 +20,8 @@ import java.util.List;
  */
 @SuppressWarnings("WeakerAccess")
 public class Configuration {
+
+	static final Logger logger = LoggerFactory.getLogger(Configuration.class);
 
 	private List<JsonNode> rootNodes = new ArrayList<JsonNode>();
 
@@ -39,11 +43,9 @@ public class Configuration {
 			ObjectMapper mapper = new ObjectMapper();
 			rootNodes.add(mapper.readTree(bis));
 		} catch (FileNotFoundException e) {
-			System.err.println("Unable to open configurationJSONFile: " + e.getLocalizedMessage());
-			e.printStackTrace();
+			logger.error("Unable to open configurationJSONFile", e);
 		} catch (IOException e) {
-			System.err.println("Unable to read configurationJSONFile: " + e.getLocalizedMessage());
-			e.printStackTrace();
+			logger.error("Unable to read configurationJSONFile", e);
 		}
 	}
 

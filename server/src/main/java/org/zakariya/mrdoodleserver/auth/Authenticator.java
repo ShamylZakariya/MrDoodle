@@ -7,6 +7,8 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import org.eclipse.jetty.websocket.common.util.TextUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -25,6 +27,8 @@ import static org.zakariya.mrdoodleserver.util.Preconditions.*;
  * verification, it will be checked first against the whitelist
  */
 public class Authenticator {
+
+	static final Logger logger = LoggerFactory.getLogger(Authenticator.class);
 
 	private static final HttpTransport transport = new NetHttpTransport();
 	private static final JsonFactory jsonFactory = new JacksonFactory();
@@ -83,12 +87,8 @@ public class Authenticator {
 			verifiedTokensWhitelist.removeTokenFromWhitelist(token);
 			return null;
 
-		} catch (GeneralSecurityException e) {
-			System.out.println("verifyIdToken:GeneralSecurityException: " + e);
-			e.printStackTrace();
-		} catch (IOException e) {
-			System.out.println("verifyIdToken:IOException: " + e);
-			e.printStackTrace();
+		} catch (GeneralSecurityException | IOException e) {
+			logger.error("Authenticator::verify - unable to verify token", e);
 		}
 
 		return null;
@@ -116,8 +116,7 @@ public class Authenticator {
 			googleIdsByToken.put(token, id);
 			return id;
 		} catch (IOException e) {
-			System.out.println("IDToken Audience: Could not parse ID Token:" + e);
-			e.printStackTrace();
+			logger.error("IDToken Audience: Could not parse ID Token", e);
 			return null;
 		}
 	}

@@ -3,6 +3,8 @@ package org.zakariya.mrdoodleserver.sync;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -17,6 +19,8 @@ import java.util.concurrent.ScheduledFuture;
  *
  */
 class TimestampRecord {
+
+	static final Logger logger = LoggerFactory.getLogger(TimestampRecord.class);
 
 	enum Action {
 		WRITE,
@@ -225,8 +229,7 @@ class TimestampRecord {
 			String jsonString = objectMapper.writeValueAsString(entriesByUuid);
 			jedis.set(getJedisKey(), jsonString);
 		} catch (JsonProcessingException e) {
-			System.err.println("TimestampRecord::save - unable to serialize timestampsByUuid map to JSON");
-			e.printStackTrace();
+			logger.error("TimestampRecord::save - unable to serialize timestampsByUuid map to JSON", e);
 		}
 	}
 
@@ -245,8 +248,7 @@ class TimestampRecord {
 
 					head = findHeadEntry();
 				} catch (IOException e) {
-					System.err.println("TimestampRecord::load - unable to load timestampsByUuid map from JSON");
-					e.printStackTrace();
+					logger.error("TimestampRecord::load - unable to load timestampsByUuid map from JSON", e);
 				}
 			}
 		}

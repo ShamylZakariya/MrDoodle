@@ -2,6 +2,8 @@ package org.zakariya.mrdoodleserver;
 
 import static spark.Spark.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.auth.Whitelist;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
@@ -14,7 +16,11 @@ import redis.clients.jedis.JedisPool;
  */
 public class SyncServer {
 
+	static final Logger logger = LoggerFactory.getLogger(SyncServer.class);
+
 	public static void main(String[] args) {
+
+		logger.info("Starting SyncServer");
 
 		Configuration configuration = new Configuration();
 		configuration.addConfigJsonFilePath("configuration.json");
@@ -27,8 +33,10 @@ public class SyncServer {
 		int redisPort = configuration.getInt("redis/port",-1);
 		JedisPool jedisPool;
 		if (redisPort != -1) {
+			logger.info("Building jedisPool with host {} and port {}", redisHost, redisPort);
 			jedisPool = new JedisPool(redisHost, redisPort);
 		} else {
+			logger.info("Building jedisPool with host {} and default port", redisHost);
 			jedisPool = new JedisPool(redisHost);
 		}
 

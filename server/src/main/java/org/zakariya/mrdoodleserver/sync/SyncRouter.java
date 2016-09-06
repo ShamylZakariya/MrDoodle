@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
 import org.eclipse.jetty.websocket.api.Session;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
@@ -33,6 +35,8 @@ import static spark.Spark.*;
  * Establishes the REST routes used for sync operations.
  */
 public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreatedListener {
+
+	static final Logger logger = LoggerFactory.getLogger(SyncRouter.class);
 
 	private static final String REQUEST_HEADER_AUTH = "Authorization";
 	private static final String REQUEST_HEADER_MODEL_CLASS = "X-Model-Class";
@@ -366,8 +370,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	private void haltWithError500(String message, Exception e) {
-		System.err.println(message);
-		e.printStackTrace();
+		logger.error(message, e);
 		halt(500, message);
 	}
 
