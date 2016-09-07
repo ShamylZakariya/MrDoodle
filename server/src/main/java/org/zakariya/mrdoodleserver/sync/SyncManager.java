@@ -109,18 +109,23 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	 */
 	Status getStatus() {
 		Status status = new Status();
-		status.timestampHead = timestampRecord.getTimestampHead().getTimestampSeconds();
+
+		TimestampRecord.Entry timestampHead = timestampRecord.getTimestampHead();
+		if (timestampHead != null) {
+			status.timestampHead = timestampHead.getTimestampSeconds();
+		}
+
 		return status;
 	}
 
 	@Override
-	public void onUserSessionConnected(WebSocketConnection connection, Session session, String googleId) {
+	public void onUserSessionConnected(WebSocketConnection connection, Session session, String userId) {
 		// on connection, first thing we do is send the current status
 		connection.send(session, getStatus());
 	}
 
 	@Override
-	public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String googleId) {
+	public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId) {
 	}
 
 	/**

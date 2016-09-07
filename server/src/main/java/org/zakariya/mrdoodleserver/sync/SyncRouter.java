@@ -89,12 +89,12 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	private void authenticate(Request request, Response response) {
 		if (authenticationEnabled) {
-			String googleIdToken = request.headers(REQUEST_HEADER_AUTH);
-			if (googleIdToken == null || googleIdToken.isEmpty()) {
+			String authToken = request.headers(REQUEST_HEADER_AUTH);
+			if (authToken == null || authToken.isEmpty()) {
 				halt(401, "SyncRouter::authenticate - Missing authorization token");
 			} else {
 				try {
-					String verifiedId = this.authenticator.verify(googleIdToken);
+					String verifiedId = authenticator.verify(authToken);
 					String pathAccountId = request.params("accountId");
 					if (verifiedId != null) {
 						// token passed validation, but only allows access to :accountId subpath
@@ -169,18 +169,27 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		String accountId = request.params("accountId");
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
 		SyncManager.WriteSession session = syncManager.startWriteSession();
+
+		// for the duration of a write session, whitelist the token
+		String authToken = request.headers(REQUEST_HEADER_AUTH);
+		authenticator.addToWhitelist(authToken);
+
 		return session.getToken();
 	}
 
 	@Nullable
 	private String commitWriteSession(Request request, Response response) {
 		String accountId = request.params("accountId");
-		String token = request.params("token");
+		String sessionToken = request.params("token");
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
+
+		// write session is finished, we can remove auth token from whitelist
+		String authToken = request.headers(REQUEST_HEADER_AUTH);
+		authenticator.removeFromWhitelist(authToken);
 
 		try {
 			readWriteLock.writeLock().lock();
-			if (syncManager.commitWriteSession(token)) {
+			if (syncManager.commitWriteSession(sessionToken)) {
 
 				// sync session is complete! time to broadcast status (which includes updated
 				// timestampHead) to clients
@@ -197,7 +206,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				}
 
 			} else {
-				halt(403, "SyncRouter::commitWriteSession - The write token provided (" + token + ") was not valid");
+				halt(403, "SyncRouter::commitWriteSession - The write token provided (" + sessionToken + ") was not valid");
 				return null;
 			}
 		} finally {
@@ -382,15 +391,15 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		// register to listen for user connect/disconnect, and forward them to the correct SyncManager
 		connection.addUserSessionStatusChangeListener(new WebSocketConnection.OnUserSessionStatusChangeListener() {
 			@Override
-			public void onUserSessionConnected(WebSocketConnection connection, Session session, String googleId) {
-				SyncManager syncManager = getSyncManagerForAccount(googleId);
-				syncManager.onUserSessionConnected(connection, session, googleId);
+			public void onUserSessionConnected(WebSocketConnection connection, Session session, String userId) {
+				SyncManager syncManager = getSyncManagerForAccount(userId);
+				syncManager.onUserSessionConnected(connection, session, userId);
 			}
 
 			@Override
-			public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String googleId) {
-				SyncManager syncManager = getSyncManagerForAccount(googleId);
-				syncManager.onUserSessionDisconnected(connection, session, googleId);
+			public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId) {
+				SyncManager syncManager = getSyncManagerForAccount(userId);
+				syncManager.onUserSessionDisconnected(connection, session, userId);
 			}
 		});
 	}

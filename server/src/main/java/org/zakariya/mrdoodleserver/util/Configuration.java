@@ -7,10 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * Basic Configuration management.
@@ -23,7 +20,8 @@ public class Configuration {
 
 	static final Logger logger = LoggerFactory.getLogger(Configuration.class);
 
-	private List<JsonNode> rootNodes = new ArrayList<JsonNode>();
+	private ObjectMapper mapper = new ObjectMapper();
+	private List<JsonNode> rootNodes = new ArrayList<>();
 
 	public Configuration() {
 	}
@@ -40,7 +38,6 @@ public class Configuration {
 			InputStream is = new FileInputStream(configurationJsonFile);
 			BufferedInputStream bis = new BufferedInputStream(is);
 
-			ObjectMapper mapper = new ObjectMapper();
 			rootNodes.add(mapper.readTree(bis));
 		} catch (FileNotFoundException e) {
 			logger.error("Unable to open configurationJSONFile", e);
@@ -59,14 +56,8 @@ public class Configuration {
 		return value != null && !value.isEmpty();
 	}
 
-	/**
-	 * Get the string value of the item at a given path. The path can contain directory separators, as such: "a/b/c/leaf"
-	 *
-	 * @param path the deep path into configuration
-	 * @return the string value of the item at the end of the path, or null
-	 */
 	@Nullable
-	public String get(String path) {
+	JsonNode getNode(String path) {
 		String[] parts = path.split("/");
 
 		// walk from last to first root node, since "newer" ones override older ones
@@ -81,11 +72,27 @@ public class Configuration {
 			}
 
 			if (node != null) {
-				return node.asText();
+				return node;
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Get the string value of the item at a given path. The path can contain directory separators, as such: "a/b/c/leaf"
+	 *
+	 * @param path the deep path into configuration
+	 * @return the string value of the item at the end of the path, or null
+	 */
+	@Nullable
+	public String get(String path) {
+		JsonNode node = getNode(path);
+		if (node != null) {
+			return node.asText();
+		} else {
+			return null;
+		}
 	}
 
 	/**
@@ -140,6 +147,22 @@ public class Configuration {
 			return Boolean.parseBoolean(v);
 		} else {
 			return defaultValue;
+		}
+	}
+
+	/**
+	 * Get an object in the configuration as a simple map
+	 * @param path deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
+	 * @return the item at that point in the configuration as a String->Object map
+	 */
+	@Nullable
+	public Map<String,Object> getMap(String path) {
+		JsonNode node = getNode(path);
+		if (node != null) {
+			//noinspection unchecked
+			return mapper.convertValue(node, Map.class);
+		} else {
+			return null;
 		}
 	}
 

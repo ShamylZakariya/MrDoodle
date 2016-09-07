@@ -102,6 +102,9 @@ public class WebSocketConnection extends WebSocketAdapter {
 	 * Disconnect from host
 	 */
 	public void disconnect() {
+
+		clearScheduledReconnect();
+
 		if (isConnected() || isConnecting()) {
 			setConnectionStatus(ConnectionStatus.DISCONNECTING);
 			if (webSocket != null) {
@@ -216,9 +219,16 @@ public class WebSocketConnection extends WebSocketAdapter {
 		failureCount = 0;
 	}
 
-	protected void reconnect() {
-		// clean up any lingering reconnect
+	/**
+	 * Terminates any scheduled reconnects (which are generally a response to a lost connection,
+	 * failed auth, etc.
+	 */
+	void clearScheduledReconnect() {
 		reconnectHandler.removeCallbacks(reconnectAction);
+	}
+
+	void reconnect() {
+		clearScheduledReconnect();
 
 		failureCount++;
 		long delayMillis = Math.min((long) (Math.pow(1.4, failureCount) * 1000), MAX_RECONNECT_DELAY_MILLIS);

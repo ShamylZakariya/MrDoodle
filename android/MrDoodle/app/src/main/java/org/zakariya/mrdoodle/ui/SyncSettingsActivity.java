@@ -17,24 +17,23 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.google.android.gms.auth.api.Auth;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.squareup.otto.Subscribe;
 import com.squareup.picasso.Picasso;
 
 import org.zakariya.mrdoodle.R;
-import org.zakariya.mrdoodle.events.GoogleSignInEvent;
-import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
 import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.api.SyncService;
 import org.zakariya.mrdoodle.net.transport.Status;
+import org.zakariya.mrdoodle.signin.SignInManager;
+import org.zakariya.mrdoodle.signin.SignInTechnique;
+import org.zakariya.mrdoodle.signin.events.SignInEvent;
+import org.zakariya.mrdoodle.signin.events.SignOutEvent;
+import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.AsyncExecutor;
 import org.zakariya.mrdoodle.util.BusProvider;
-import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -61,8 +60,8 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Bind(R.id.userEmailTextView)
 	TextView userEmailTextView;
 
-	@Bind(R.id.userIdTokenTextView)
-	TextView userIdTokenTextView;
+	@Bind(R.id.userIdTextView)
+	TextView userIdTextView;
 
 	@Bind(R.id.userNameTextView)
 	TextView userNameTextView;
@@ -132,15 +131,22 @@ public class SyncSettingsActivity extends BaseActivity {
 		super.onActivityResult(requestCode, resultCode, data);
 
 		if (requestCode == RC_GET_SIGN_IN) {
-			GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
-			GoogleSignInManager.getInstance().setGoogleSignInResult(result);
+			SignInManager signInManager = SignInManager.getInstance();
+			SignInTechnique technique = signInManager.getSignInTechnique();
+			technique.handleSignInIntentResult(data);
 		}
 	}
 
 	@OnClick(R.id.signInButton)
 	void signIn() {
-		Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(GoogleSignInManager.getInstance().getGoogleApiClient());
-		startActivityForResult(signInIntent, RC_GET_SIGN_IN);
+		SignInManager signInManager = SignInManager.getInstance();
+		SignInTechnique technique = signInManager.getSignInTechnique();
+		if (technique.requiresSignInIntent()) {
+			Intent signInIntent = SignInManager.getInstance().getSignInTechnique().getSignInIntent();
+			startActivityForResult(signInIntent, RC_GET_SIGN_IN);
+		} else {
+			technique.signIn();
+		}
 	}
 
 	@OnClick(R.id.connectButton)
@@ -163,7 +169,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		SyncEngine syncEngine = syncManager.getSyncEngine();
 		final SyncService service = syncEngine.getSyncService();
 		AsyncExecutor executor = syncEngine.getExecutor();
-		final GoogleSignInAccount account = GoogleSignInManager.getInstance().getGoogleSignInAccount();
+		final SignInAccount account = SignInManager.getInstance().getAccount();
 
 		if (account != null) {
 			executor.execute("getStatus", new AsyncExecutor.Job<Response<Status>>() {
@@ -198,16 +204,16 @@ public class SyncSettingsActivity extends BaseActivity {
 	}
 
 	void signOut() {
-		GoogleSignInManager.getInstance().signOut();
+		SignInManager.getInstance().signOut();
 	}
 
 	@Subscribe
-	public void onSignedIn(GoogleSignInEvent event) {
-		showSignedInState(event.getGoogleSignInAccount());
+	public void onSignedIn(SignInEvent event) {
+		showSignedInState(event.getAccount());
 	}
 
 	@Subscribe
-	public void onSignedOut(GoogleSignOutEvent event) {
+	public void onSignedOut(SignOutEvent event) {
 		showSignedOutState();
 	}
 
@@ -237,7 +243,7 @@ public class SyncSettingsActivity extends BaseActivity {
 
 
 	private void syncToCurrentSignedInState() {
-		GoogleSignInAccount account = GoogleSignInManager.getInstance().getGoogleSignInAccount();
+		SignInAccount account = SignInManager.getInstance().getAccount();
 		if (account != null) {
 			showSignedInState(account);
 		} else {
@@ -275,7 +281,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		}
 	}
 
-	private void showSignedInState(GoogleSignInAccount account) {
+	private void showSignedInState(SignInAccount account) {
 		signedInView.setVisibility(View.VISIBLE);
 		signedOutView.setVisibility(View.GONE);
 
@@ -286,6 +292,6 @@ public class SyncSettingsActivity extends BaseActivity {
 		Picasso.with(this).load(account.getPhotoUrl()).into(avatarImageView);
 		userEmailTextView.setText(account.getEmail());
 		userNameTextView.setText(account.getDisplayName());
-		userIdTokenTextView.setText(account.getIdToken());
+		userIdTextView.setText(account.getId());
 	}
 }

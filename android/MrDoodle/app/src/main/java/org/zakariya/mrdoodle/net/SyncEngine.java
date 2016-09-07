@@ -28,7 +28,7 @@ public class SyncEngine {
 	private SyncConfiguration syncConfiguration;
 	private OkHttpClient httpClient;
 	private Retrofit retrofit;
-	private String googleIdToken;
+	private String authorizationToken;
 	private SyncService syncService;
 	private AsyncExecutor executor;
 
@@ -45,7 +45,7 @@ public class SyncEngine {
 				Request original = chain.request();
 				Request request = original.newBuilder()
 						.header(REQUEST_HEADER_USER_AGENT, "MrDoodle")
-						.header(REQUEST_HEADER_AUTH, getGoogleIdToken())
+						.header(REQUEST_HEADER_AUTH, getAuthorizationToken())
 						.build();
 
 				return chain.proceed(request);
@@ -82,8 +82,8 @@ public class SyncEngine {
 		return syncService;
 	}
 
-	public String getGoogleIdToken() {
-		return googleIdToken;
+	public String getAuthorizationToken() {
+		return authorizationToken;
 	}
 
 	public AsyncExecutor getExecutor() {
@@ -91,11 +91,11 @@ public class SyncEngine {
 	}
 
 	/**
-	 * Set the google id token for authorization. This is called automatically by SyncManager when the
+	 * Set the (likely JWT) authorization token. This is called automatically by SyncManager when the
 	 * auth token becomes available, and when it's updated.
-	 * @param googleIdToken the google authorization JWT token
+	 * @param authorizationToken the user id authorization JWT token
 	 */
-	public void setGoogleIdToken(String googleIdToken) {
-		this.googleIdToken = googleIdToken;
+	public void setAuthorizationToken(String authorizationToken) {
+		this.authorizationToken = authorizationToken;
 	}
 }

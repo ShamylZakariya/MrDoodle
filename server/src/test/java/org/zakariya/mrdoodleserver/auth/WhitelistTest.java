@@ -26,32 +26,32 @@ public class WhitelistTest {
 	public void whitelistTests() throws Exception {
 
 		Whitelist whitelist = new Whitelist(1);
-		whitelist.addTokenToWhitelist("A");
-		whitelist.addTokenToWhitelist("B");
+		whitelist.add("A");
+		whitelist.add("B");
 
-		assertTrue("Token \"A\" is in white list", whitelist.isInWhitelist("A"));
-		assertTrue("Token \"B\" is in white list", whitelist.isInWhitelist("B"));
+		assertTrue("Token \"A\" is in white list", whitelist.contains("A"));
+		assertTrue("Token \"B\" is in white list", whitelist.contains("B"));
 
-		whitelist.removeTokenFromWhitelist("A");
-		assertFalse("Token \"A\" is no longer in white list", whitelist.isInWhitelist("A"));
-		assertTrue("Token \"B\" is still in white list", whitelist.isInWhitelist("B"));
+		whitelist.remove("A");
+		assertFalse("Token \"A\" is no longer in white list", whitelist.contains("A"));
+		assertTrue("Token \"B\" is still in white list", whitelist.contains("B"));
 
 		// wait for the whitelist expiration to invalidate "B"
 		Thread.sleep(1100);
-		assertFalse("Token \"B\" is no longer in white list", whitelist.isInWhitelist("B"));
+		assertFalse("Token \"B\" is no longer in white list", whitelist.contains("B"));
 
 		// test custom grace periods
 		whitelist.clear();
 		whitelist.setDefaultGraceperiodSeconds(0);
-		whitelist.addTokenToWhitelist("C");
-		whitelist.addTokenToWhitelist("D", 1);
+		whitelist.add("C");
+		whitelist.add("D", 1);
 
 		Thread.sleep(100);
-		assertFalse("Token \"C\" is no longer in white list", whitelist.isInWhitelist("C"));
-		assertTrue("Token \"D\" is still in white list", whitelist.isInWhitelist("D"));
+		assertFalse("Token \"C\" is no longer in white list", whitelist.contains("C"));
+		assertTrue("Token \"D\" is still in white list", whitelist.contains("D"));
 
 		Thread.sleep(1000);
-		assertFalse("Token \"D\" is no longer in white list", whitelist.isInWhitelist("D"));
+		assertFalse("Token \"D\" is no longer in white list", whitelist.contains("D"));
 
 	}
 
