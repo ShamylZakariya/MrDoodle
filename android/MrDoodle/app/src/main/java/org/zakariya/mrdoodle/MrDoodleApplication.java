@@ -9,6 +9,7 @@ import android.util.Log;
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
 import org.zakariya.mrdoodle.signin.SignInManager;
+import org.zakariya.mrdoodle.signin.techniques.MockSignInTechnique;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
@@ -86,7 +87,10 @@ public class MrDoodleApplication extends android.app.Application {
 
 	private void initSingletons() {
 		DoodleThumbnailRenderer.init(this);
-		SignInManager.init(new GoogleSignInTechnique(this));
+
+		//SignInManager.init(new GoogleSignInTechnique(this));
+		SignInManager.init(new MockSignInTechnique(this));
+
 		SyncManager.init(this, new SyncConfiguration());
 	}
 
@@ -96,7 +100,7 @@ public class MrDoodleApplication extends android.app.Application {
 		private static final int BACKGROUND_DELAY_MILLIS = 1000;
 		private static final String TAG = "BackgroundWatcher";
 
-		boolean didFireBackgroundingEvent;
+		boolean didFireBackgroundEvent;
 		private Handler delayHandler;
 		private Runnable action;
 		private int count;
@@ -115,7 +119,7 @@ public class MrDoodleApplication extends android.app.Application {
 					}
 					BusProvider.getBus().post(new ApplicationDidBackgroundEvent());
 					application.onApplicationBackgrounded();
-					didFireBackgroundingEvent = true;
+					didFireBackgroundEvent = true;
 				}
 			};
 		}
@@ -133,7 +137,7 @@ public class MrDoodleApplication extends android.app.Application {
 
 			delayHandler.removeCallbacks(action);
 
-			if (count == 1 && didFireBackgroundingEvent) {
+			if (count == 1 && didFireBackgroundEvent) {
 				if (noisy) {
 					Log.i(TAG, "onActivityStarted - firing ApplicationDidResumeEvent");
 				}
@@ -166,7 +170,7 @@ public class MrDoodleApplication extends android.app.Application {
 					Log.i(TAG, "onActivityStopped: - scheduling fire of ApplicationDidBackgroundEvent...");
 				}
 
-				didFireBackgroundingEvent = false;
+				didFireBackgroundEvent = false;
 				delayHandler.postDelayed(action, BACKGROUND_DELAY_MILLIS);
 			}
 		}
