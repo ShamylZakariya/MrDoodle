@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
 import org.zakariya.mrdoodle.signin.SignInTechnique;
@@ -18,6 +19,7 @@ import org.zakariya.mrdoodle.util.BusProvider;
  */
 public class MockSignInTechnique implements SignInTechnique {
 
+	private static final String TAG = "MockSignInTechnique";
 	private static final String PREFS_NAME = "MockSignInTechnique";
 	private static final String PREF_KEY_SIGNED_IN = "MockSignInTechnique.PREF_KEY_SIGNED_IN";
 
@@ -34,6 +36,8 @@ public class MockSignInTechnique implements SignInTechnique {
 
 		SharedPreferences prefs = getPreferences();
 		this.signedIn = prefs.getBoolean(PREF_KEY_SIGNED_IN, false);
+
+		connect();
 	}
 
 	@Override
@@ -55,7 +59,7 @@ public class MockSignInTechnique implements SignInTechnique {
 	@Override
 	public void signOut() {
 		signedIn = false;
-		getPreferences().edit().putBoolean(PREF_KEY_SIGNED_IN, signedIn).apply();
+		getPreferences().edit().putBoolean(PREF_KEY_SIGNED_IN, signedIn).commit();
 		disconnect();
 	}
 
@@ -83,7 +87,7 @@ public class MockSignInTechnique implements SignInTechnique {
 	@Override
 	public void signIn() {
 		signedIn = true;
-		getPreferences().edit().putBoolean(PREF_KEY_SIGNED_IN, signedIn).apply();
+		getPreferences().edit().putBoolean(PREF_KEY_SIGNED_IN, signedIn).commit();
 		connect();
 	}
 

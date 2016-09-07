@@ -1,3 +1,6 @@
+#Sync
+
+
 #Currently
 
 - Divide brush radius by current zoom level. this will allow for delicate hairlines when zoomed in.
