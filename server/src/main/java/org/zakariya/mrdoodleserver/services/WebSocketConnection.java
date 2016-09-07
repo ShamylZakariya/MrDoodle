@@ -12,7 +12,6 @@ import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zakariya.mrdoodleserver.SyncServer;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.util.Configuration;
 
@@ -54,26 +53,26 @@ public class WebSocketConnection {
 		 *
 		 * @param connection the websocket connection
 		 * @param session  the user/device websocket session
-		 * @param googleId the google id of the connected user/device
+		 * @param userId the user id of the connected user/device
 		 */
-		void onUserSessionConnected(WebSocketConnection connection, Session session, String googleId);
+		void onUserSessionConnected(WebSocketConnection connection, Session session, String userId);
 
 		/**
 		 * Invoked when a user/device disconnects
 		 *
 		 * @param connection the websocket connection
 		 * @param session  the user/device websocket session
-		 * @param googleId the google id of the connected user/device
+		 * @param userId the user id of the connected user/device
 		 */
-		void onUserSessionDisconnected(WebSocketConnection connection, Session session, String googleId);
+		void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId);
 	}
 
 	private static class UserGroup {
-		String googleId;
+		String userId;
 		Set<Session> userSessions = new HashSet<>();
 
-		UserGroup(String googleId) {
-			this.googleId = googleId;
+		UserGroup(String userId) {
+			this.userId = userId;
 		}
 	}
 
@@ -109,8 +108,8 @@ public class WebSocketConnection {
 	private static List<WebSocketConnectionCreatedListener> webSocketConnectionCreatedListeners = new ArrayList<>();
 
 	private ObjectMapper objectMapper = new ObjectMapper();
-	private Map<String, UserGroup> authenticatedUserGroupsByGoogleId = new HashMap<>();
-	private Map<Session, String> googleIdByUserSession = new HashMap<>();
+	private Map<String, UserGroup> authenticatedUserGroupsByUserId = new HashMap<>();
+	private Map<Session, String> userIdByUserSession = new HashMap<>();
 	private List<OnUserSessionStatusChangeListener> userSessionStatusChangeListeners = new ArrayList<>();
 
 	public WebSocketConnection() {
@@ -150,10 +149,10 @@ public class WebSocketConnection {
 
 
 	/**
-	 * @return set containing google id of all connected users
+	 * @return set containing user ids of all connected users
 	 */
-	public Set<String> getConnectedUserGoogleIds() {
-		return authenticatedUserGroupsByGoogleId.keySet();
+	public Set<String> getConnectedUserIds() {
+		return authenticatedUserGroupsByUserId.keySet();
 	}
 
 	/**
@@ -161,19 +160,19 @@ public class WebSocketConnection {
 	 */
 	public int getTotalConnectedDeviceCount() {
 		int count = 0;
-		for (String googleId : authenticatedUserGroupsByGoogleId.keySet()) {
-			count += authenticatedUserGroupsByGoogleId.get(googleId).userSessions.size();
+		for (String userId : authenticatedUserGroupsByUserId.keySet()) {
+			count += authenticatedUserGroupsByUserId.get(userId).userSessions.size();
 		}
 
 		return count;
 	}
 
 	/**
-	 * @param googleId google id of user in question
+	 * @param userId id of user in question
 	 * @return the number of devices this user has connected right now to sync service
 	 */
-	public int getTotalConnectedDevicesForGoogleId(String googleId) {
-		UserGroup group = authenticatedUserGroupsByGoogleId.get(googleId);
+	public int getTotalConnectedDevicesForUserId(String userId) {
+		UserGroup group = authenticatedUserGroupsByUserId.get(userId);
 		if (group != null) {
 			return group.userSessions.size();
 		}
@@ -189,16 +188,16 @@ public class WebSocketConnection {
 	public void onClose(Session userSession, int statusCode, String reason) {
 
 		// clean up
-		String googleId = googleIdByUserSession.get(userSession);
-		if (googleId != null) {
-			googleIdByUserSession.remove(userSession);
-			UserGroup userGroup = authenticatedUserGroupsByGoogleId.get(googleId);
+		String userId = userIdByUserSession.get(userSession);
+		if (userId != null) {
+			userIdByUserSession.remove(userSession);
+			UserGroup userGroup = authenticatedUserGroupsByUserId.get(userId);
 			if (userGroup != null) {
 				userGroup.userSessions.remove(userSession);
 			}
 
 			for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
-				listener.onUserSessionDisconnected(this, userSession, googleId);
+				listener.onUserSessionDisconnected(this, userSession, userId);
 			}
 		}
 
@@ -225,15 +224,15 @@ public class WebSocketConnection {
 
 			boolean didAuthenticate = false;
 			if (!isSessionAuthenticated(userSession)) {
-				String googleId = authenticate(userSession, authToken);
-				sendAuthenticationResponse(userSession, googleId  != null);
+				String userId = authenticate(userSession, authToken);
+				sendAuthenticationResponse(userSession, userId  != null);
 
-				if (googleId != null) {
+				if (userId != null) {
 					didAuthenticate = true;
 
 					// notify
 					for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
-						listener.onUserSessionConnected(this, userSession, googleId);
+						listener.onUserSessionConnected(this, userSession, userId);
 					}
 				}
 				
@@ -247,8 +246,8 @@ public class WebSocketConnection {
 				// if we didn't authenticate a new session just now
 				// we need to confirm that user's auth is still valid
 				if (!didAuthenticate) {
-					String googleId = authenticator.verify(authToken);
-					if (googleId == null) {
+					String userId = authenticator.verify(authToken);
+					if (userId == null) {
 
 						// the authorization must have expired
 						deauthenticate(userSession);
@@ -272,20 +271,20 @@ public class WebSocketConnection {
 	private String authenticate(Session userSession, String authToken) {
 		if (authToken != null && !authToken.isEmpty()) {
 
-			String googleId = authenticator.verify(authToken);
-			if (googleId != null && !googleId.isEmpty()) {
+			String userId = authenticator.verify(authToken);
+			if (userId != null && !userId.isEmpty()) {
 
 				// and move this session to our authenticated region
-				googleIdByUserSession.put(userSession, googleId);
+				userIdByUserSession.put(userSession, userId);
 
-				UserGroup userGroup = authenticatedUserGroupsByGoogleId.get(googleId);
+				UserGroup userGroup = authenticatedUserGroupsByUserId.get(userId);
 				if (userGroup == null) {
-					userGroup = new UserGroup(googleId);
-					authenticatedUserGroupsByGoogleId.put(googleId, userGroup);
+					userGroup = new UserGroup(userId);
+					authenticatedUserGroupsByUserId.put(userId, userGroup);
 				}
 
 				userGroup.userSessions.add(userSession);
-				return googleId;
+				return userId;
 			} else {
 
 				// couldn't extract an ID from the token
@@ -306,19 +305,19 @@ public class WebSocketConnection {
 	 */
 	private void deauthenticate(Session userSession) {
 		// move this session from authenticated region to unauthenticated
-		String googleId = googleIdByUserSession.get(userSession);
-		if (googleId != null) {
-			UserGroup userGroup = authenticatedUserGroupsByGoogleId.get(googleId);
+		String userId = userIdByUserSession.get(userSession);
+		if (userId != null) {
+			UserGroup userGroup = authenticatedUserGroupsByUserId.get(userId);
 			if (userGroup != null) {
 				userGroup.userSessions.remove(userSession);
 			}
 
 			for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
-				listener.onUserSessionDisconnected(this, userSession, googleId);
+				listener.onUserSessionDisconnected(this, userSession, userId);
 			}
 		}
 
-		googleIdByUserSession.remove(userSession);
+		userIdByUserSession.remove(userSession);
 	}
 
 	/**
@@ -338,7 +337,7 @@ public class WebSocketConnection {
 	 * @return true if the session has been authenticated
 	 */
 	private boolean isSessionAuthenticated(Session userSession) {
-		return googleIdByUserSession.containsKey(userSession);
+		return userIdByUserSession.containsKey(userSession);
 	}
 
 	/**
@@ -365,11 +364,11 @@ public class WebSocketConnection {
 	/**
 	 * Broadcast the message object as JSON to every user connected to this service authenticated by a given google id
 	 *
-	 * @param googleId      the google id representing a number of connected users using same sign-in
+	 * @param userId      the user id representing a number of connected devices using same sign-in
 	 * @param messageObject and arbitrary POJO to send
 	 */
-	public void broadcast(String googleId, Object messageObject) {
-		UserGroup group = authenticatedUserGroupsByGoogleId.get(googleId);
+	public void broadcast(String userId, Object messageObject) {
+		UserGroup group = authenticatedUserGroupsByUserId.get(userId);
 		if (group != null) {
 			try {
 				String messageJsonString = objectMapper.writeValueAsString(messageObject);

@@ -23,8 +23,8 @@ import static org.zakariya.mrdoodleserver.util.Preconditions.*;
 
 
 /**
- * Authenticator
- * Authenticator simply wraps GoogleIdTokenVerifier, and a whitelist. When a token is offered for
+ * GoogleIdTokenAuthenticator
+ * GoogleIdTokenAuthenticator simply wraps GoogleIdTokenVerifier, and a whitelist. When a token is offered for
  * verification, it will be checked first against the whitelist
  */
 public class GoogleIdTokenAuthenticator implements Authenticator {
