@@ -91,7 +91,7 @@
 						tools:text="shamyl@gmail.com"/>
 
 					<TextView
-						android:id="@+id/userIdTokenTextView"
+						android:id="@+id/userIdTextView"
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
 						android:visibility="gone"

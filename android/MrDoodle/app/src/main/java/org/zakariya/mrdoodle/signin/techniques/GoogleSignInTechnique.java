@@ -1,6 +1,7 @@
-package org.zakariya.mrdoodle.util;
+package org.zakariya.mrdoodle.signin.techniques;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -21,47 +22,36 @@ import com.google.android.gms.common.api.Status;
 import com.google.gson.Gson;
 
 import org.zakariya.mrdoodle.R;
-import org.zakariya.mrdoodle.events.GoogleSignInEvent;
-import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
+import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
+import org.zakariya.mrdoodle.signin.SignInTechnique;
+import org.zakariya.mrdoodle.signin.events.SignInEvent;
+import org.zakariya.mrdoodle.signin.events.SignOutEvent;
+import org.zakariya.mrdoodle.signin.model.SignInAccount;
+import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 /**
- * Created by shamyl on 1/2/16.
+ * Implementation of SignInTechnique using Google's services
  */
-public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
+public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.OnConnectionFailedListener, GoogleApiClient.ConnectionCallbacks {
 
-	public interface GoogleIdTokenReceiver {
-		void onIdTokenAvailable(String idToken);
-
-		void onIdTokenError();
-	}
-
-
-	private static final String TAG = "GoogleSignInManager";
-	private static GoogleSignInManager instance;
+	private static final String TAG = "GoogleSignInTechnique";
 
 	private Context context;
 	private GoogleApiClient googleApiClient;
 	private GoogleSignInAccount googleSignInAccount;
 	private boolean connected;
-	private List<GoogleIdTokenReceiver> idTokenReceivers = new ArrayList<>();
+	private List<AuthenticationTokenReceiver> authenticationTokenReceivers = new ArrayList<>();
 	private Gson gson = new Gson();
 	boolean isRenewingConnection;
 	int connectionSuspendedCount = 0;
 	Handler reconnectHandler = new Handler();
 
-	public static void init(Context context) {
-		instance = new GoogleSignInManager(context);
-	}
 
-	public static GoogleSignInManager getInstance() {
-		return instance;
-	}
-
-	private GoogleSignInManager(Context context) {
+	public GoogleSignInTechnique(Context context) {
 		this.context = context;
 
 		String serverClientId = context.getString(R.string.oauth_server_client_id);
@@ -85,26 +75,10 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 		return context;
 	}
 
-	public GoogleApiClient getGoogleApiClient() {
-		return googleApiClient;
-	}
-
-	public boolean isConnected() {
-		return connected;
-	}
-
-	public void requestIdToken(GoogleIdTokenReceiver receiver) {
-		if (!isRenewingConnection && getGoogleSignInAccount() != null && isIdTokenValid(getGoogleSignInAccount().getIdToken())) {
-			receiver.onIdTokenAvailable(getGoogleSignInAccount().getIdToken());
-		} else {
-			idTokenReceivers.add(receiver);
-			renew();
-		}
-	}
-
 	/**
 	 * Connect the googleApiClient instance. This should be called when application is resuming
 	 */
+	@Override
 	public void connect() {
 		if (!connected) {
 			Log.i(TAG, "connect: ");
@@ -115,6 +89,7 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 	/**
 	 * Disconnect the googleApiClient instance. This should be called when application is backgrounded.
 	 */
+	@Override
 	public void disconnect() {
 		if (connected) {
 			Log.i(TAG, "disconnect: ");
@@ -123,12 +98,73 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 		}
 	}
 
+	@Override
+	public void signOut() {
+		Auth.GoogleSignInApi.signOut(googleApiClient).setResultCallback(
+				new ResultCallback<Status>() {
+					@Override
+					public void onResult(@NonNull Status status) {
+						setGoogleSignInResult(null);
+					}
+				});
+	}
+
+	@Override
+	public boolean isConnected() {
+		return connected;
+	}
+
+	@Nullable
+	@Override
+	public SignInAccount getAccount() {
+		if (googleSignInAccount != null) {
+			return new SignInAccount(this,
+					googleSignInAccount.getId(),
+					googleSignInAccount.getDisplayName(),
+					googleSignInAccount.getEmail(),
+					googleSignInAccount.getPhotoUrl());
+
+		}
+		return null;
+	}
+
+	@Override
+	public void getAuthenticationToken(AuthenticationTokenReceiver receiver) {
+		if (!isRenewingConnection && getGoogleSignInAccount() != null && isIdTokenValid(getGoogleSignInAccount().getIdToken())) {
+			receiver.onAuthenticationTokenAvailable(getGoogleSignInAccount().getIdToken());
+		} else {
+			authenticationTokenReceivers.add(receiver);
+			renew();
+		}
+	}
+
+	@Override
+	public boolean requiresSignInIntent() {
+		return true;
+	}
+
+	@Override
+	public void signIn() {
+		throw new UnsupportedOperationException("GoogleSignInTechnique::signIn - cannot silent-sign-in, must use getSignInIntent");
+	}
+
+	@Override
+	public Intent getSignInIntent() {
+		return Auth.GoogleSignInApi.getSignInIntent(googleApiClient);
+	}
+
+	@Override
+	public void handleSignInIntentResult(Intent data) {
+		GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
+		setGoogleSignInResult(result);
+	}
+
 	@Nullable
 	public GoogleSignInAccount getGoogleSignInAccount() {
 		return googleSignInAccount;
 	}
 
-	public void setGoogleSignInResult(@Nullable GoogleSignInResult googleSignInResult) {
+	void setGoogleSignInResult(@Nullable GoogleSignInResult googleSignInResult) {
 		if (googleSignInResult != null) {
 			if (googleSignInResult.isSuccess()) {
 				googleSignInAccount = googleSignInResult.getSignInAccount();
@@ -147,25 +183,25 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 		// post no notifications if we're renewing out connection status (to get an updated IdToken)
 		if (!isRenewingConnection) {
 			if (googleSignInAccount != null) {
-				BusProvider.postOnMainThread(BusProvider.getBus(), new GoogleSignInEvent(googleSignInAccount));
+				BusProvider.postOnMainThread(BusProvider.getBus(), new SignInEvent(getAccount()));
 			} else {
-				BusProvider.postOnMainThread(BusProvider.getBus(), new GoogleSignOutEvent());
+				BusProvider.postOnMainThread(BusProvider.getBus(), new SignOutEvent());
 			}
 		}
 
 		if (googleSignInResult != null && isRenewingConnection) {
 
-			for (GoogleIdTokenReceiver receiver : idTokenReceivers) {
+			for (AuthenticationTokenReceiver receiver : authenticationTokenReceivers) {
 				if (googleSignInAccount != null) {
-					receiver.onIdTokenAvailable(googleSignInAccount.getIdToken());
+					receiver.onAuthenticationTokenAvailable(googleSignInAccount.getIdToken());
 				} else {
-					receiver.onIdTokenError();
+					receiver.onAuthenticationTokenError(null);
 				}
 			}
 		}
 	}
 
-	private void attemptSilentSignIn() {
+	void attemptSilentSignIn() {
 		OptionalPendingResult<GoogleSignInResult> pendingResult = Auth.GoogleSignInApi.silentSignIn(googleApiClient);
 
 		if (pendingResult.isDone()) {
@@ -183,16 +219,6 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 				}
 			});
 		}
-	}
-
-	public void signOut() {
-		Auth.GoogleSignInApi.signOut(googleApiClient).setResultCallback(
-				new ResultCallback<Status>() {
-					@Override
-					public void onResult(@NonNull Status status) {
-						setGoogleSignInResult(null);
-					}
-				});
 	}
 
 	@Override
@@ -252,7 +278,7 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 	 * @param idToken the id token (base64 JWT token) provided by google sign in service
 	 * @return the time in seconds GMT of the token's expiration, or -1 if the token couldn't be parsed
 	 */
-	protected long getIdTokenExpirationSeconds(String idToken) {
+	long getIdTokenExpirationSeconds(String idToken) {
 		if (TextUtils.isEmpty(idToken)) {
 			return -1;
 		}
@@ -280,7 +306,7 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 	 * @param idToken the id token (base64 JWT token) provided by google sign in service
 	 * @return true iff the token could be parsed, and its expiration date is greater than TOKEN_EXPIRATION_WINDOW_SECONDS in the future
 	 */
-	protected boolean isIdTokenValid(String idToken) {
+	boolean isIdTokenValid(String idToken) {
 		long nowSeconds = (new Date()).getTime() / 1000;
 		long expirationSeconds = getIdTokenExpirationSeconds(idToken);
 
@@ -295,7 +321,7 @@ public class GoogleSignInManager implements GoogleApiClient.OnConnectionFailedLi
 		return (remainingSeconds > 0);
 	}
 
-	protected void renew() {
+	void renew() {
 		isRenewingConnection = true;
 
 		// disconnect and reconnect. When reconnect completes, queued GoogleIdTokenReceiver instances

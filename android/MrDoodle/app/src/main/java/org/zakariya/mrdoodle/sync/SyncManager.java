@@ -1,20 +1,22 @@
 package org.zakariya.mrdoodle.sync;
 
 import android.content.Context;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.squareup.otto.Subscribe;
 
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
-import org.zakariya.mrdoodle.events.GoogleSignInEvent;
-import org.zakariya.mrdoodle.events.GoogleSignOutEvent;
 import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.transport.Status;
+import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
+import org.zakariya.mrdoodle.signin.SignInManager;
+import org.zakariya.mrdoodle.signin.events.SignInEvent;
+import org.zakariya.mrdoodle.signin.events.SignOutEvent;
+import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.util.BusProvider;
-import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
 /**
  * Top level access point for sync services
@@ -25,7 +27,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	private static SyncManager instance;
 
-	private GoogleSignInAccount googleSignInAccount;
+	private SignInAccount signInAccount;
 	private boolean applicationIsActive, running;
 	private SyncConfiguration syncConfiguration;
 	private Context context;
@@ -45,11 +47,13 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	private SyncManager(Context context, SyncConfiguration syncConfiguration) {
+		BusProvider.getBus().register(this);
+
 		this.context = context;
 		this.syncConfiguration = syncConfiguration;
 
 		applicationIsActive = true;
-		googleSignInAccount = GoogleSignInManager.getInstance().getGoogleSignInAccount();
+		signInAccount = SignInManager.getInstance().getAccount();
 
 		syncServerConnection = new SyncServerConnection(syncConfiguration.getSyncServerConnectionUrl());
 		syncServerConnection.addNotificationListener(this);
@@ -58,11 +62,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		timestampRecorder = new TimestampRecorder(context);
 		syncEngine = new SyncEngine(context, syncConfiguration);
 
-		if (googleSignInAccount != null) {
-			syncEngine.setGoogleIdToken(googleSignInAccount.getIdToken());
-		}
-
-		BusProvider.getBus().register(this);
+		updateAuthorizationToken();
 		startOrStopSyncServices();
 	}
 
@@ -117,11 +117,27 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	///////////////////////////////////////////////////////////////////
 
-	private void startOrStopSyncServices() {
-		if (applicationIsActive && googleSignInAccount != null) {
+	void startOrStopSyncServices() {
+		if (applicationIsActive && signInAccount != null) {
 			start();
 		} else {
 			stop();
+		}
+	}
+
+	void updateAuthorizationToken() {
+		if (signInAccount != null) {
+			signInAccount.getAuthenticationToken(new AuthenticationTokenReceiver() {
+				@Override
+				public void onAuthenticationTokenAvailable(String idToken) {
+					syncEngine.setAuthorizationToken(idToken);
+				}
+
+				@Override
+				public void onAuthenticationTokenError(@Nullable String errorMessage) {
+					Log.e(TAG, "Unable to get authentication token, error: " + errorMessage);
+				}
+			});
 		}
 	}
 
@@ -151,18 +167,18 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	@Subscribe
-	public void onSignedIn(GoogleSignInEvent event) {
+	public void onSignedIn(SignInEvent event) {
 		Log.d(TAG, "onSignedIn:");
-		googleSignInAccount = event.getGoogleSignInAccount();
+		signInAccount = event.getAccount();
 		syncServerConnection.resetExponentialBackoff();
-		syncEngine.setGoogleIdToken(event.getGoogleSignInAccount().getIdToken());
+		updateAuthorizationToken();
 		startOrStopSyncServices();
 	}
 
 	@Subscribe
-	public void onSignedOut(GoogleSignOutEvent event) {
+	public void onSignedOut(SignOutEvent event) {
 		Log.d(TAG, "onSignedOut:");
-		googleSignInAccount = null;
+		signInAccount = null;
 		startOrStopSyncServices();
 	}
 

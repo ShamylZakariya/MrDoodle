@@ -8,11 +8,12 @@ import android.util.Log;
 
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
+import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
-import org.zakariya.mrdoodle.util.GoogleSignInManager;
+import org.zakariya.mrdoodle.signin.techniques.GoogleSignInTechnique;
 
 import io.realm.Realm;
 import io.realm.RealmConfiguration;
@@ -58,11 +59,11 @@ public class MrDoodleApplication extends android.app.Application {
 	}
 
 	public void onApplicationBackgrounded() {
-		GoogleSignInManager.getInstance().disconnect();
+		SignInManager.getInstance().disconnect();
 	}
 
 	public void onApplicationResumed() {
-		GoogleSignInManager.getInstance().connect();
+		SignInManager.getInstance().connect();
 	}
 
 	@Override
@@ -85,8 +86,7 @@ public class MrDoodleApplication extends android.app.Application {
 
 	private void initSingletons() {
 		DoodleThumbnailRenderer.init(this);
-		GoogleSignInManager.init(this);
-
+		SignInManager.init(new GoogleSignInTechnique(this));
 		SyncManager.init(this, new SyncConfiguration());
 	}
 

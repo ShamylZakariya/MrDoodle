@@ -1,5 +1,6 @@
 package org.zakariya.mrdoodle.net;
 
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.google.gson.JsonElement;
@@ -10,8 +11,10 @@ import com.neovisionaries.ws.client.WebSocket;
 
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
 import org.zakariya.mrdoodle.net.transport.Status;
+import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
+import org.zakariya.mrdoodle.signin.SignInManager;
+import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.util.BusProvider;
-import org.zakariya.mrdoodle.util.GoogleSignInManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,22 +81,26 @@ public class SyncServerConnection extends WebSocketConnection {
 
 		// we're connected, we need to authorize before the server will consider us connected
 		Log.d(TAG, "onConnected: connected to server, authorizing...");
-		GoogleSignInManager.getInstance().requestIdToken(new GoogleSignInManager.GoogleIdTokenReceiver() {
-			@Override
-			public void onIdTokenAvailable(String idToken) {
-				Log.d(TAG, "onIdTokenAvailable: authorizing...");
 
-				authenticating = true;
-				BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.AUTHORIZING));
-				send(new AuthorizationPayload(idToken));
-			}
+		SignInAccount account = SignInManager.getInstance().getAccount();
+		if (account != null) {
+			account.getAuthenticationToken(new AuthenticationTokenReceiver() {
+				@Override
+				public void onAuthenticationTokenAvailable(String authenticationToken) {
+					Log.d(TAG, "onIdTokenAvailable: authorizing...");
 
-			@Override
-			public void onIdTokenError() {
-				// TODO: Handle error on request of idToken
-				Log.e(TAG, "onIdTokenError: Unable to get Google idToken");
-			}
-		});
+					authenticating = true;
+					BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.AUTHORIZING));
+					send(new AuthorizationPayload(authenticationToken));
+				}
+
+				@Override
+				public void onAuthenticationTokenError(@Nullable String errorMessage) {
+					// TODO: Handle error on request of idToken
+					Log.e(TAG, "onIdTokenError: Unable to get authentication token, error: " + errorMessage);
+				}
+			});
+		}
 	}
 
 	@Override
