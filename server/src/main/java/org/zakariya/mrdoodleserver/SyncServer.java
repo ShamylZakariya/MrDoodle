@@ -6,17 +6,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.auth.Whitelist;
+import org.zakariya.mrdoodleserver.auth.techniques.GoogleIdTokenAuthenticator;
+import org.zakariya.mrdoodleserver.auth.techniques.MockAuthenticator;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.SyncRouter;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.JedisPool;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Created by shamyl on 8/1/16.
  */
 public class SyncServer {
 
-	static final Logger logger = LoggerFactory.getLogger(SyncServer.class);
+	private static final Logger logger = LoggerFactory.getLogger(SyncServer.class);
+	private static final boolean USE_MOCK_AUTHENTICATOR = true;
 
 	public static void main(String[] args) {
 
@@ -26,11 +33,10 @@ public class SyncServer {
 		configuration.addConfigJsonFilePath("configuration.json");
 		configuration.addConfigJsonFilePath("configuration_secret.json");
 
-		Whitelist whitelist = new Whitelist(configuration.getInt("authenticator/whitelist_grace_period_seconds", 60));
-		Authenticator authenticator = new Authenticator(configuration.get("authenticator/oauth_server_id"), whitelist);
+		Authenticator authenticator = buildAuthenticator(configuration);
 
 		String redisHost = configuration.get("redis/host");
-		int redisPort = configuration.getInt("redis/port",-1);
+		int redisPort = configuration.getInt("redis/port", -1);
 		JedisPool jedisPool;
 		if (redisPort != -1) {
 			logger.info("Building jedisPool with host {} and port {}", redisHost, redisPort);
@@ -54,6 +60,26 @@ public class SyncServer {
 
 		syncRouter.configureRoutes();
 		init();
+	}
+
+	private static Authenticator buildAuthenticator(Configuration configuration) {
+		if (USE_MOCK_AUTHENTICATOR) {
+
+			// we need to convert Map<String,Object> -> Map<String,String>
+			Map<String, String> tokens = configuration.getMap("authenticator/mock/tokens")
+					.entrySet()
+					.stream()
+					.collect(Collectors.toMap(Map.Entry::getKey, e -> (String) e.getValue()));
+
+			return new MockAuthenticator(tokens);
+
+		} else {
+
+			String oauthServerId = configuration.get("authenticator/google/oauth_server_id");
+			int whitelistGraceperiodSeconds = configuration.getInt("authenticator/whitelist_grace_period_seconds", 60);
+
+			return new GoogleIdTokenAuthenticator(oauthServerId, new Whitelist(whitelistGraceperiodSeconds));
+		}
 	}
 
 }

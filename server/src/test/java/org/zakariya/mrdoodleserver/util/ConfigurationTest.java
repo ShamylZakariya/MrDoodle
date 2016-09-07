@@ -1,5 +1,7 @@
 package org.zakariya.mrdoodleserver.util;
 
+import java.util.Map;
+
 import static org.junit.Assert.*;
 
 /**
@@ -40,6 +42,17 @@ public class ConfigurationTest {
 		assertNull("non-existent entry must be null", configuration.get("non/existent"));
 		assertEquals("non-existent int must equal specified default value of 1", 1, configuration.getInt("non-existent", 1));
 		assertEquals("non-existent double must equal specified default value of 1.5", 1.5, configuration.getDouble("non-existent", 1.5), 0.01);
+
+
+		Map<String,Object> mapValue = configuration.getMap("map");
+		assertNotNull("map value should be non-null", mapValue);
+		assertEquals("map should have 5 values", 5, mapValue.size());
+		assertEquals("map[a] should equal \"a\"", "a", mapValue.get("a"));
+		assertEquals("map[b] should equal \"b\"", "b", mapValue.get("b"));
+		assertEquals("map[c] should equal \"c\"", "c", mapValue.get("c"));
+		assertEquals("map[d] should equal \"d\"", "d", mapValue.get("d"));
+		assertEquals("map[e] should equal \"e\"", "e", mapValue.get("e"));
+
 	}
 
 }

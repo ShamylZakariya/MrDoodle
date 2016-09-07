@@ -50,18 +50,18 @@ public class Whitelist {
 	 *
 	 * @param token the token to add
 	 */
-	public void addTokenToWhitelist(String token) {
-		addTokenToWhitelist(token, this.getDefaultGraceperiodSeconds());
+	public void add(String token) {
+		add(token, this.getDefaultGraceperiodSeconds());
 	}
 
-	public void addTokenToWhitelist(String token, double customGraceperiodSeconds) {
+	public void add(String token, double customGraceperiodSeconds) {
 		checkArgument(token != null && !token.isEmpty(), "token must be non-null & non-empty");
 
 		double expiration = nowSeconds() + customGraceperiodSeconds;
 		expirationTimestampsByToken.put(token, expiration);
 	}
 
-	public void removeTokenFromWhitelist(String token) {
+	public void remove(String token) {
 		checkArgument(token != null && !token.isEmpty(), "token must be non-null & non-empty");
 		expirationTimestampsByToken.remove(token);
 	}
@@ -72,7 +72,7 @@ public class Whitelist {
 	 * @param token the token to check
 	 * @return true iff the token has been added to the whitelist and the grace period has not expired
 	 */
-	public boolean isInWhitelist(String token) {
+	public boolean contains(String token) {
 		checkArgument(token != null && !token.isEmpty(), "token must be non-null & non-empty");
 
 		// periodically prune the whitelist
