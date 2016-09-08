@@ -29,21 +29,27 @@ class TimestampRecord {
 
 	public static class Entry {
 		public String uuid;
+		public String modelClass;
 		public long timestampSeconds;
 		public int action;
 
-		public Entry(){
+		public Entry() {
 			super();
 		}
 
-		Entry(String uuid, long timestampSeconds, Action action) {
+		Entry(String uuid, String modelClass, long timestampSeconds, Action action) {
 			this.uuid = uuid;
+			this.modelClass = modelClass;
 			this.timestampSeconds = timestampSeconds;
 			this.action = action.ordinal();
 		}
 
 		String getUuid() {
 			return uuid;
+		}
+
+		public String getModelClass() {
+			return modelClass;
 		}
 
 		long getTimestampSeconds() {
@@ -58,7 +64,10 @@ class TimestampRecord {
 		public boolean equals(Object obj) {
 			if (obj != null && obj instanceof Entry) {
 				Entry other = (Entry) obj;
-				return uuid.equals(other.uuid) && timestampSeconds == other.timestampSeconds && action == other.action;
+				return uuid.equals(other.uuid) &&
+						modelClass.equals(other.modelClass) &&
+						timestampSeconds == other.timestampSeconds &&
+						action == other.action;
 			}
 			return false;
 		}
@@ -82,6 +91,7 @@ class TimestampRecord {
 
 	/**
 	 * Create a TimestampRecord which persists to redis
+	 *
 	 * @param jedisPool the pool where jedis instances will be extracted for reads and writes
 	 * @param accountId the account namespace for all writes/reads
 	 */
@@ -107,12 +117,15 @@ class TimestampRecord {
 
 	/**
 	 * Record an event into the timestamp record
-	 * @param uuid id of the thing that the action happened to
-	 * @param seconds the timestamp, in seconds, of the event
-	 * @param action the type of event (write/delete)
+	 *
+	 * @param uuid       id of the thing that the action happened to
+	 * @param modelClass the model class of the thing represented by the uuid
+	 * @param seconds    the timestamp, in seconds, of the event
+	 * @param action     the type of event (write/delete)
+	 * @return the entry that was created
 	 */
-	void record(String uuid, long seconds, Action action) {
-		Entry entry = new Entry(uuid, seconds, action);
+	Entry record(String uuid, String modelClass, long seconds, Action action) {
+		Entry entry = new Entry(uuid, modelClass, seconds, action);
 		entriesByUuid.put(uuid, entry);
 
 		// update head
@@ -126,6 +139,7 @@ class TimestampRecord {
 		}
 
 		markDirty();
+		return entry;
 	}
 
 	/**
@@ -140,6 +154,7 @@ class TimestampRecord {
 
 	/**
 	 * Get a record of all events after sinceTimestampSeconds
+	 *
 	 * @param sinceTimestampSeconds a timestamp in seconds
 	 * @return map of uuid->Entry of all events which occurred after said timestamp
 	 */
@@ -149,7 +164,7 @@ class TimestampRecord {
 			// filter to subset of uuid:timestampSeconds pairs AFTER `sinceTimestampSeconds
 			Map<String, Entry> entries = new HashMap<>();
 			for (String uuid : entriesByUuid.keySet()) {
-				Entry entry  = entriesByUuid.get(uuid);
+				Entry entry = entriesByUuid.get(uuid);
 				if (entry.getTimestampSeconds() >= sinceTimestampSeconds) {
 					entries.put(uuid, entry);
 				}
@@ -211,6 +226,7 @@ class TimestampRecord {
 
 	/**
 	 * Write this TimestampRecord's values onto the target
+	 *
 	 * @param target the TimestampRecord which will receive this TimestampRecord's values
 	 */
 	void save(TimestampRecord target) {
@@ -243,7 +259,8 @@ class TimestampRecord {
 			if (jsonString != null && !jsonString.isEmpty()) {
 				try {
 					entriesByUuid = objectMapper.reader()
-							.forType(new TypeReference<Map<String,Entry>>() {})
+							.forType(new TypeReference<Map<String, Entry>>() {
+							})
 							.readValue(jsonString);
 
 					head = findHeadEntry();

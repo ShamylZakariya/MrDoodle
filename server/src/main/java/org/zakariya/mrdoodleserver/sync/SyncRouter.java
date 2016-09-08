@@ -284,12 +284,19 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		try (InputStream is = request.raw().getPart("blob").getInputStream()) {
 
 			long timestamp = syncManager.getTimestampSeconds();
-			timestampRecord.record(blobId, timestamp, TimestampRecord.Action.WRITE);
+			TimestampRecord.Entry entry = timestampRecord.record(blobId, modelClass, timestamp, TimestampRecord.Action.WRITE);
 
 			byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
 			blobStore.set(blobId, modelClass, timestamp, data);
 
-			// Use the input stream to create a file
+
+			try {
+				return objectMapper.writeValueAsString(entry);
+			} catch (JsonProcessingException e) {
+				haltWithError500("SyncRouter::putBlob - unable to serialize status to JSON", e);
+				return null;
+			}
+
 		} catch (ServletException | IOException e) {
 			haltWithError500("SyncRouter::putBlob - Unable to read blob data from request", e);
 		}
@@ -323,11 +330,17 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		TimestampRecord timestampRecord = session.getTimestampRecord();
 		BlobStore blobStore = session.getBlobStore();
 
+		// record deletion. note, the modelClass of the deleted item is irrelevant
 		long timestamp = syncManager.getTimestampSeconds();
-		timestampRecord.record(blobId, timestamp, TimestampRecord.Action.DELETE);
+		TimestampRecord.Entry entry = timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
 		blobStore.delete(blobId);
 
-		return null;
+		try {
+			return objectMapper.writeValueAsString(entry);
+		} catch (JsonProcessingException e) {
+			haltWithError500("SyncRouter::deleteBlob - unable to serialize status to JSON", e);
+			return null;
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////
