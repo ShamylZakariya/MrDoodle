@@ -117,6 +117,11 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 		minPinchScalingForTap = DOUBLE_TAP_MIN_SCALING;
 	}
 
+	public StrokeDoodle(Context context, InputStream serializedForm) throws InvalidObjectException {
+		this(context);
+		inflate(serializedForm);
+	}
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -137,7 +142,7 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 	}
 
 	@Override
-	public void serializeDoodle(OutputStream out) {
+	public void serialize(OutputStream out) {
 		Output output = new Output(out);
 
 		Kryo kryo = new Kryo();
@@ -148,7 +153,7 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 	}
 
 	@Override
-	public void inflateDoodle(InputStream in) throws InvalidObjectException {
+	public void inflate(InputStream in) throws InvalidObjectException {
 		Input input = new Input(in);
 		Kryo kryo = new Kryo();
 

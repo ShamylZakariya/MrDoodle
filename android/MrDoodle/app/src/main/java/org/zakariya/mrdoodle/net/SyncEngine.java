@@ -34,13 +34,11 @@ public class SyncEngine {
 	private Retrofit retrofit;
 	private String authorizationToken;
 	private SyncService syncService;
-	private AsyncExecutor executor;
 	private boolean syncing;
 
 	public SyncEngine(Context context, SyncConfiguration syncConfiguration) {
 		this.context = context;
 		this.syncConfiguration = syncConfiguration;
-		this.executor = new AsyncExecutor();
 
 		// set up an interceptor to add Authorization headers
 		OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
@@ -91,10 +89,6 @@ public class SyncEngine {
 		return authorizationToken;
 	}
 
-	public AsyncExecutor getExecutor() {
-		return executor;
-	}
-
 	/**
 	 * Set the (likely JWT) authorization token. This is called automatically by SyncManager when the
 	 * auth token becomes available, and when it's updated.
@@ -114,7 +108,7 @@ public class SyncEngine {
 
 	public interface BlobDataProvider {
 		@Nullable
-		byte [] getBlobData(String blobId, String blobClass);
+		byte [] getBlobData(String blobId, String blobClass) throws Exception;
 	}
 
 	public interface BlobDataConsumer {

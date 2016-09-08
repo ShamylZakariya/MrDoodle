@@ -170,7 +170,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		SyncManager syncManager = SyncManager.getInstance();
 		SyncEngine syncEngine = syncManager.getSyncEngine();
 		final SyncService service = syncEngine.getSyncService();
-		AsyncExecutor executor = syncEngine.getExecutor();
+		AsyncExecutor executor = syncManager.getExecutor();
 		final SignInAccount account = SignInManager.getInstance().getAccount();
 
 		if (account != null) {
@@ -199,19 +199,69 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	@OnClick(R.id.syncNowButton)
 	void syncNow() {
-		SyncManager.getInstance().sync();
+
+		SyncManager syncManager = SyncManager.getInstance();
+		if (syncManager.isSyncing()) {
+			Log.i(TAG, "syncNow: currently syncing, never mind...");
+			return;
+		}
+
+
+		syncManager.getExecutor().execute("sync", new AsyncExecutor.Job<Void>() {
+			@Override
+			public Void execute() throws Exception {
+				SyncManager.getInstance().sync();
+				return null;
+			}
+		}, new AsyncExecutor.JobListener<Void>() {
+			@Override
+			public void onComplete(Void result) {
+				Log.i(TAG, "syncNow - onComplete: SUCCESS, I GUESS");
+			}
+
+			@Override
+			public void onError(Throwable error) {
+				Log.e(TAG, "syncNow - onError: ", error);
+			}
+		});
 	}
 
 	@OnClick(R.id.resetAndSyncButton)
 	void resetAndSync() {
-		SyncManager.getInstance().resetAndSync(new SyncManager.LocalStoreDeleter() {
+		SyncManager syncManager = SyncManager.getInstance();
+		if (syncManager.isSyncing()) {
+			Log.i(TAG, "syncNow: currently syncing, never mind...");
+			return;
+		}
+
+
+		syncManager.getExecutor().execute("resetAndSync", new AsyncExecutor.Job<Void>() {
 			@Override
-			public void deleteLocalStore() {
-				Realm realm = Realm.getDefaultInstance();
-				realm.delete(DoodleDocument.class);
-				realm.close();
+			public Void execute() throws Exception {
+
+				SyncManager.getInstance().resetAndSync(new SyncManager.LocalStoreDeleter() {
+					@Override
+					public void deleteLocalStore() {
+						Realm realm = Realm.getDefaultInstance();
+						realm.delete(DoodleDocument.class);
+						realm.close();
+					}
+				});
+
+				return null;
+			}
+		}, new AsyncExecutor.JobListener<Void>() {
+			@Override
+			public void onComplete(Void result) {
+				Log.i(TAG, "syncNow - onComplete: SUCCESS, I GUESS");
+			}
+
+			@Override
+			public void onError(Throwable error) {
+				Log.e(TAG, "syncNow - onError: ", error);
 			}
 		});
+
 	}
 
 	void signOut() {

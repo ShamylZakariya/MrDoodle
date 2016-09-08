@@ -13,6 +13,8 @@ import android.view.MotionEvent;
 
 import org.zakariya.doodle.view.DoodleView;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.InvalidObjectException;
 import java.io.OutputStream;
@@ -166,7 +168,18 @@ public abstract class Doodle {
 	 *
 	 * @param out the output stream into which to stuff the doodle's drawing
 	 */
-	public abstract void serializeDoodle(OutputStream out);
+	public abstract void serialize(OutputStream out);
+
+
+	/**
+	 * Serialize the doodle drawing state to a byte array
+	 * @return byte array of doodle
+	 */
+	public byte[] serialize() {
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		serialize(stream);
+		return stream.toByteArray();
+	}
 
 	/**
 	 * Inflate the doodle drawing state
@@ -174,8 +187,18 @@ public abstract class Doodle {
 	 * @param in the input stream from which to read the doodle
 	 * @throws InvalidObjectException
 	 */
-	public abstract void inflateDoodle(InputStream in) throws InvalidObjectException;
+	public abstract void inflate(InputStream in) throws InvalidObjectException;
 
+
+	/**
+	 * Inflate doodle drawing state from a byte array
+	 * @param bytes byte data
+	 * @throws InvalidObjectException
+	 */
+	public void inflate(byte []bytes) throws InvalidObjectException {
+		ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+		inflate(stream);
+	}
 
 	public boolean onTouchEvent(@NonNull MotionEvent event) {
 		int action = MotionEventCompat.getActionMasked(event);

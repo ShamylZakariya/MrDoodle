@@ -16,7 +16,6 @@ import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
-import org.zakariya.mrdoodle.signin.techniques.GoogleSignInTechnique;
 
 import io.realm.Realm;
 import io.realm.RealmConfiguration;
@@ -30,7 +29,6 @@ public class MrDoodleApplication extends android.app.Application {
 
 	private static MrDoodleApplication instance;
 
-	private SyncManager syncManager;
 	private BackgroundWatcher backgroundWatcher;
 	private RealmConfiguration realmConfiguration;
 
@@ -95,12 +93,19 @@ public class MrDoodleApplication extends android.app.Application {
 
 		// build the sync manager, providing mechanism for serializing/deserializing our model type
 		SyncManager.init(this, new SyncConfiguration(), new SyncManager.BlobDataConverter() {
+
+			@SuppressWarnings("TryFinallyCanBeTryWithResources") // not for API 17 it's can't
 			@Override
 			public void setBlobData(String blobId, String blobClass, byte[] blobData) throws Exception {
 				switch (blobClass) {
 					case DoodleDocument.BLOB_TYPE: {
 
-						// TODO: Implement
+						Realm realm = Realm.getDefaultInstance();
+						try {
+							DoodleDocument.createOrUpdate(MrDoodleApplication.this, realm, blobData);
+						} finally {
+							realm.close();
+						}
 
 						break;
 					}
@@ -108,15 +113,24 @@ public class MrDoodleApplication extends android.app.Application {
 
 			}
 
+			@SuppressWarnings("TryFinallyCanBeTryWithResources") // not for API 17 it's can't
 			@Nullable
 			@Override
-			public byte[] getBlobData(String blobId, String blobClass) {
+			public byte[] getBlobData(String blobId, String blobClass) throws Exception {
 				switch (blobClass) {
 					case DoodleDocument.BLOB_TYPE: {
 
-						// TODO: Implement
-
-						break;
+						Realm realm = Realm.getDefaultInstance();
+						try {
+							DoodleDocument document = DoodleDocument.byUUID(realm, blobId);
+							if (document != null) {
+								return document.serialize(MrDoodleApplication.this);
+							} else {
+								throw new Exception("Unable to find DoodleDocument with UUID: " + blobId);
+							}
+						} finally {
+							realm.close();
+						}
 					}
 				}
 				return null;

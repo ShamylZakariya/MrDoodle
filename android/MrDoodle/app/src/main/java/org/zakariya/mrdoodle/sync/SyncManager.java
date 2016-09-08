@@ -17,6 +17,7 @@ import org.zakariya.mrdoodle.signin.events.SignInEvent;
 import org.zakariya.mrdoodle.signin.events.SignOutEvent;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.model.SyncState;
+import org.zakariya.mrdoodle.util.AsyncExecutor;
 import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.util.Date;
@@ -39,6 +40,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private boolean applicationIsActive, running;
 	private SyncConfiguration syncConfiguration;
 	private Context context;
+	private AsyncExecutor executor;
 	private SyncServerConnection syncServerConnection;
 	private ChangeJournal changeJournal;
 	private TimestampRecorder timestampRecorder;
@@ -60,6 +62,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		BusProvider.getBus().register(this);
 
 		this.context = context;
+		this.executor = new AsyncExecutor();
 		this.syncConfiguration = syncConfiguration;
 		this.blobDataConverter = blobDataConverter;
 		this.syncState = new SyncStateAccess();
@@ -103,6 +106,10 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		return syncEngine;
 	}
 
+	public AsyncExecutor getExecutor() {
+		return executor;
+	}
+
 	/**
 	 * @return true iff connected to server and sync services are running
 	 */
@@ -111,6 +118,10 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	///////////////////////////////////////////////////////////////////
+
+	public boolean isSyncing() {
+		return syncEngine.isSyncing();
+	}
 
 	/**
 	 * Initiate a sync

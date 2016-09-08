@@ -3,6 +3,11 @@ package org.zakariya.mrdoodle.model;
 import android.content.Context;
 import android.support.annotation.Nullable;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+
+import org.zakariya.doodle.model.Doodle;
 import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentDeletedEvent;
@@ -11,10 +16,13 @@ import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.util.Date;
 import java.util.UUID;
 
@@ -30,7 +38,10 @@ import io.realm.annotations.Required;
 public class DoodleDocument extends RealmObject {
 
 	private static final String TAG = DoodleDocument.class.getSimpleName();
+	private static final int COOKIE = 0xD0D1;
+
 	public static final String BLOB_TYPE = "DoodleDocument";
+
 
 	@PrimaryKey
 	private String uuid;
@@ -41,6 +52,7 @@ public class DoodleDocument extends RealmObject {
 	@Required
 	private Date creationDate;
 
+	@Required
 	private Date modificationDate;
 
 	/**
@@ -99,6 +111,74 @@ public class DoodleDocument extends RealmObject {
 		return realm.where(DoodleDocument.class).equalTo("uuid", uuid).findFirst();
 	}
 
+	public byte[] serialize(Context context) {
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		Output output = new Output(stream);
+		Kryo kryo = new Kryo();
+
+		kryo.writeObject(output, COOKIE);
+		kryo.writeObject(output, getUuid());
+		kryo.writeObject(output, getName());
+		kryo.writeObject(output, getCreationDate());
+		kryo.writeObject(output, getModificationDate());
+
+		Doodle doodle = loadDoodle(context);
+		byte [] doodleBytes = doodle.serialize();
+		kryo.writeObject(output, doodleBytes);
+
+		return stream.toByteArray();
+	}
+
+	public static void createOrUpdate(Context context, Realm realm, byte [] serializedBytes) throws Exception {
+		ByteArrayInputStream inputStream = new ByteArrayInputStream(serializedBytes);
+		Input input = new Input(inputStream);
+		Kryo kryo = new Kryo();
+
+		int cookie = kryo.readObject(input, Integer.class);
+		if (cookie == COOKIE) {
+
+			String uuid = kryo.readObject(input, String.class);
+			String name = kryo.readObject(input, String.class);
+			Date creationDate = kryo.readObject(input, Date.class);
+			Date modificationDate = kryo.readObject(input, Date.class);
+			byte [] doodleBytes = kryo.readObject(input, byte[].class);
+
+			// create the doodle
+			StrokeDoodle doodle = new StrokeDoodle(context, new ByteArrayInputStream(doodleBytes));
+
+			// now if we already have a DoodleDocument with this uuid, update it. otherwise, make a new one
+			DoodleDocument document = byUUID(realm, uuid);
+			if (document != null) {
+
+				realm.beginTransaction();
+				document.setName(name);
+				document.setCreationDate(creationDate);
+				document.setModificationDate(modificationDate);
+				realm.commitTransaction();
+
+				BusProvider.postOnMainThread(new DoodleDocumentEditedEvent(document.getUuid()));
+
+			} else {
+
+				realm.beginTransaction();
+				document = realm.createObject(DoodleDocument.class);
+				document.setUuid(uuid);
+				document.setCreationDate(creationDate);
+				document.setModificationDate(modificationDate);
+				document.setName(name);
+				realm.commitTransaction();
+
+				BusProvider.postOnMainThread(new DoodleDocumentCreatedEvent(document.getUuid()));
+			}
+
+			// doodle has to be saved separately
+			document.saveDoodle(context, doodle);
+
+		} else {
+			throw new InvalidObjectException("Missing COOKIE header (0x" + Integer.toString(COOKIE, 16) + ")");
+		}
+	}
+
 	/**
 	 * Get the file used by a DoodleDocument to save its doodle.
 	 * Note, the doodle is not saved in the realm because realm doesn't like big binary blobs.
@@ -115,7 +195,7 @@ public class DoodleDocument extends RealmObject {
 		try {
 			FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
 			BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
-			doodle.serializeDoodle(bufferedOutputStream);
+			doodle.serialize(bufferedOutputStream);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -128,7 +208,7 @@ public class DoodleDocument extends RealmObject {
 			try {
 				FileInputStream inputStream = new FileInputStream(inputFile);
 				BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
-				doodle.inflateDoodle(bufferedInputStream);
+				doodle.inflate(bufferedInputStream);
 				inputStream.close();
 			} catch (IOException e) {
 				e.printStackTrace();
