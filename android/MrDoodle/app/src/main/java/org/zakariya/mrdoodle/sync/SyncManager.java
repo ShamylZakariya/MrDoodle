@@ -16,17 +16,25 @@ import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.events.SignInEvent;
 import org.zakariya.mrdoodle.signin.events.SignOutEvent;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
+import org.zakariya.mrdoodle.sync.model.SyncState;
 import org.zakariya.mrdoodle.util.BusProvider;
+
+import java.util.Date;
+
+import io.realm.Realm;
 
 /**
  * Top level access point for sync services
  */
 public class SyncManager implements SyncServerConnection.NotificationListener {
 
+	public interface BlobDataConverter extends SyncEngine.BlobDataConsumer, SyncEngine.BlobDataProvider
+	{}
+
+
 	private static final String TAG = SyncManager.class.getSimpleName();
 
 	private static SyncManager instance;
-
 	private SignInAccount signInAccount;
 	private boolean applicationIsActive, running;
 	private SyncConfiguration syncConfiguration;
@@ -35,10 +43,12 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private ChangeJournal changeJournal;
 	private TimestampRecorder timestampRecorder;
 	private SyncEngine syncEngine;
+	private SyncStateAccess syncState;
+	private BlobDataConverter blobDataConverter;
 
-	public static void init(Context context, SyncConfiguration syncConfiguration) {
+	public static void init(Context context, SyncConfiguration syncConfiguration, BlobDataConverter blobDataConverter) {
 		if (instance == null) {
-			instance = new SyncManager(context, syncConfiguration);
+			instance = new SyncManager(context, syncConfiguration, blobDataConverter);
 		}
 	}
 
@@ -46,11 +56,14 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		return instance;
 	}
 
-	private SyncManager(Context context, SyncConfiguration syncConfiguration) {
+	private SyncManager(Context context, SyncConfiguration syncConfiguration, BlobDataConverter blobDataConverter) {
 		BusProvider.getBus().register(this);
 
 		this.context = context;
 		this.syncConfiguration = syncConfiguration;
+		this.blobDataConverter = blobDataConverter;
+		this.syncState = new SyncStateAccess();
+
 
 		applicationIsActive = true;
 		signInAccount = SignInManager.getInstance().getAccount();
@@ -99,7 +112,38 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	///////////////////////////////////////////////////////////////////
 
-	protected void start() {
+	/**
+	 * Initiate a sync
+	 */
+	public void sync() throws Exception {
+		syncEngine.sync(syncState, changeJournal, timestampRecorder, blobDataConverter, blobDataConverter);
+	}
+
+	public interface LocalStoreDeleter {
+		void deleteLocalStore();
+	}
+
+	/**
+	 * Delete the local store (e.g., completely reset local state)
+	 * and then initiate a sync. This will cause the client to discard
+	 * any local changes and simply download remote state.
+	 *
+	 * @param deleter the deleter is responsible for deleting local
+	 *                state, e.g., clearing out your realm instance
+	 */
+	public void resetAndSync(LocalStoreDeleter deleter) throws Exception {
+		syncState.clear();
+		timestampRecorder.clear();
+		changeJournal.clear(false);
+		deleter.deleteLocalStore();
+
+		sync();
+	}
+
+
+	///////////////////////////////////////////////////////////////////
+
+	void start() {
 		if (!running) {
 			running = true;
 			Log.d(TAG, "start:");
@@ -107,7 +151,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		}
 	}
 
-	protected void stop() {
+	void stop() {
 		if (running) {
 			Log.d(TAG, "stop:");
 			syncServerConnection.disconnect();
@@ -182,6 +226,56 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		startOrStopSyncServices();
 	}
 
+	///////////////////////////////////////////////////////////////////
+
+	public static final class SyncStateAccess {
+		private Realm realm;
+		private SyncState syncState;
+
+		public SyncStateAccess() {
+			this.realm = Realm.getDefaultInstance();
+			this.syncState = realm.where(SyncState.class).findFirst();
+
+			// if none was available, create a reasonable default
+			if (syncState == null) {
+				realm.beginTransaction();
+
+				syncState = realm.createObject(SyncState.class);
+				syncState.setTimestampHead(0);
+				syncState.setLastSyncDate(new Date(0));
+
+				realm.commitTransaction();
+			}
+		}
+
+		public void clear() {
+			realm.beginTransaction();
+			syncState.setTimestampHead(0);
+			syncState.setLastSyncDate(new Date(0));
+			realm.commitTransaction();
+		}
+
+		public long getTimestampHead() {
+			return syncState.getTimestampHead();
+		}
+
+		public void setTimestampHead(long timestampHead) {
+			realm.beginTransaction();
+			syncState.setTimestampHead(timestampHead);
+			realm.commitTransaction();
+		}
+
+		public Date getLastSyncDate() {
+			return syncState.getLastSyncDate();
+		}
+
+		public void setLastSyncDate(Date lastSyncDate) {
+			realm.beginTransaction();
+			syncState.setLastSyncDate(lastSyncDate);
+			realm.commitTransaction();
+		}
+
+	}
 
 
 }

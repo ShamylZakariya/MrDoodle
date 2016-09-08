@@ -30,6 +30,7 @@ import io.realm.annotations.Required;
 public class DoodleDocument extends RealmObject {
 
 	private static final String TAG = DoodleDocument.class.getSimpleName();
+	public static final String BLOB_TYPE = "DoodleDocument";
 
 	@PrimaryKey
 	private String uuid;

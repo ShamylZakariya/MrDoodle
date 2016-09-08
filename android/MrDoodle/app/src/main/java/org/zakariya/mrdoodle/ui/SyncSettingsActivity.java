@@ -22,6 +22,7 @@ import com.squareup.picasso.Picasso;
 
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.api.SyncService;
@@ -38,6 +39,7 @@ import org.zakariya.mrdoodle.util.BusProvider;
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import io.realm.Realm;
 import retrofit2.Response;
 
 /**
@@ -197,10 +199,19 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	@OnClick(R.id.syncNowButton)
 	void syncNow() {
+		SyncManager.getInstance().sync();
 	}
 
 	@OnClick(R.id.resetAndSyncButton)
 	void resetAndSync() {
+		SyncManager.getInstance().resetAndSync(new SyncManager.LocalStoreDeleter() {
+			@Override
+			public void deleteLocalStore() {
+				Realm realm = Realm.getDefaultInstance();
+				realm.delete(DoodleDocument.class);
+				realm.close();
+			}
+		});
 	}
 
 	void signOut() {

@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.model;
+package org.zakariya.mrdoodle.sync.model;
 
 import io.realm.RealmObject;
 

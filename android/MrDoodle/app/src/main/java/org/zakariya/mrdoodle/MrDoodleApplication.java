@@ -4,10 +4,12 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
+import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.techniques.MockSignInTechnique;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
@@ -91,7 +93,35 @@ public class MrDoodleApplication extends android.app.Application {
 		//SignInManager.init(new GoogleSignInTechnique(this));
 		SignInManager.init(new MockSignInTechnique(this));
 
-		SyncManager.init(this, new SyncConfiguration());
+		// build the sync manager, providing mechanism for serializing/deserializing our model type
+		SyncManager.init(this, new SyncConfiguration(), new SyncManager.BlobDataConverter() {
+			@Override
+			public void setBlobData(String blobId, String blobClass, byte[] blobData) throws Exception {
+				switch (blobClass) {
+					case DoodleDocument.BLOB_TYPE: {
+
+						// TODO: Implement
+
+						break;
+					}
+				}
+
+			}
+
+			@Nullable
+			@Override
+			public byte[] getBlobData(String blobId, String blobClass) {
+				switch (blobClass) {
+					case DoodleDocument.BLOB_TYPE: {
+
+						// TODO: Implement
+
+						break;
+					}
+				}
+				return null;
+			}
+		});
 	}
 
 

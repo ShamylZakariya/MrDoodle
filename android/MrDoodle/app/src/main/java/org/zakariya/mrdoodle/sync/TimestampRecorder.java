@@ -5,7 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import org.zakariya.mrdoodle.model.TimestampStore;
+import org.zakariya.mrdoodle.sync.model.TimestampStore;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

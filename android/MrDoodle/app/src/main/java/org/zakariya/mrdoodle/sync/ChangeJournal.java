@@ -13,7 +13,7 @@ import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentDeletedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
-import org.zakariya.mrdoodle.model.JournalItem;
+import org.zakariya.mrdoodle.sync.model.JournalItem;
 import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.util.ArrayList;

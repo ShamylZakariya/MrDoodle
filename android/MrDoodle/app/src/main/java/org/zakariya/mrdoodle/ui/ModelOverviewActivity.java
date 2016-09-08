@@ -21,7 +21,7 @@ import android.widget.TextView;
 
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.model.DoodleDocument;
-import org.zakariya.mrdoodle.model.JournalItem;
+import org.zakariya.mrdoodle.sync.model.JournalItem;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.TimestampRecorder;
 
