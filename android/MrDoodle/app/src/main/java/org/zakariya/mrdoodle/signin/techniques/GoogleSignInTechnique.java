@@ -44,6 +44,7 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 	private GoogleApiClient googleApiClient;
 	private GoogleSignInAccount googleSignInAccount;
 	private boolean connected;
+	private boolean disconnected;
 	private List<AuthenticationTokenReceiver> authenticationTokenReceivers = new ArrayList<>();
 	private Gson gson = new Gson();
 	boolean isRenewingConnection;
@@ -80,6 +81,7 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 	 */
 	@Override
 	public void connect() {
+		disconnected = false;
 		if (!connected) {
 			Log.i(TAG, "connect: ");
 			googleApiClient.connect();
@@ -91,6 +93,7 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 	 */
 	@Override
 	public void disconnect() {
+		disconnected = true;
 		if (connected) {
 			Log.i(TAG, "disconnect: ");
 			googleApiClient.disconnect();
@@ -230,6 +233,7 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 	public void onConnected(@Nullable Bundle bundle) {
 		Log.i(TAG, "onConnected: ");
 
+		disconnected = false;
 		connected = true;
 
 		// reset the connection suspended count to reset exponential reconnect time backoff
@@ -245,6 +249,7 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 		// our connection to the google sign in service has failed.
 		// I'm doing exponential back off for reconnect
 
+		disconnected = false;
 		connected = false;
 		connectionSuspendedCount++;
 		long reconnectDelayMillis = 1000 * (long)Math.pow(1.4, connectionSuspendedCount);
@@ -261,7 +266,10 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 		reconnectHandler.postDelayed(new Runnable() {
 			@Override
 			public void run() {
-				connect();
+				// if app has backgrounded we shouldn't bother trying
+				if (!disconnected) {
+					connect();
+				}
 			}
 		}, reconnectDelayMillis);
 	}
