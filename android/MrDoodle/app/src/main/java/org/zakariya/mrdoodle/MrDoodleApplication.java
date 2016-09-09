@@ -7,11 +7,17 @@ import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import com.squareup.otto.Subscribe;
+
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentDeletedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.techniques.MockSignInTechnique;
+import org.zakariya.mrdoodle.sync.ChangeJournal;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
@@ -31,6 +37,7 @@ public class MrDoodleApplication extends android.app.Application {
 
 	private BackgroundWatcher backgroundWatcher;
 	private RealmConfiguration realmConfiguration;
+	private ChangeJournalNotifier changeJournalNotifier;
 
 	@Override
 	public void onCreate() {
@@ -61,10 +68,12 @@ public class MrDoodleApplication extends android.app.Application {
 
 	public void onApplicationBackgrounded() {
 		SignInManager.getInstance().disconnect();
+		SyncManager.getInstance().stop();
 	}
 
 	public void onApplicationResumed() {
 		SignInManager.getInstance().connect();
+		SyncManager.getInstance().start();
 	}
 
 	@Override
@@ -136,10 +145,46 @@ public class MrDoodleApplication extends android.app.Application {
 				return null;
 			}
 		});
+
+		// set up notifier to let change journal capture model events
+		changeJournalNotifier = new ChangeJournalNotifier(SyncManager.getInstance().getChangeJournal());
 	}
 
+	/**
+	 * ChangeJournalNotifier
+	 * Listens to model events (write/delete/etc) and forwards them to the change journal to record
+	 */
+	static class ChangeJournalNotifier {
 
-	public static class BackgroundWatcher implements MrDoodleApplication.ActivityLifecycleCallbacks {
+		private ChangeJournal changeJournal;
+
+		public ChangeJournalNotifier(ChangeJournal changeJournal) {
+			this.changeJournal = changeJournal;
+			BusProvider.getBus().register(this);
+		}
+
+		@Subscribe
+		public void onDoodleDocumentCreated(DoodleDocumentCreatedEvent event) {
+			changeJournal.markModified(event.getUuid(), DoodleDocument.BLOB_TYPE);
+		}
+
+		@Subscribe
+		public void onDoodleDocumentDeleted(DoodleDocumentDeletedEvent event) {
+			changeJournal.markDeleted(event.getUuid(), DoodleDocument.BLOB_TYPE);
+		}
+
+		@Subscribe
+		public void onDoodleDocumentModified(DoodleDocumentEditedEvent event) {
+			changeJournal.markModified(event.getUuid(), DoodleDocument.BLOB_TYPE);
+		}
+
+	}
+
+	/**
+	 * BackgroundWatcher monitors activity foreground/background state and notifies application
+	 * when app is fully backgrounded or returns/begins being foreground
+	 */
+	static class BackgroundWatcher implements MrDoodleApplication.ActivityLifecycleCallbacks {
 
 		private static final int BACKGROUND_DELAY_MILLIS = 1000;
 		private static final String TAG = "BackgroundWatcher";

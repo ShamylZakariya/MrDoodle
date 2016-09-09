@@ -228,6 +228,7 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	@OnClick(R.id.resetAndSyncButton)
 	void resetAndSync() {
+
 		SyncManager syncManager = SyncManager.getInstance();
 		if (syncManager.isSyncing()) {
 			Log.i(TAG, "syncNow: currently syncing, never mind...");

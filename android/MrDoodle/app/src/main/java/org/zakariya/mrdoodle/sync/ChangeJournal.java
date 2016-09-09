@@ -47,7 +47,6 @@ public class ChangeJournal {
 				ChangeJournal.this.commit();
 			}
 		};
-		BusProvider.getBus().register(this);
 	}
 
 	/**
@@ -78,11 +77,11 @@ public class ChangeJournal {
 		delayedCommitHandler.removeCallbacks(delayedCommit);
 
 		if (notify) {
-			BusProvider.postOnMainThread(new ChangeJournalUpdatedEvent());
+			BusProvider.postOnMainThread(new ChangeJournalUpdatedEvent(this));
 		}
 	}
 
-	private void commit() {
+	void commit() {
 		if (!dirty) {
 			Log.i(TAG, "commit - not dirty, nothing to commit");
 			return;
@@ -129,7 +128,7 @@ public class ChangeJournal {
 		dirty = false;
 
 		// notify
-		BusProvider.postOnMainThread(new ChangeJournalUpdatedEvent());
+		BusProvider.postOnMainThread(new ChangeJournalUpdatedEvent(this));
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -139,7 +138,7 @@ public class ChangeJournal {
 		delayedCommitHandler.postDelayed(delayedCommit, COMMIT_DEBOUNCE_DELAY_MILLIS);
 	}
 
-	private void markModified(String id, String className) {
+	public void markModified(String id, String className) {
 		Log.d(TAG, "markModified class: " + className + " id: " + id);
 		localChanges.put(id, new Change(id, className, JournalItem.Type.MODIFY.ordinal()));
 
@@ -147,36 +146,12 @@ public class ChangeJournal {
 		scheduleCommit();
 	}
 
-	private void markDeleted(String id, String className) {
+	public void markDeleted(String id, String className) {
 		Log.d(TAG, "markDeleted class: " + className + " id: " + id);
 		localChanges.put(id, new Change(id, className, JournalItem.Type.DELETE.ordinal()));
 
 		dirty = true;
 		scheduleCommit();
-	}
-
-	///////////////////////////////////////////////////////////////////
-
-	@Subscribe
-	public void onApplicationDidBackground(ApplicationDidBackgroundEvent event) {
-		commit();
-	}
-
-	///////////////////////////////////////////////////////////////////
-
-	@Subscribe
-	public void onDoodleDocumentCreated(DoodleDocumentCreatedEvent event) {
-		markModified(event.getUuid(), DoodleDocument.class.getSimpleName());
-	}
-
-	@Subscribe
-	public void onDoodleDocumentDeleted(DoodleDocumentDeletedEvent event) {
-		markDeleted(event.getUuid(), DoodleDocument.class.getSimpleName());
-	}
-
-	@Subscribe
-	public void onDoodleDocumentModified(DoodleDocumentEditedEvent event) {
-		markModified(event.getUuid(), DoodleDocument.class.getSimpleName());
 	}
 
 	///////////////////////////////////////////////////////////////////

@@ -151,20 +151,33 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		sync();
 	}
 
+	public void start() {
+		Log.d(TAG, "start:");
+		applicationIsActive = true;
+		syncServerConnection.resetExponentialBackoff();
+		startOrStopSyncServices();
+	}
+
+	public void stop() {
+		Log.d(TAG, "stop:");
+		applicationIsActive = false;
+		changeJournal.commit();
+		startOrStopSyncServices();
+	}
 
 	///////////////////////////////////////////////////////////////////
 
-	void start() {
+	void connect() {
 		if (!running) {
 			running = true;
-			Log.d(TAG, "start:");
+			Log.d(TAG, "connect:");
 			syncServerConnection.connect();
 		}
 	}
 
-	void stop() {
+	void disconnect() {
 		if (running) {
-			Log.d(TAG, "stop:");
+			Log.d(TAG, "disconnect:");
 			syncServerConnection.disconnect();
 			running = false;
 		}
@@ -174,9 +187,9 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	void startOrStopSyncServices() {
 		if (applicationIsActive && signInAccount != null) {
-			start();
+			connect();
 		} else {
-			stop();
+			disconnect();
 		}
 	}
 
@@ -205,21 +218,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 
 	///////////////////////////////////////////////////////////////////
-
-	@Subscribe
-	public void onApplicationResumed(ApplicationDidResumeEvent event) {
-		Log.d(TAG, "onApplicationResumed:");
-		applicationIsActive = true;
-		syncServerConnection.resetExponentialBackoff();
-		startOrStopSyncServices();
-	}
-
-	@Subscribe
-	public void onApplicationBackgrounded(ApplicationDidBackgroundEvent event) {
-		Log.d(TAG, "onApplicationBackgrounded:");
-		applicationIsActive = false;
-		startOrStopSyncServices();
-	}
 
 	@Subscribe
 	public void onSignedIn(SignInEvent event) {
