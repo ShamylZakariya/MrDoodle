@@ -10,13 +10,18 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Created by szakariy on 9/7/16.
+ * MockAuthenticator
+ * A mock authenticator technique for testing
  */
 public class MockAuthenticator implements Authenticator{
 
 	private Map<String,String> tokenToIdMap;
 	private Set<String> whitelist = new HashSet<>();
 
+	/**
+	 * Create a mock authenticator which will accept a fake auth token, and return a user id.
+	 * @param tokenToIdMap map of fake tokens to fake user ids
+	 */
 	public MockAuthenticator(Map<String,String> tokenToIdMap) {
 		this.tokenToIdMap = new HashMap<>(tokenToIdMap);
 	}

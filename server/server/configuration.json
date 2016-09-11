@@ -1,18 +1,21 @@
 {
-  "version": "v1",
-  "redis": {
-	"host": "localhost"
-  },
-  "authenticator": {
-	"whitelist_grace_period_seconds": 3600,
-	"mock":{
-	  "tokens":{
-		"VALID-MOCK-TOKEN-I-GUESS":"12345"
-	  }
+	"version": "v1",
+	"redis": {
+		"host": "localhost"
+	},
+	"authenticator": {
+		"whitelist_grace_period_seconds": 3600,
+		"mock": {
+			"tokens": {
+				"VALID-MOCK-TOKEN-I-GUESS": "12345"
+			}
+		}
+	},
+	"syncManager": {
+		"writeSessionInactiveDiscardDelayHours":6
+	},
+	"router": {
+		"inactiveSyncManagerDisposalTimeoutSeconds": 300,
+		"inactiveSyncManagerDisposalGracePeriodSeconds": 60
 	}
-  },
-  "router": {
-  	"inactiveSyncManagerDisposalTimeoutSeconds":300,
-	"inactiveSyncManagerDisposalGracePeriodSeconds": 60
-  }
 }

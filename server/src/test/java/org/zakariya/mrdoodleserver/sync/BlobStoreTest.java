@@ -25,8 +25,8 @@ public class BlobStoreTest {
 
 	@After
 	public void tearDown() throws Exception {
-		mainStore.flush();
-		tempStore.flush();
+		mainStore.discard();
+		tempStore.discard();
 	}
 
 	@org.junit.Test

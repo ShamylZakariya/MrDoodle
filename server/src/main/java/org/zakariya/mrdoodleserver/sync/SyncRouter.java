@@ -356,7 +356,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		SyncManager syncManager = syncManagersByAccountId.get(accountId);
 
 		if (syncManager == null) {
-			syncManager = new SyncManager(jedisPool, accountId);
+			syncManager = new SyncManager(configuration, jedisPool, accountId);
 			syncManagersByAccountId.put(accountId, syncManager);
 		}
 

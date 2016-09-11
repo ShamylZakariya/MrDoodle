@@ -167,7 +167,7 @@ class BlobStore {
 	/**
 	 * Deletes ALL blobs and associated data for this blob store's account and namespace
 	 */
-	void flush() {
+	void discard() {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Set<String> keys = jedis.keys(getEntryRootKey(accountId,namespace) + "*");
 			keys.forEach(jedis::del);
