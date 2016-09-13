@@ -73,8 +73,13 @@ public class SyncServer {
 	private static Authenticator buildAuthenticator(Configuration configuration) {
 		if (USE_MOCK_AUTHENTICATOR) {
 
+			Map<String,Object> tokensMap = configuration.getMap("authenticator/mock/tokens");
+			if (tokensMap == null) {
+				return new MockAuthenticator();
+			}
+
 			// we need to convert Map<String,Object> -> Map<String,String>
-			Map<String, String> tokens = configuration.getMap("authenticator/mock/tokens")
+			Map<String, String> tokens = tokensMap
 					.entrySet()
 					.stream()
 					.collect(Collectors.toMap(Map.Entry::getKey, e -> (String) e.getValue()));

@@ -19,6 +19,13 @@ public class MockAuthenticator implements Authenticator{
 	private Set<String> whitelist = new HashSet<>();
 
 	/**
+	 * Create a mock authenticator which will reject any auth request
+	 */
+	public MockAuthenticator() {
+		tokenToIdMap = new HashMap<>();
+	}
+
+	/**
 	 * Create a mock authenticator which will accept a fake auth token, and return a user id.
 	 * @param tokenToIdMap map of fake tokens to fake user ids
 	 */
