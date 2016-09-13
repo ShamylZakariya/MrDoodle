@@ -12,6 +12,7 @@ import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.SyncRouter;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,17 +35,7 @@ public class SyncServer {
 		configuration.addConfigJsonFilePath("configuration_secret.json");
 
 		Authenticator authenticator = buildAuthenticator(configuration);
-
-		String redisHost = configuration.get("redis/host");
-		int redisPort = configuration.getInt("redis/port", -1);
-		JedisPool jedisPool;
-		if (redisPort != -1) {
-			logger.info("Building jedisPool with host {} and port {}", redisHost, redisPort);
-			jedisPool = new JedisPool(redisHost, redisPort);
-		} else {
-			logger.info("Building jedisPool with host {} and default port", redisHost);
-			jedisPool = new JedisPool(redisHost);
-		}
+		JedisPool jedisPool = buildJedisPool(configuration);
 
 		// build the syncRouter. note, we have no control over when WebSocketConnection is created,
 		// so set up our router to be notified when it happens
@@ -60,6 +51,23 @@ public class SyncServer {
 
 		syncRouter.configureRoutes();
 		init();
+	}
+
+	private static JedisPool buildJedisPool(Configuration configuration) {
+		JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
+		jedisPoolConfig.setMaxTotal(128);
+		jedisPoolConfig.setBlockWhenExhausted(true);
+		
+
+		String redisHost = configuration.get("redis/host");
+		int redisPort = configuration.getInt("redis/port", -1);
+		if (redisPort != -1) {
+			logger.info("Building jedisPool with host {} and port {}", redisHost, redisPort);
+			return new JedisPool(jedisPoolConfig, redisHost, redisPort);
+		} else {
+			logger.info("Building jedisPool with host {} and default port", redisHost);
+			return new JedisPool(jedisPoolConfig, redisHost);
+		}
 	}
 
 	private static Authenticator buildAuthenticator(Configuration configuration) {
