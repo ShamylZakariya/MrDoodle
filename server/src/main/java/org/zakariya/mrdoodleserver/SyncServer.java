@@ -45,10 +45,6 @@ public class SyncServer {
 		WebSocketConnection.authenticator = authenticator;
 		webSocket(WebSocketConnection.getRoute(configuration), WebSocketConnection.class);
 
-		// Static files are not used for sync, just for test html files
-		staticFiles.location("/public"); //served at localhost:4567 (default port)
-		staticFiles.expireTime(600);
-
 		syncRouter.configureRoutes();
 		init();
 	}
