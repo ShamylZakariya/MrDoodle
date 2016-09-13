@@ -55,11 +55,11 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 			return blobStore;
 		}
 
-		public ScheduledFuture getDiscardFuture() {
+		ScheduledFuture getDiscardFuture() {
 			return discardFuture;
 		}
 
-		public void setDiscardFuture(ScheduledFuture discardFuture) {
+		void setDiscardFuture(ScheduledFuture discardFuture) {
 			this.discardFuture = discardFuture;
 		}
 
@@ -82,7 +82,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	}
 
 	void close() {
-		jedisPool.close();
+		// nothing, for now
 	}
 
 	JedisPool getJedisPool() {
@@ -141,7 +141,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	}
 
 	private void discardWriteSession(WriteSession session) {
-		if (!session.getDiscardFuture().isCancelled()) {
+		if (session.getDiscardFuture() != null && !session.getDiscardFuture().isCancelled()) {
 			session.discard();
 			writeSessions.remove(session.getToken());
 		}
