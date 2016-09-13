@@ -1,5 +1,6 @@
 package org.zakariya.mrdoodleserver.sync;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,25 +28,32 @@ class TimestampRecord {
 		DELETE
 	}
 
-	public static class Entry {
-		public String uuid;
-		public String modelClass;
-		public long timestampSeconds;
-		public int action;
+	static class Entry {
+		@JsonProperty
+		String modelId;
+
+		@JsonProperty
+		String modelClass;
+
+		@JsonProperty
+		long timestampSeconds;
+
+		@JsonProperty
+		int action;
 
 		public Entry() {
 			super();
 		}
 
-		Entry(String uuid, String modelClass, long timestampSeconds, Action action) {
-			this.uuid = uuid;
+		Entry(String modelId, String modelClass, long timestampSeconds, Action action) {
+			this.modelId = modelId;
 			this.modelClass = modelClass;
 			this.timestampSeconds = timestampSeconds;
 			this.action = action.ordinal();
 		}
 
-		String getUuid() {
-			return uuid;
+		String getModelId() {
+			return modelId;
 		}
 
 		public String getModelClass() {
@@ -64,7 +72,7 @@ class TimestampRecord {
 		public boolean equals(Object obj) {
 			if (obj != null && obj instanceof Entry) {
 				Entry other = (Entry) obj;
-				return uuid.equals(other.uuid) &&
+				return modelId.equals(other.modelId) &&
 						modelClass.equals(other.modelClass) &&
 						timestampSeconds == other.timestampSeconds &&
 						action == other.action;
@@ -119,7 +127,7 @@ class TimestampRecord {
 	 * Record an event into the timestamp record
 	 *
 	 * @param uuid       id of the thing that the action happened to
-	 * @param modelClass the model class of the thing represented by the uuid
+	 * @param modelClass the model class of the thing represented by the modelId
 	 * @param seconds    the timestamp, in seconds, of the event
 	 * @param action     the type of event (write/delete)
 	 * @return the entry that was created
@@ -145,7 +153,7 @@ class TimestampRecord {
 	/**
 	 * Get the timestampSeconds for a given UUID
 	 *
-	 * @param uuid the uuid
+	 * @param uuid the modelId
 	 * @return the timestamp seconds associated with UUID, or -1 if none is set
 	 */
 	long getTimestampSeconds(String uuid) {
@@ -156,12 +164,12 @@ class TimestampRecord {
 	 * Get a record of all events after sinceTimestampSeconds
 	 *
 	 * @param sinceTimestampSeconds a timestamp in seconds
-	 * @return map of uuid->Entry of all events which occurred after said timestamp
+	 * @return map of modelId->Entry of all events which occurred after said timestamp
 	 */
 	Map<String, Entry> getEntriesSince(long sinceTimestampSeconds) {
 		if (sinceTimestampSeconds > 0) {
 
-			// filter to subset of uuid:timestampSeconds pairs AFTER `sinceTimestampSeconds
+			// filter to subset of modelId:timestampSeconds pairs AFTER `sinceTimestampSeconds
 			Map<String, Entry> entries = new HashMap<>();
 			for (String uuid : entriesByUuid.keySet()) {
 				Entry entry = entriesByUuid.get(uuid);
@@ -178,7 +186,7 @@ class TimestampRecord {
 	}
 
 	/**
-	 * @return Get all entries in record, mapping the event's uuid to the event
+	 * @return Get all entries in record, mapping the event's modelId to the event
 	 */
 	Map<String, Entry> getEntries() {
 		return getEntriesSince(-1);
@@ -231,7 +239,7 @@ class TimestampRecord {
 	 */
 	void save(TimestampRecord target) {
 		for (Entry entry : entriesByUuid.values()) {
-			target.entriesByUuid.put(entry.getUuid(), entry);
+			target.entriesByUuid.put(entry.getModelId(), entry);
 		}
 	}
 

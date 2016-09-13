@@ -51,18 +51,11 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private boolean authenticationEnabled;
 	private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(READ_WRITE_LOCK_IS_FAIR);
 
-	private long syncManagerCleanupDelaySeconds = 300;
-	private long syncManagerCleanupDelayGracePeriodSeconds = 60;
-	private ScheduledExecutorService syncManagerCleanupScheduler = Executors.newSingleThreadScheduledExecutor();
-	private Map<String, ScheduledFuture> syncManagerCleanupFuturesByAccountId = new HashMap<>();
-
 	public SyncRouter(Configuration configuration, Authenticator authenticator, JedisPool jedisPool) {
 		this.configuration = configuration;
 		this.authenticator = authenticator;
 		this.jedisPool = jedisPool;
 		this.authenticationEnabled = configuration.getBoolean("authenticator/enabled", true);
-		syncManagerCleanupDelaySeconds = configuration.getInt("router/inactiveSyncManagerDisposalTimeoutSeconds", (int)syncManagerCleanupDelaySeconds);
-		syncManagerCleanupDelayGracePeriodSeconds = configuration.getInt("router/inactiveSyncManagerDisposalGracePeriodSeconds", (int)syncManagerCleanupDelayGracePeriodSeconds);
 	}
 
 	public void configureRoutes() {
@@ -330,10 +323,12 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		TimestampRecord timestampRecord = session.getTimestampRecord();
 		BlobStore blobStore = session.getBlobStore();
 
+		// delete blob
+		blobStore.delete(blobId);
+
 		// record deletion. note, the modelClass of the deleted item is irrelevant
 		long timestamp = syncManager.getTimestampSeconds();
 		TimestampRecord.Entry entry = timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
-		blobStore.delete(blobId);
 
 		try {
 			return objectMapper.writeValueAsString(entry);
@@ -360,35 +355,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			syncManagersByAccountId.put(accountId, syncManager);
 		}
 
-		scheduleSyncManagerClose(syncManager);
 		return syncManager;
-	}
-
-	private void scheduleSyncManagerClose(SyncManager syncManager) {
-		String accountId = syncManager.getAccountId();
-
-		// cancel any scheduled cleanup
-		ScheduledFuture future = syncManagerCleanupFuturesByAccountId.get(accountId);
-		if (future != null && !future.isCancelled()) {
-
-			// early exit if the future still has plenty of time remaining
-			// we do this so we don't re-schedule dozens of times for a batch of sync calls.
-			if (future.getDelay(TimeUnit.SECONDS) < (syncManagerCleanupDelaySeconds - syncManagerCleanupDelayGracePeriodSeconds)) {
-				return;
-			}
-
-			// the future is past its grace period. cancel it. We'll schedule a new one below.
-			future.cancel(false);
-			syncManagerCleanupFuturesByAccountId.remove(accountId);
-		}
-
-		future = syncManagerCleanupScheduler.schedule(() -> {
-			syncManager.close();
-			syncManagerCleanupFuturesByAccountId.remove(accountId);
-			syncManagersByAccountId.remove(accountId);
-		}, syncManagerCleanupDelaySeconds, TimeUnit.SECONDS);
-
-		syncManagerCleanupFuturesByAccountId.put(accountId, future);
 	}
 
 	private void haltWithError500(String message, Exception e) {
@@ -413,6 +380,14 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId) {
 				SyncManager syncManager = getSyncManagerForAccount(userId);
 				syncManager.onUserSessionDisconnected(connection, session, userId);
+
+				// now check if any users of a particular account are still connected. if
+				// not, we can free that account's syncManager
+				if (connection.getTotalConnectedDevicesForUserId(userId) == 0) {
+					logger.info("SyncRouter::onUserSessionDisconnected - userId: {} has no connected devices. Freeing user's syncManager", userId);
+					syncManager.close();
+					syncManagersByAccountId.remove(userId);
+				}
 			}
 		});
 	}

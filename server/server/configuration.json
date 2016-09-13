@@ -13,9 +13,5 @@
 	},
 	"syncManager": {
 		"writeSessionInactiveDiscardDelayHours":6
-	},
-	"router": {
-		"inactiveSyncManagerDisposalTimeoutSeconds": 300,
-		"inactiveSyncManagerDisposalGracePeriodSeconds": 60
 	}
 }

@@ -196,12 +196,16 @@ public class WebSocketConnection {
 				userGroup.userSessions.remove(userSession);
 			}
 
+			logger.info("onClose userId: {} status: {} reason: {} - after cleanup we have {} connected devices remaining for account, {} devices total",
+					userId, statusCode, reason, getTotalConnectedDevicesForUserId(userId), getTotalConnectedDeviceCount());
+
 			for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
 				listener.onUserSessionDisconnected(this, userSession, userId);
 			}
-		}
 
-		logger.info("onClose status: {} reason: {} - after cleanup we have {} connected devices remaining", statusCode, reason, getTotalConnectedDeviceCount());
+		} else {
+			logger.info("onClose status: {} reason: {} - after cleanup we have {} connected devices remaining", statusCode, reason, getTotalConnectedDeviceCount());
+		}
 	}
 
 	@OnWebSocketMessage

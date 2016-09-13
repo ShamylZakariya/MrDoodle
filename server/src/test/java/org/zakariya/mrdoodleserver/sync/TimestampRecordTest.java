@@ -13,12 +13,12 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 /**
- * Created by shamyl on 8/17/16.
+ * Tests for TimestampRecord
  */
 public class TimestampRecordTest {
 
-	final JedisPool pool = new JedisPool("localhost");
-	final String accountId = "testAccount";
+	private final JedisPool pool = new JedisPool("localhost");
+	private final String accountId = "testAccount";
 
 
 	@Before
@@ -35,7 +35,7 @@ public class TimestampRecordTest {
 	@org.junit.Test
 	public void testTimestampRecordEntryPersistence() throws IOException {
 		ObjectMapper mapper = new ObjectMapper();
-		TimestampRecord.Entry a = new TimestampRecord.Entry("a", 10, TimestampRecord.Action.WRITE);
+		TimestampRecord.Entry a = new TimestampRecord.Entry("a", "fooClass", 10, TimestampRecord.Action.WRITE);
 		String json = mapper.writeValueAsString(a);
 		TimestampRecord.Entry b = mapper.readValue(json, TimestampRecord.Entry.class);
 
@@ -47,10 +47,10 @@ public class TimestampRecordTest {
 
 		// create a non-persisting record
 		TimestampRecord timestampRecord = new TimestampRecord(null, null);
-		timestampRecord.record("A", 10, TimestampRecord.Action.WRITE);
-		timestampRecord.record("B", 11, TimestampRecord.Action.WRITE);
-		timestampRecord.record("C", 12, TimestampRecord.Action.WRITE);
-		timestampRecord.record("D", 13, TimestampRecord.Action.WRITE);
+		timestampRecord.record("A", "fooClass", 10, TimestampRecord.Action.WRITE);
+		timestampRecord.record("B", "fooClass", 11, TimestampRecord.Action.WRITE);
+		timestampRecord.record("C", "fooClass", 12, TimestampRecord.Action.WRITE);
+		timestampRecord.record("D", "fooClass", 13, TimestampRecord.Action.WRITE);
 
 		assertEquals("A == 10", 10, timestampRecord.getTimestampSeconds("A"));
 		assertEquals("Unassigned values should == -1", -1, timestampRecord.getTimestampSeconds("FOO"));
@@ -72,26 +72,26 @@ public class TimestampRecordTest {
 	public void testTimestampPersistence() {
 		// create a persisting record
 		TimestampRecord tr0 = new TimestampRecord(pool, accountId);
-		tr0.record("A", 10, TimestampRecord.Action.WRITE);
-		tr0.record("B", 11, TimestampRecord.Action.WRITE);
-		tr0.record("C", 12, TimestampRecord.Action.WRITE);
-		tr0.record("D", 13, TimestampRecord.Action.WRITE);
-		tr0.record("E", 20, TimestampRecord.Action.WRITE);
-		tr0.record("F", 21, TimestampRecord.Action.WRITE);
-		tr0.record("G", 22, TimestampRecord.Action.WRITE);
-		tr0.record("H", 23, TimestampRecord.Action.WRITE);
+		tr0.record("A", "fooClass", 10, TimestampRecord.Action.WRITE);
+		tr0.record("B", "fooClass", 11, TimestampRecord.Action.WRITE);
+		tr0.record("C", "fooClass", 12, TimestampRecord.Action.WRITE);
+		tr0.record("D", "fooClass", 13, TimestampRecord.Action.WRITE);
+		tr0.record("E", "fooClass", 20, TimestampRecord.Action.WRITE);
+		tr0.record("F", "fooClass", 21, TimestampRecord.Action.WRITE);
+		tr0.record("G", "fooClass", 22, TimestampRecord.Action.WRITE);
+		tr0.record("H", "fooClass", 23, TimestampRecord.Action.WRITE);
 		tr0.save();
 
 		// this record should have same entries as tr0
 		TimestampRecord tr1 = new TimestampRecord(pool, accountId);
-		assertEquals("should have same value for uuid A", tr0.getTimestampSeconds("A"), tr1.getTimestampSeconds("A"));
-		assertEquals("should have same value for uuid B", tr0.getTimestampSeconds("B"), tr1.getTimestampSeconds("B"));
-		assertEquals("should have same value for uuid C", tr0.getTimestampSeconds("C"), tr1.getTimestampSeconds("C"));
-		assertEquals("should have same value for uuid D", tr0.getTimestampSeconds("D"), tr1.getTimestampSeconds("D"));
-		assertEquals("should have same value for uuid E", tr0.getTimestampSeconds("E"), tr1.getTimestampSeconds("E"));
-		assertEquals("should have same value for uuid F", tr0.getTimestampSeconds("F"), tr1.getTimestampSeconds("F"));
-		assertEquals("should have same value for uuid G", tr0.getTimestampSeconds("G"), tr1.getTimestampSeconds("G"));
-		assertEquals("should have same value for uuid H", tr0.getTimestampSeconds("H"), tr1.getTimestampSeconds("H"));
+		assertEquals("should have same value for modelId A", tr0.getTimestampSeconds("A"), tr1.getTimestampSeconds("A"));
+		assertEquals("should have same value for modelId B", tr0.getTimestampSeconds("B"), tr1.getTimestampSeconds("B"));
+		assertEquals("should have same value for modelId C", tr0.getTimestampSeconds("C"), tr1.getTimestampSeconds("C"));
+		assertEquals("should have same value for modelId D", tr0.getTimestampSeconds("D"), tr1.getTimestampSeconds("D"));
+		assertEquals("should have same value for modelId E", tr0.getTimestampSeconds("E"), tr1.getTimestampSeconds("E"));
+		assertEquals("should have same value for modelId F", tr0.getTimestampSeconds("F"), tr1.getTimestampSeconds("F"));
+		assertEquals("should have same value for modelId G", tr0.getTimestampSeconds("G"), tr1.getTimestampSeconds("G"));
+		assertEquals("should have same value for modelId H", tr0.getTimestampSeconds("H"), tr1.getTimestampSeconds("H"));
 
 		try (Jedis jedis = pool.getResource()) {
 			jedis.del(TimestampRecord.getJedisKey(accountId));
@@ -104,10 +104,10 @@ public class TimestampRecordTest {
 
 		// create a persisting record
 		TimestampRecord tr0 = new TimestampRecord(pool, accountId);
-		tr0.record("A", 10, TimestampRecord.Action.WRITE);
-		tr0.record("B", 11, TimestampRecord.Action.WRITE);
-		tr0.record("C", 12, TimestampRecord.Action.WRITE);
-		tr0.record("D", 13, TimestampRecord.Action.WRITE);
+		tr0.record("A", "fooClass", 10, TimestampRecord.Action.WRITE);
+		tr0.record("B", "fooClass", 11, TimestampRecord.Action.WRITE);
+		tr0.record("C", "fooClass", 12, TimestampRecord.Action.WRITE);
+		tr0.record("D", "fooClass", 13, TimestampRecord.Action.WRITE);
 
 		// the debounced save will not have run yet, so this pool should be empty
 		TimestampRecord tr1 = new TimestampRecord(pool, accountId);
@@ -127,22 +127,22 @@ public class TimestampRecordTest {
 	@org.junit.Test
 	public void testTimestampRecordMerge() {
 		TimestampRecord tr0 = new TimestampRecord();
-		tr0.record("A", 10, TimestampRecord.Action.WRITE);
-		tr0.record("B", 11, TimestampRecord.Action.WRITE);
-		tr0.record("C", 12, TimestampRecord.Action.WRITE);
-		tr0.record("D", 13, TimestampRecord.Action.WRITE);
+		tr0.record("A", "fooClass", 10, TimestampRecord.Action.WRITE);
+		tr0.record("B", "fooClass", 11, TimestampRecord.Action.WRITE);
+		tr0.record("C", "fooClass", 12, TimestampRecord.Action.WRITE);
+		tr0.record("D", "fooClass", 13, TimestampRecord.Action.WRITE);
 
 		TimestampRecord tr1 = new TimestampRecord();
-		tr1.record("E", 20, TimestampRecord.Action.WRITE);
-		tr1.record("A", 21, TimestampRecord.Action.DELETE);
+		tr1.record("E", "fooClass", 20, TimestampRecord.Action.WRITE);
+		tr1.record("A", "fooClass", 21, TimestampRecord.Action.DELETE);
 		tr1.save(tr0);
 
 		TimestampRecord reference = new TimestampRecord();
-		reference.record("A", 21, TimestampRecord.Action.DELETE);
-		reference.record("B", 11, TimestampRecord.Action.WRITE);
-		reference.record("C", 12, TimestampRecord.Action.WRITE);
-		reference.record("D", 13, TimestampRecord.Action.WRITE);
-		reference.record("E", 20, TimestampRecord.Action.WRITE);
+		reference.record("A", "fooClass", 21, TimestampRecord.Action.DELETE);
+		reference.record("B", "fooClass", 11, TimestampRecord.Action.WRITE);
+		reference.record("C", "fooClass", 12, TimestampRecord.Action.WRITE);
+		reference.record("D", "fooClass", 13, TimestampRecord.Action.WRITE);
+		reference.record("E", "fooClass", 20, TimestampRecord.Action.WRITE);
 
 		assertTrue("After merge, tr0 should have same values as reference", tr0.getEntries().equals(reference.getEntries()));
 	}
