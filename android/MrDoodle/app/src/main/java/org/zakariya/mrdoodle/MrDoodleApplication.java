@@ -17,7 +17,6 @@ import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.techniques.MockSignInTechnique;
-import org.zakariya.mrdoodle.sync.ChangeJournal;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
@@ -100,12 +99,12 @@ public class MrDoodleApplication extends android.app.Application {
 		//SignInManager.init(new GoogleSignInTechnique(this));
 		SignInManager.init(new MockSignInTechnique(this));
 
-		// build the sync manager, providing mechanism for serializing/deserializing our model type
-		SyncManager.init(this, new SyncConfiguration(), new SyncManager.BlobDataConverter() {
+		// build the sync manager, providing mechanism for serializing/de-serializing our model type
+		SyncManager.init(this, new SyncConfiguration(), new SyncManager.ModelDataAdapter() {
 
 			@SuppressWarnings("TryFinallyCanBeTryWithResources") // not for API 17 it's can't
 			@Override
-			public void setBlobData(String blobId, String blobClass, byte[] blobData) throws Exception {
+			public void setModelObjectData(String blobId, String blobClass, byte[] blobData) throws Exception {
 				switch (blobClass) {
 					case DoodleDocument.BLOB_TYPE: {
 
@@ -122,10 +121,10 @@ public class MrDoodleApplication extends android.app.Application {
 
 			}
 
-			@SuppressWarnings("TryFinallyCanBeTryWithResources") // not for API 17 it's can't
+			@SuppressWarnings("TryFinallyCanBeTryWithResources")
 			@Nullable
 			@Override
-			public byte[] getBlobData(String blobId, String blobClass) throws Exception {
+			public byte[] getModelObjectData(String blobId, String blobClass) throws Exception {
 				switch (blobClass) {
 					case DoodleDocument.BLOB_TYPE: {
 
@@ -144,10 +143,26 @@ public class MrDoodleApplication extends android.app.Application {
 				}
 				return null;
 			}
+
+			@SuppressWarnings("TryFinallyCanBeTryWithResources")
+			@Override
+			public void deleteModelObject(String modelId, String modelClass) throws Exception {
+				switch(modelClass) {
+					case DoodleDocument.BLOB_TYPE:
+						Realm realm = Realm.getDefaultInstance();
+						try {
+							DoodleDocument doc = DoodleDocument.byUUID(realm, modelId);
+							DoodleDocument.delete(MrDoodleApplication.this, realm, doc);
+						} finally {
+							realm.close();
+						}
+						break;
+				}
+			}
 		});
 
 		// set up notifier to let change journal capture model events
-		changeJournalNotifier = new ChangeJournalNotifier(SyncManager.getInstance().getChangeJournal());
+		changeJournalNotifier = new ChangeJournalNotifier(SyncManager.getInstance());
 	}
 
 	/**
@@ -156,26 +171,26 @@ public class MrDoodleApplication extends android.app.Application {
 	 */
 	static class ChangeJournalNotifier {
 
-		private ChangeJournal changeJournal;
+		private SyncManager syncManager;
 
-		public ChangeJournalNotifier(ChangeJournal changeJournal) {
-			this.changeJournal = changeJournal;
+		public ChangeJournalNotifier(SyncManager syncManager) {
+			this.syncManager = syncManager;
 			BusProvider.getBus().register(this);
 		}
 
 		@Subscribe
 		public void onDoodleDocumentCreated(DoodleDocumentCreatedEvent event) {
-			changeJournal.markModified(event.getUuid(), DoodleDocument.BLOB_TYPE);
+			syncManager.getChangeJournal().markModified(event.getUuid(), DoodleDocument.BLOB_TYPE);
 		}
 
 		@Subscribe
 		public void onDoodleDocumentDeleted(DoodleDocumentDeletedEvent event) {
-			changeJournal.markDeleted(event.getUuid(), DoodleDocument.BLOB_TYPE);
+			syncManager.getChangeJournal().markDeleted(event.getUuid(), DoodleDocument.BLOB_TYPE);
 		}
 
 		@Subscribe
 		public void onDoodleDocumentModified(DoodleDocumentEditedEvent event) {
-			changeJournal.markModified(event.getUuid(), DoodleDocument.BLOB_TYPE);
+			syncManager.getChangeJournal().markModified(event.getUuid(), DoodleDocument.BLOB_TYPE);
 		}
 
 	}

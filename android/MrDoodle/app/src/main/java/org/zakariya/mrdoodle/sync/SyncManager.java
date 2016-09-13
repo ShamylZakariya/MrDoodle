@@ -6,8 +6,6 @@ import android.util.Log;
 
 import com.squareup.otto.Subscribe;
 
-import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
-import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
 import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.transport.Status;
@@ -29,14 +27,14 @@ import io.realm.Realm;
  */
 public class SyncManager implements SyncServerConnection.NotificationListener {
 
-	public interface BlobDataConverter extends SyncEngine.BlobDataConsumer, SyncEngine.BlobDataProvider
+	public interface ModelDataAdapter extends SyncEngine.ModelObjectDataConsumer, SyncEngine.ModelObjectDataProvider, SyncEngine.ModelObjectDeleter
 	{}
 
-
+	private static final String CHANGE_JOURNAL_PERSIST_PREFIX = "SyncChangeJournal";
 	private static final String TAG = SyncManager.class.getSimpleName();
 
 	private static SyncManager instance;
-	private SignInAccount signInAccount;
+	private SignInAccount userAccount;
 	private boolean applicationIsActive, running;
 	private SyncConfiguration syncConfiguration;
 	private Context context;
@@ -45,12 +43,11 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private ChangeJournal changeJournal;
 	private TimestampRecorder timestampRecorder;
 	private SyncEngine syncEngine;
-	private SyncStateAccess syncState;
-	private BlobDataConverter blobDataConverter;
+	private ModelDataAdapter modelDataAdapter;
 
-	public static void init(Context context, SyncConfiguration syncConfiguration, BlobDataConverter blobDataConverter) {
+	public static void init(Context context, SyncConfiguration syncConfiguration, ModelDataAdapter modelDataAdapter) {
 		if (instance == null) {
-			instance = new SyncManager(context, syncConfiguration, blobDataConverter);
+			instance = new SyncManager(context, syncConfiguration, modelDataAdapter);
 		}
 	}
 
@@ -58,24 +55,23 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		return instance;
 	}
 
-	private SyncManager(Context context, SyncConfiguration syncConfiguration, BlobDataConverter blobDataConverter) {
+	private SyncManager(Context context, SyncConfiguration syncConfiguration, ModelDataAdapter modelDataAdapter) {
 		BusProvider.getBus().register(this);
 
 		this.context = context;
 		this.executor = new AsyncExecutor();
 		this.syncConfiguration = syncConfiguration;
-		this.blobDataConverter = blobDataConverter;
-		this.syncState = new SyncStateAccess();
+		this.modelDataAdapter = modelDataAdapter;
 
 
 		applicationIsActive = true;
-		signInAccount = SignInManager.getInstance().getAccount();
+		userAccount = SignInManager.getInstance().getAccount();
 
 		syncServerConnection = new SyncServerConnection(syncConfiguration.getSyncServerConnectionUrl());
 		syncServerConnection.addNotificationListener(this);
 
-		changeJournal = new ChangeJournal(context);
-		timestampRecorder = new TimestampRecorder(context);
+		changeJournal = new ChangeJournal(CHANGE_JOURNAL_PERSIST_PREFIX, true);
+		timestampRecorder = new TimestampRecorder();
 		syncEngine = new SyncEngine(context, syncConfiguration);
 
 		updateAuthorizationToken();
@@ -127,7 +123,36 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 * Initiate a sync
 	 */
 	public void sync() throws Exception {
-		syncEngine.sync(syncState, changeJournal, timestampRecorder, blobDataConverter, blobDataConverter);
+
+		Realm realm = Realm.getDefaultInstance();
+		SyncStateAccess syncState = new SyncStateAccess(realm);
+
+		// 0) Make a copy of our ChangeJournal, and clear it.
+		//  User may modify documents while a sync is in operation. After sync succeeds or fails
+		//  merge what's left in the copy back to the "live" one
+
+		ChangeJournal syncChangeJournal = ChangeJournal.createSilentInMemoryCopy(this.changeJournal);
+
+		// silently clear change journal
+		changeJournal.clear(false);
+
+		try {
+			syncEngine.sync(realm,
+					userAccount,
+					syncState,
+					syncChangeJournal,
+					timestampRecorder,
+					modelDataAdapter,
+					modelDataAdapter,
+					modelDataAdapter);
+
+		} finally {
+
+			// merge - sync may have failed leaving some items un-synced, put those back in the persisting change journal
+			// to be pushed upstream next time
+			changeJournal.merge(syncChangeJournal, false);
+			realm.close();
+		}
 	}
 
 	public interface LocalStoreDeleter {
@@ -143,7 +168,12 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 *                state, e.g., clearing out your realm instance
 	 */
 	public void resetAndSync(LocalStoreDeleter deleter) throws Exception {
+
+		Realm realm = Realm.getDefaultInstance();
+		SyncStateAccess syncState = new SyncStateAccess(realm);
 		syncState.clear();
+		realm.close();
+
 		timestampRecorder.clear();
 		changeJournal.clear(false);
 		deleter.deleteLocalStore();
@@ -161,7 +191,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	public void stop() {
 		Log.d(TAG, "stop:");
 		applicationIsActive = false;
-		changeJournal.commit();
 		startOrStopSyncServices();
 	}
 
@@ -186,7 +215,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	///////////////////////////////////////////////////////////////////
 
 	void startOrStopSyncServices() {
-		if (applicationIsActive && signInAccount != null) {
+		if (applicationIsActive && userAccount != null) {
 			connect();
 		} else {
 			disconnect();
@@ -194,8 +223,8 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	void updateAuthorizationToken() {
-		if (signInAccount != null) {
-			signInAccount.getAuthenticationToken(new AuthenticationTokenReceiver() {
+		if (userAccount != null) {
+			userAccount.getAuthenticationToken(new AuthenticationTokenReceiver() {
 				@Override
 				public void onAuthenticationTokenAvailable(String idToken) {
 					syncEngine.setAuthorizationToken(idToken);
@@ -216,13 +245,12 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		Log.i(TAG, "onStatusReceived: received Status notification from web socket connection: " + status.toString());
 	}
 
-
 	///////////////////////////////////////////////////////////////////
 
 	@Subscribe
 	public void onSignedIn(SignInEvent event) {
 		Log.d(TAG, "onSignedIn:");
-		signInAccount = event.getAccount();
+		userAccount = event.getAccount();
 		syncServerConnection.resetExponentialBackoff();
 		updateAuthorizationToken();
 		startOrStopSyncServices();
@@ -231,7 +259,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	@Subscribe
 	public void onSignedOut(SignOutEvent event) {
 		Log.d(TAG, "onSignedOut:");
-		signInAccount = null;
+		userAccount = null;
 		startOrStopSyncServices();
 	}
 
@@ -241,8 +269,8 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		private Realm realm;
 		private SyncState syncState;
 
-		public SyncStateAccess() {
-			this.realm = Realm.getDefaultInstance();
+		public SyncStateAccess(Realm realm) {
+			this.realm = realm;
 			this.syncState = realm.where(SyncState.class).findFirst();
 
 			// if none was available, create a reasonable default

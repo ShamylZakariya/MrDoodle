@@ -146,20 +146,18 @@ public class DoodleDocument extends RealmObject {
 			// create the doodle
 			StrokeDoodle doodle = new StrokeDoodle(context, new ByteArrayInputStream(doodleBytes));
 
-			// now if we already have a DoodleDocument with this uuid, update it. otherwise, make a new one
+			boolean wasModified = false;
+
+			// now if we already have a DoodleDocument with this modelId, update it. otherwise, make a new one
 			DoodleDocument document = byUUID(realm, uuid);
 			if (document != null) {
-
+				wasModified = true;
 				realm.beginTransaction();
 				document.setName(name);
 				document.setCreationDate(creationDate);
 				document.setModificationDate(modificationDate);
 				realm.commitTransaction();
-
-				BusProvider.postOnMainThread(new DoodleDocumentEditedEvent(document.getUuid()));
-
 			} else {
-
 				realm.beginTransaction();
 				document = realm.createObject(DoodleDocument.class);
 				document.setUuid(uuid);
@@ -167,12 +165,16 @@ public class DoodleDocument extends RealmObject {
 				document.setModificationDate(modificationDate);
 				document.setName(name);
 				realm.commitTransaction();
-
-				BusProvider.postOnMainThread(new DoodleDocumentCreatedEvent(document.getUuid()));
 			}
 
 			// doodle has to be saved separately
 			document.saveDoodle(context, doodle);
+
+			if (wasModified) {
+				BusProvider.postOnMainThread(new DoodleDocumentEditedEvent(document.getUuid()));
+			} else {
+				BusProvider.postOnMainThread(new DoodleDocumentCreatedEvent(document.getUuid()));
+			}
 
 		} else {
 			throw new InvalidObjectException("Missing COOKIE header (0x" + Integer.toString(COOKIE, 16) + ")");

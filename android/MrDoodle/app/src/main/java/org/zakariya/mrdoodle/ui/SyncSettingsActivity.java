@@ -197,6 +197,12 @@ public class SyncSettingsActivity extends BaseActivity {
 		}
 	}
 
+	@OnClick(R.id.modelOverviewButton)
+	void showModelOverview() {
+		Log.i(TAG, "showModelOverview:");
+		startActivity(new Intent(this, ModelOverviewActivity.class));
+	}
+
 	@OnClick(R.id.syncNowButton)
 	void syncNow() {
 

@@ -1,5 +1,7 @@
 package org.zakariya.mrdoodle.sync.model;
 
+import android.support.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -25,9 +27,11 @@ public class SyncLogItem extends RealmObject {
 	 * @param realm the realm to contain the SyncLogItem
 	 * @return a new SyncLogItem, in the realm
 	 */
-	public static SyncLogItem create(Realm realm) {
+	public static SyncLogItem create(Realm realm, String message, @Nullable String failure) {
 		SyncLogItem item = realm.createObject(SyncLogItem.class);
 		item.setDate(new Date());
+		item.setLog(message);
+		item.setFailure(failure);
 		return item;
 	}
 
@@ -39,7 +43,7 @@ public class SyncLogItem extends RealmObject {
 	 */
 	public static RealmResults<SyncLogItem> all(Realm realm) {
 		RealmResults<SyncLogItem> items = realm.where(SyncLogItem.class).findAll();
-		items.sort("date", Sort.ASCENDING);
+		items.sort("date", Sort.DESCENDING);
 		return items;
 	}
 

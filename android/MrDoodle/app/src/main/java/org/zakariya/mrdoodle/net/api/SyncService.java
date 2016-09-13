@@ -44,7 +44,7 @@ public interface SyncService {
 	 *
 	 * @param accountId    the account id of the signed in user
 	 * @param sinceSeconds if > 0, the remote store's timestamp records will be filtered to be >= this value
-	 * @return map of document uuid to timestamp record entries
+	 * @return map of document modelId to timestamp record entries
 	 */
 	@GET("sync/{accountId}/changes")
 	Call<Map<String, TimestampRecordEntry>> getChanges(@Path("accountId") String accountId, @Query("since") long sinceSeconds);

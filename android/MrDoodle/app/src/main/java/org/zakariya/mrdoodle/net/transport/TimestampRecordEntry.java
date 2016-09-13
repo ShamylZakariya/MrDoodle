@@ -10,21 +10,22 @@ public class TimestampRecordEntry {
 		DELETE
 	}
 
-	public String uuid;
+	public String modelId;
+	public String modelClass;
 	public long timestampSeconds;
 	public int action;
 
 	public TimestampRecordEntry() {
 	}
 
-	public TimestampRecordEntry(String uuid, long timestampSeconds, int action) {
-		this.uuid = uuid;
+	public TimestampRecordEntry(String modelId, long timestampSeconds, int action) {
+		this.modelId = modelId;
 		this.timestampSeconds = timestampSeconds;
 		this.action = action;
 	}
 
 	@Override
 	public String toString() {
-		return "[TimestampRecordEntry uuid: " + uuid + " timestampSeconds: " + timestampSeconds + " action: " + Action.values()[action] + "]";
+		return "[TimestampRecordEntry modelId: " + modelId + " timestampSeconds: " + timestampSeconds + " action: " + Action.values()[action] + "]";
 	}
 }

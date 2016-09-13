@@ -132,6 +132,7 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					style="@style/Widget.AppCompat.Button"
+					android:visibility="gone"
 					android:text="Connect"/>
 
 				<Button
@@ -139,6 +140,7 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					style="@style/Widget.AppCompat.Button"
+					android:visibility="gone"
 					android:text="Disconnect"/>
 
 				<Button
@@ -146,7 +148,16 @@
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					style="@style/Widget.AppCompat.Button"
+					android:visibility="gone"
 					android:text="Status"/>
+
+				<Button
+					android:id="@+id/modelOverviewButton"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					style="@style/Widget.AppCompat.Button"
+					android:visibility="visible"
+					android:text="Model"/>
 
 				<Button
 					android:id="@+id/syncNowButton"
@@ -154,7 +165,7 @@
 					android:layout_height="wrap_content"
 					style="@style/Widget.AppCompat.Button"
 					android:text="@string/sync_now_button"
-					android:visibility="gone"/>
+					android:visibility="visible"/>
 
 				<Button
 					android:id="@+id/resetAndSyncButton"
@@ -162,7 +173,7 @@
 					android:layout_height="wrap_content"
 					style="@style/Widget.AppCompat.Button"
 					android:text="@string/sync_reset_button"
-					android:visibility="gone"/>
+					android:visibility="visible"/>
 
 			</LinearLayout>
 

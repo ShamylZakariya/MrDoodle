@@ -1,6 +1,5 @@
 package org.zakariya.mrdoodle.sync;
 
-import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -25,7 +24,6 @@ public class TimestampRecorder {
 	private static final String TAG = "TimestampRecorder";
 	private final static int COMMIT_DEBOUNCE_DELAY_MILLIS = 2 * 1000;
 
-	private Context context;
 	private Handler delayedCommitHandler;
 	private Runnable delayedCommit;
 	private boolean dirty;
@@ -34,10 +32,7 @@ public class TimestampRecorder {
 
 
 	@SuppressWarnings("unchecked")
-	public TimestampRecorder(Context context) {
-		this.context = context;
-
-		this.context = context;
+	public TimestampRecorder() {
 		this.dirty = false;
 
 		Realm realm = Realm.getDefaultInstance();
@@ -46,6 +41,7 @@ public class TimestampRecorder {
 
 		if (timestampData != null && timestampData.length > 0) {
 			try {
+				// TODO: Consider rewriting this with Kryo
 				ByteArrayInputStream byteStream = new ByteArrayInputStream(timestampData);
 				ObjectInputStream objectInputStream = new ObjectInputStream(byteStream);
 				timestamps = (HashMap<String, Long>) objectInputStream.readObject();
@@ -138,6 +134,10 @@ public class TimestampRecorder {
 		} else {
 			return 0;
 		}
+	}
+
+	public void clearTimestamp(String objectId) {
+		timestamps.remove(objectId);
 	}
 
 	/**

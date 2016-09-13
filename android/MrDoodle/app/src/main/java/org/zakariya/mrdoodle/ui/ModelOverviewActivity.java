@@ -21,9 +21,11 @@ import android.widget.TextView;
 
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.model.DoodleDocument;
-import org.zakariya.mrdoodle.sync.model.JournalItem;
+import org.zakariya.mrdoodle.sync.ChangeJournal;
+import org.zakariya.mrdoodle.sync.model.ChangeJournalItem;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.TimestampRecorder;
+import org.zakariya.mrdoodle.sync.model.ChangeType;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -180,13 +182,24 @@ public class ModelOverviewActivity extends AppCompatActivity {
 	public static class JournalItemListFragment extends ListFragment {
 		@Override
 		List<ListItemModel> getListItems() {
+			SyncManager syncManager = SyncManager.getInstance();
+			ChangeJournal journal = syncManager.getChangeJournal();
+
 			ArrayList<ListItemModel> itemModels = new ArrayList<>();
-			for (JournalItem item : JournalItem.all(realm).sort("modelObjectClass", Sort.ASCENDING)) {
+
+			for (ChangeJournalItem item : journal.getChangeJournalItems(realm)) {
 				ListItemModel listItemModel = new ListItemModel();
 				listItemModel.primaryText = item.getModelObjectClass() + " : " + item.getModelObjectId();
-				listItemModel.secondaryText = "Change type: " + JournalItem.Type.values()[item.getChangeType()].toString();
+				listItemModel.secondaryText = "Change type: " + ChangeType.values()[item.getChangeType()].toString();
 				itemModels.add(listItemModel);
 			}
+
+			Collections.sort(itemModels, new Comparator<ListItemModel>() {
+				@Override
+				public int compare(ListItemModel a, ListItemModel b) {
+					return a.primaryText.compareToIgnoreCase(b.primaryText);
+				}
+			});
 
 			return itemModels;
 		}
@@ -230,7 +243,7 @@ public class ModelOverviewActivity extends AppCompatActivity {
 		}
 
 		private String classOfItemWithId(String id) {
-			if (realm.where(DoodleDocument.class).equalTo("id",id).findFirst() != null) {
+			if (realm.where(DoodleDocument.class).equalTo("uuid",id).findFirst() != null) {
 				return DoodleDocument.class.getSimpleName();
 			}
 			return null;
