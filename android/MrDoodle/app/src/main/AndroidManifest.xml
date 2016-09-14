@@ -56,8 +56,7 @@
 			android:name="org.zakariya.mrdoodle.ui.ModelOverviewActivity"
 			android:label="@string/activity_title_model_overview"
 			android:launchMode="singleTop"
-			android:exported="true"
-			android:parentActivityName="org.zakariya.mrdoodle.ui.MainActivity">
+			android:exported="true">
 		</activity>
 
 	</application>
