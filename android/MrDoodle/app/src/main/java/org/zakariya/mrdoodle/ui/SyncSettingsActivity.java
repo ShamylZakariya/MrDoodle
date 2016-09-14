@@ -6,9 +6,11 @@ import android.support.annotation.Nullable;
 import android.support.annotation.StringRes;
 import android.support.v4.app.NavUtils;
 import android.support.v7.app.ActionBar;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -33,13 +35,19 @@ import org.zakariya.mrdoodle.signin.events.SignInEvent;
 import org.zakariya.mrdoodle.signin.events.SignOutEvent;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.SyncManager;
+import org.zakariya.mrdoodle.sync.model.SyncLogEntry;
 import org.zakariya.mrdoodle.util.AsyncExecutor;
 import org.zakariya.mrdoodle.util.BusProvider;
+import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
+
+import java.text.DateFormat;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import io.realm.Realm;
+import io.realm.RealmChangeListener;
+import io.realm.RealmResults;
 import retrofit2.Response;
 
 /**
@@ -79,6 +87,9 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	MenuItem signOutMenuItem;
 
+	Realm realm;
+	SyncLogAdapter syncLogAdapter;
+
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -95,11 +106,29 @@ public class SyncSettingsActivity extends BaseActivity {
 		if (actionBar != null) {
 			actionBar.setDisplayHomeAsUpEnabled(true);
 		}
+
+		realm = Realm.getDefaultInstance();
+		syncLogAdapter = new SyncLogAdapter(realm);
+		syncHistoryRecyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+		syncHistoryRecyclerView.setAdapter(syncLogAdapter);
+		syncHistoryRecyclerView.addOnItemTouchListener(new RecyclerItemClickListener(this, syncHistoryRecyclerView, new RecyclerItemClickListener.OnItemClickListener() {
+			@Override
+			public void onItemClick(View view, int position) {
+				Log.i(TAG, "onItemClick: position: " + position);
+			}
+
+			@Override
+			public void onLongItemClick(View view, int position) {
+				Log.i(TAG, "onLongItemClick: position: " + position);
+			}
+		}));
 	}
 
 	@Override
 	protected void onDestroy() {
 		BusProvider.getBus().unregister(this);
+		syncLogAdapter.onDestroy();
+		realm.close();
 		super.onDestroy();
 	}
 
@@ -361,5 +390,69 @@ public class SyncSettingsActivity extends BaseActivity {
 		userEmailTextView.setText(account.getEmail());
 		userNameTextView.setText(account.getDisplayName());
 		userIdTextView.setText(account.getId());
+	}
+
+	static class SyncLogAdapter extends RecyclerView.Adapter<SyncLogAdapter.ViewHolder> implements RealmChangeListener<Realm> {
+
+		Realm realm;
+		RealmResults<SyncLogEntry> syncLogEntries;
+		DateFormat dateFormatter;
+
+		public static class ViewHolder extends RecyclerView.ViewHolder {
+			@Bind(R.id.syncDateTextView)
+			TextView syncDateTextView;
+
+			@Bind(R.id.syncSuccessTextView)
+			TextView syncSuccessTextView;
+
+			@Bind(R.id.syncSuccessIndicatorImageView)
+			ImageView syncSuccessIndicatorImageView;
+
+			public ViewHolder(View itemView) {
+				super(itemView);
+				ButterKnife.bind(this, itemView);
+			}
+		}
+
+		public SyncLogAdapter(Realm realm) {
+			this.realm = realm;
+			syncLogEntries = SyncLogEntry.all(realm);
+			dateFormatter = DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG);
+			realm.addChangeListener(this);
+		}
+
+		void onDestroy() {
+			realm.removeChangeListener(this);
+		}
+
+		@Override
+		public void onChange(Realm element) {
+			syncLogEntries = SyncLogEntry.all(realm);
+			notifyDataSetChanged();
+		}
+
+		@Override
+		public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+			View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item_sync_log_entry, parent, false);
+			return new ViewHolder(v);
+		}
+
+		@Override
+		public void onBindViewHolder(ViewHolder holder, int position) {
+			SyncLogEntry entry = syncLogEntries.get(position);
+			holder.syncDateTextView.setText(dateFormatter.format(entry.getDate()));
+			if (entry.getFailure() == null) {
+				holder.syncSuccessTextView.setText(R.string.sync_log_entry_success);
+				holder.syncSuccessIndicatorImageView.setImageResource(R.drawable.icon_sync_success_black_24dp);
+			} else {
+				holder.syncSuccessTextView.setText(R.string.sync_log_entry_failure);
+				holder.syncSuccessIndicatorImageView.setImageResource(R.drawable.icon_sync_failure_black_24dp);
+			}
+		}
+
+		@Override
+		public int getItemCount() {
+			return syncLogEntries.size();
+		}
 	}
 }
