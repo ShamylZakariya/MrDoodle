@@ -241,6 +241,8 @@ class TimestampRecord {
 		for (Entry entry : entriesByUuid.values()) {
 			target.entriesByUuid.put(entry.getModelId(), entry);
 		}
+
+		target.save();
 	}
 
 	void save() {
