@@ -52,8 +52,9 @@ public class SyncServer {
 	private static JedisPool buildJedisPool(Configuration configuration) {
 		JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
 		jedisPoolConfig.setMaxTotal(128);
+
+		// TODO Figure out how to implement WHEN_EXHAUSTED_GROW, if possible
 		jedisPoolConfig.setBlockWhenExhausted(true);
-		
 
 		String redisHost = configuration.get("redis/host");
 		int redisPort = configuration.getInt("redis/port", -1);
