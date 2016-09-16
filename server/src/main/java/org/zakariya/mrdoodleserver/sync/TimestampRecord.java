@@ -242,6 +242,7 @@ class TimestampRecord {
 			target.entriesByUuid.put(entry.getModelId(), entry);
 		}
 
+		target.head = null; // invalidate
 		target.save();
 	}
 
