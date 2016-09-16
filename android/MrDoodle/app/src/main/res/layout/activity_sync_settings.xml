@@ -173,15 +173,36 @@
 
 			</LinearLayout>
 
-			<TextView
+			<LinearLayout
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
-				android:text="@string/sync_history"
-				style="@style/Body2"
-				android:textAllCaps="true"
-				android:textColor="@color/primaryLight"
+				android:orientation="horizontal"
 				android:paddingLeft="@dimen/activity_horizontal_margin"
-				android:paddingRight="@dimen/activity_horizontal_margin"/>
+				android:paddingRight="@dimen/activity_horizontal_margin">
+
+				<TextView
+					android:layout_width="0dp"
+					android:layout_height="wrap_content"
+					android:layout_weight="1"
+					android:layout_gravity="center_vertical"
+					android:gravity="left"
+					android:text="@string/sync_history"
+					style="@style/Body2"
+					android:textAllCaps="true"
+					android:textColor="@color/primaryLight"
+					android:paddingRight="@dimen/activity_horizontal_margin"/>
+
+				<Button
+					android:id="@+id/clearSyncHistoryButton"
+					android:layout_width="wrap_content"
+					android:layout_height="wrap_content"
+					android:layout_gravity="center_vertical"
+					style="@style/Widget.AppCompat.Button.Borderless"
+					android:text="@string/sync_history_clear"
+					android:visibility="visible"/>
+
+			</LinearLayout>
+
 
 			<android.support.v7.widget.RecyclerView
 				android:id="@+id/syncHistoryRecyclerView"

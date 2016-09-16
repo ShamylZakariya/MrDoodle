@@ -114,12 +114,12 @@ public class SyncSettingsActivity extends BaseActivity {
 		syncHistoryRecyclerView.addOnItemTouchListener(new RecyclerItemClickListener(this, syncHistoryRecyclerView, new RecyclerItemClickListener.OnItemClickListener() {
 			@Override
 			public void onItemClick(View view, int position) {
-				Log.i(TAG, "onItemClick: position: " + position);
+				SyncLogEntry entry = syncLogAdapter.getItemAtPosition(position);
+				showSyncLogEntryDetail(entry);
 			}
 
 			@Override
 			public void onLongItemClick(View view, int position) {
-				Log.i(TAG, "onLongItemClick: position: " + position);
 			}
 		}));
 	}
@@ -369,7 +369,6 @@ public class SyncSettingsActivity extends BaseActivity {
 		}
 	}
 
-	private void showSignedOutState() {
 		signedInView.setVisibility(View.GONE);
 		signedOutView.setVisibility(View.VISIBLE);
 
@@ -378,7 +377,6 @@ public class SyncSettingsActivity extends BaseActivity {
 		}
 	}
 
-	private void showSignedInState(SignInAccount account) {
 		signedInView.setVisibility(View.VISIBLE);
 		signedOutView.setVisibility(View.GONE);
 
@@ -439,7 +437,6 @@ public class SyncSettingsActivity extends BaseActivity {
 
 		@Override
 		public void onBindViewHolder(ViewHolder holder, int position) {
-			SyncLogEntry entry = syncLogEntries.get(position);
 			holder.syncDateTextView.setText(dateFormatter.format(entry.getDate()));
 			if (entry.getFailure() == null) {
 				holder.syncSuccessTextView.setText(R.string.sync_log_entry_success);

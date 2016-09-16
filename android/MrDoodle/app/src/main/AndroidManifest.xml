@@ -59,6 +59,13 @@
 			android:exported="true">
 		</activity>
 
+		<activity
+			android:name="org.zakariya.mrdoodle.ui.SyncLogEntryDetailActivity"
+			android:label="@string/activity_title_sync_log_entry_detail"
+			android:launchMode="singleTop"
+			android:exported="true">
+		</activity>
+
 	</application>
 
 </manifest>

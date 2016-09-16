@@ -1,10 +1,13 @@
 package org.zakariya.mrdoodle.sync.model;
 
+import android.support.annotation.Nullable;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 import io.realm.Realm;
 import io.realm.RealmObject;
@@ -17,6 +20,7 @@ import io.realm.Sort;
  */
 public class SyncLogEntry extends RealmObject {
 
+	private String uuid;
 	private String log;
 	private Date date;
 	private String failure;
@@ -29,6 +33,7 @@ public class SyncLogEntry extends RealmObject {
 	 */
 	public static SyncLogEntry create(Realm realm) {
 		SyncLogEntry item = realm.createObject(SyncLogEntry.class);
+		item.setUuid(UUID.randomUUID().toString());
 		item.setDate(new Date());
 		return item;
 	}
@@ -41,6 +46,11 @@ public class SyncLogEntry extends RealmObject {
 	 */
 	public static RealmResults<SyncLogEntry> all(Realm realm) {
 		return realm.where(SyncLogEntry.class).findAll().sort("date", Sort.DESCENDING);
+	}
+
+	@Nullable
+	public static SyncLogEntry get(Realm realm, String uuid) {
+		return realm.where(SyncLogEntry.class).equalTo("uuid", uuid).findFirst();
 	}
 
 	/**
@@ -81,6 +91,14 @@ public class SyncLogEntry extends RealmObject {
 		} else {
 			log = message;
 		}
+	}
+
+	public String getUuid() {
+		return uuid;
+	}
+
+	public void setUuid(String uuid) {
+		this.uuid = uuid;
 	}
 
 	public String getLog() {

@@ -4,10 +4,12 @@
 	<string name="menu_item_sync">Sync Settings</string>
 	<string name="menu_item_about">About</string>
 	<string name="menu_item_show_model_overview">Model Overview</string>
+	<string name="menu_item_send_sync_log">Send</string>
 
 	<string name="activity_title_about">About</string>
 	<string name="activity_title_sync">Sync</string>
 	<string name="activity_title_model_overview">Model Overview</string>
+	<string name="activity_title_sync_log_entry_detail">Sync Transcript</string>
 
 
 	<string name="clear">Clear</string>
@@ -53,6 +55,8 @@
 
 	<string name="sign_in_message">Sign in to enable sync</string>
 	<string name="sync_history">Sync History</string>
+	<string name="sync_history_clear">Clear</string>
+	<string name="sync_history_clear_alert_confirm">Clear sync history?</string>
 	<string name="sync_now_button">Sync</string>
 	<string name="sync_reset_button">Reset &amp; Sync</string>
 
@@ -63,5 +67,15 @@
 
 	<string name="sync_log_entry_success">Success</string>
 	<string name="sync_log_entry_failure">Failure</string>
+	<string name="sync_log_entry_detail_transcript">Transcript</string>
+	<string name="sync_log_entry_detail_date">%1$s %2$s</string>
+	<string name="sync_log_entry_detail_successful_sync">Successful sync</string>
+	<string name="sync_log_entry_detail_unsuccessful_sync">Sync Failure</string>
+	<string name="sync_log_entry_detail_send_email_address">shamyl@gmail.com</string>
+	<string name="sync_log_entry_detail_send_email_subject">Sync transcript</string>
+	<string name="sync_log_entry_detail_send_email_subject_account">Sync transcript for %1$s : %2$s</string>
+	<string name="sync_log_entry_detail_send_email_message">MrDoodle Version: %1$s\n\nSync transcript date: %2$s\n\nFailure: %3$s\n\n----\n\n%4$s</string>
+	<string name="sync_log_entry_detail_unable_to_send_email_title">Unable to send</string>
+	<string name="sync_log_entry_detail_unable_to_send_email_message">Does this device have email configured?</string>
 
 </resources>
