@@ -279,7 +279,9 @@ public class SyncSettingsActivity extends BaseActivity {
 					@Override
 					public void deleteLocalStore() {
 						Realm realm = Realm.getDefaultInstance();
+						realm.beginTransaction();
 						realm.delete(DoodleDocument.class);
+						realm.commitTransaction();
 						realm.close();
 					}
 				});
@@ -297,7 +299,14 @@ public class SyncSettingsActivity extends BaseActivity {
 				Log.e(TAG, "syncNow - onError: ", error);
 			}
 		});
+	}
 
+	@OnClick(R.id.clearSyncHistoryButton)
+	void clearSyncHistory() {
+		realm.beginTransaction();
+		realm.delete(SyncLogEntry.class);
+		realm.commitTransaction();
+		syncLogAdapter.notifyDataSetChanged();
 	}
 
 	void signOut() {
@@ -369,6 +378,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		}
 	}
 
+	void showSignedOutState() {
 		signedInView.setVisibility(View.GONE);
 		signedOutView.setVisibility(View.VISIBLE);
 
@@ -377,6 +387,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		}
 	}
 
+	void showSignedInState(SignInAccount account) {
 		signedInView.setVisibility(View.VISIBLE);
 		signedOutView.setVisibility(View.GONE);
 
@@ -388,6 +399,10 @@ public class SyncSettingsActivity extends BaseActivity {
 		userEmailTextView.setText(account.getEmail());
 		userNameTextView.setText(account.getDisplayName());
 		userIdTextView.setText(account.getId());
+	}
+
+	void showSyncLogEntryDetail(SyncLogEntry entry) {
+		startActivity(SyncLogEntryDetailActivity.getIntent(this, entry.getUuid()));
 	}
 
 	static class SyncLogAdapter extends RecyclerView.Adapter<SyncLogAdapter.ViewHolder> implements RealmChangeListener<Realm> {
@@ -437,6 +452,7 @@ public class SyncSettingsActivity extends BaseActivity {
 
 		@Override
 		public void onBindViewHolder(ViewHolder holder, int position) {
+			SyncLogEntry entry = getItemAtPosition(position);
 			holder.syncDateTextView.setText(dateFormatter.format(entry.getDate()));
 			if (entry.getFailure() == null) {
 				holder.syncSuccessTextView.setText(R.string.sync_log_entry_success);
@@ -445,6 +461,10 @@ public class SyncSettingsActivity extends BaseActivity {
 				holder.syncSuccessTextView.setText(R.string.sync_log_entry_failure);
 				holder.syncSuccessIndicatorImageView.setImageResource(R.drawable.icon_sync_failure_black_24dp);
 			}
+		}
+
+		SyncLogEntry getItemAtPosition(int position) {
+			return syncLogEntries.get(position);
 		}
 
 		@Override
