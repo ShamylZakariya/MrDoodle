@@ -96,7 +96,7 @@ public class ModelOverviewActivity extends AppCompatActivity {
 		public Fragment getItem(int position) {
 			switch (position) {
 				case 0:
-					return new DoodleDocumentListFragment();
+					return new ModelObjectListFragment();
 				case 1:
 					return new JournalItemListFragment();
 				case 2:
@@ -160,9 +160,19 @@ public class ModelOverviewActivity extends AppCompatActivity {
 		List<ListItemModel> getListItems() {
 			return null;
 		}
+
+		String getModelObjectName(String uuid) {
+			DoodleDocument doc = DoodleDocument.byUUID(realm, uuid);
+			if (doc != null) {
+				return doc.getName();
+			}
+
+			return "<Unknown>";
+		}
+
 	}
 
-	public static class DoodleDocumentListFragment extends ListFragment {
+	public static class ModelObjectListFragment extends ListFragment {
 		@Override
 		List<ListItemModel> getListItems() {
 
@@ -193,7 +203,7 @@ public class ModelOverviewActivity extends AppCompatActivity {
 
 			for (ChangeJournalItem item : journal.getChangeJournalItems(realm)) {
 				ListItemModel listItemModel = new ListItemModel();
-				listItemModel.primaryText = item.getModelObjectClass() + " : " + item.getModelObjectId();
+				listItemModel.primaryText = getModelObjectName(item.getModelObjectId()) + " : " + item.getModelObjectClass() + " : " + item.getModelObjectId();
 				listItemModel.secondaryText = "Change type: " + ChangeType.values()[item.getChangeType()].toString();
 				itemModels.add(listItemModel);
 			}
@@ -222,7 +232,7 @@ public class ModelOverviewActivity extends AppCompatActivity {
 					long timestamp = timestampRecorder.getTimestamp(id);
 
 					if (referencedItemClass != null) {
-						listItemModel.primaryText = referencedItemClass + " : " + id;
+						listItemModel.primaryText = getModelObjectName(id) + " : " + referencedItemClass + " : " + id;
 					} else {
 						listItemModel.primaryText = "<NULL> : " + id;
 					}
