@@ -208,7 +208,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	@Nullable
-	private String getBlob(Request request, Response response) {
+	private Object getBlob(Request request, Response response) {
 		try {
 			readWriteLock.readLock().lock();
 
@@ -227,7 +227,11 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 				ServletOutputStream os = response.raw().getOutputStream();
 				org.apache.commons.io.IOUtils.write(blobBytes, os);
+				os.flush();
 				os.close();
+
+				// TODO: This is supposed to send the bytes
+				return response.raw();
 			} else {
 				halt(404);
 			}
@@ -281,7 +285,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 			byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
 			blobStore.set(blobId, modelClass, timestamp, data);
-
 
 			try {
 				return objectMapper.writeValueAsString(entry);

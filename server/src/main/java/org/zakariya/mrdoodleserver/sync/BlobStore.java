@@ -132,6 +132,7 @@ class BlobStore {
 			Response<String> modelClassResponse = transaction.get(getEntryModelClassKey(accountId, namespace, uuid));
 			Response<String> timestampResponse = transaction.get(getEntryTimestampKey(accountId, namespace, uuid));
 			Response<byte[]> byteResponse = transaction.get(getEntryDataKey(accountId, namespace, uuid).getBytes());
+
 			transaction.exec();
 
 			String uuid2 = uuidResponse.get();
