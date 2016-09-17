@@ -25,6 +25,11 @@ public class SyncLogEntry extends RealmObject {
 	private Date date;
 	private String failure;
 
+	public SyncLogEntry() {
+		this.uuid = UUID.randomUUID().toString();
+		this.date = new Date();
+	}
+
 	/**
 	 * Create a new SyncLogEntry representing a sync transcript for a given account
 	 *

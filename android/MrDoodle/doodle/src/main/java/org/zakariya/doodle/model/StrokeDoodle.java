@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import icepick.Icepick;
 import icepick.State;
 
+@SuppressWarnings("TryFinallyCanBeTryWithResources")
 public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessellator.Listener {
 	private static final String TAG = "StrokeDoodle";
 
@@ -144,12 +145,13 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 	@Override
 	public void serialize(OutputStream out) {
 		Output output = new Output(out);
-
-		Kryo kryo = new Kryo();
-		kryo.writeObject(output, COOKIE);
-		kryo.writeObject(output, drawingSteps);
-
-		output.close();
+		try {
+			Kryo kryo = new Kryo();
+			kryo.writeObject(output, COOKIE);
+			kryo.writeObject(output, drawingSteps);
+		} finally {
+			output.close();
+		}
 	}
 
 	@Override
@@ -157,16 +159,20 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 		Input input = new Input(in);
 		Kryo kryo = new Kryo();
 
-		int cookie = kryo.readObject(input, Integer.class);
-		if (cookie == COOKIE) {
-			//noinspection unchecked
-			drawingSteps = kryo.readObject(input, ArrayList.class);
-			updateBackingStore();
-			setDirty(false);
-			invalidate();
+		try {
+			int cookie = kryo.readObject(input, Integer.class);
+			if (cookie == COOKIE) {
+				//noinspection unchecked
+				drawingSteps = kryo.readObject(input, ArrayList.class);
+				updateBackingStore();
+				setDirty(false);
+				invalidate();
 
-		} else {
-			throw new InvalidObjectException("Missing COOKIE header (0x" + Integer.toString(COOKIE, 16) + ")");
+			} else {
+				throw new InvalidObjectException("Missing COOKIE header (0x" + Integer.toString(COOKIE, 16) + ")");
+			}
+		} finally {
+			input.close();
 		}
 	}
 

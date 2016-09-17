@@ -25,10 +25,11 @@ import io.realm.Realm;
 /**
  * Top level access point for sync services
  */
+@SuppressWarnings("TryFinallyCanBeTryWithResources")
 public class SyncManager implements SyncServerConnection.NotificationListener {
 
-	public interface ModelDataAdapter extends SyncEngine.ModelObjectDataConsumer, SyncEngine.ModelObjectDataProvider, SyncEngine.ModelObjectDeleter
-	{}
+	public interface ModelDataAdapter extends SyncEngine.ModelObjectDataConsumer, SyncEngine.ModelObjectDataProvider, SyncEngine.ModelObjectDeleter {
+	}
 
 	private static final String CHANGE_JOURNAL_PERSIST_PREFIX = "SyncChangeJournal";
 	private static final String TAG = SyncManager.class.getSimpleName();
@@ -124,8 +125,8 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 */
 	public void sync() throws Exception {
 
-		Realm realm = Realm.getDefaultInstance();
-		SyncStateAccess syncState = new SyncStateAccess(realm);
+		SyncState syncState = getSyncState();
+
 
 		// 0) Make a copy of our ChangeJournal, and clear it.
 		//  User may modify documents while a sync is in operation. After sync succeeds or fails
@@ -137,8 +138,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		changeJournal.clear(false);
 
 		try {
-			syncEngine.sync(realm,
-					userAccount,
+			syncEngine.sync(userAccount,
 					syncState,
 					syncChangeJournal,
 					timestampRecorder,
@@ -146,12 +146,12 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 					modelDataAdapter,
 					modelDataAdapter);
 
-		} finally {
+			persistSyncState(syncState);
 
+		} finally {
 			// merge - sync may have failed leaving some items un-synced, put those back in the persisting change journal
 			// to be pushed upstream next time
 			changeJournal.merge(syncChangeJournal, false);
-			realm.close();
 		}
 	}
 
@@ -169,11 +169,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 */
 	public void resetAndSync(LocalStoreDeleter deleter) throws Exception {
 
-		Realm realm = Realm.getDefaultInstance();
-		SyncStateAccess syncState = new SyncStateAccess(realm);
-		syncState.clear();
-		realm.close();
-
+		persistSyncState(new SyncState());
 		timestampRecorder.clear();
 		changeJournal.clear(false);
 		deleter.deleteLocalStore();
@@ -238,6 +234,59 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		}
 	}
 
+	/**
+	 * @return Load the persisted SyncState. Changes made won't be persisted until you call persistSyncState()
+	 */
+	SyncState getSyncState() {
+
+		Realm realm = Realm.getDefaultInstance();
+		try {
+			SyncState syncState = realm.where(SyncState.class).findFirst();
+
+			// if none was available, create a reasonable default
+			if (syncState == null) {
+				realm.beginTransaction();
+
+				syncState = realm.createObject(SyncState.class);
+				syncState.setTimestampHead(0);
+				syncState.setLastSyncDate(new Date(0));
+
+				realm.commitTransaction();
+			}
+
+			return realm.copyFromRealm(syncState);
+		} finally {
+			realm.close();
+		}
+	}
+
+	/**
+	 * Persist changes made to a SyncState instance
+	 * @param syncState the instance to persist
+	 */
+	void persistSyncState(SyncState syncState) {
+		Realm realm = Realm.getDefaultInstance();
+		try {
+
+			SyncState ss = realm.where(SyncState.class).findFirst();
+			if (ss == null) {
+				realm.beginTransaction();
+				ss = realm.createObject(SyncState.class);
+				ss.setTimestampHead(syncState.getTimestampHead());
+				ss.setLastSyncDate(syncState.getLastSyncDate());
+				realm.commitTransaction();
+			} else {
+				realm.beginTransaction();
+				ss.setTimestampHead(syncState.getTimestampHead());
+				ss.setLastSyncDate(syncState.getLastSyncDate());
+				realm.commitTransaction();
+			}
+
+		} finally {
+			realm.close();
+		}
+	}
+
 	///////////////////////////////////////////////////////////////////
 
 	@Override
@@ -262,57 +311,4 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		userAccount = null;
 		startOrStopSyncServices();
 	}
-
-	///////////////////////////////////////////////////////////////////
-
-	public static final class SyncStateAccess {
-		private Realm realm;
-		private SyncState syncState;
-
-		public SyncStateAccess(Realm realm) {
-			this.realm = realm;
-			this.syncState = realm.where(SyncState.class).findFirst();
-
-			// if none was available, create a reasonable default
-			if (syncState == null) {
-				realm.beginTransaction();
-
-				syncState = realm.createObject(SyncState.class);
-				syncState.setTimestampHead(0);
-				syncState.setLastSyncDate(new Date(0));
-
-				realm.commitTransaction();
-			}
-		}
-
-		public void clear() {
-			realm.beginTransaction();
-			syncState.setTimestampHead(0);
-			syncState.setLastSyncDate(new Date(0));
-			realm.commitTransaction();
-		}
-
-		public long getTimestampHead() {
-			return syncState.getTimestampHead();
-		}
-
-		public void setTimestampHead(long timestampHead) {
-			realm.beginTransaction();
-			syncState.setTimestampHead(timestampHead);
-			realm.commitTransaction();
-		}
-
-		public Date getLastSyncDate() {
-			return syncState.getLastSyncDate();
-		}
-
-		public void setLastSyncDate(Date lastSyncDate) {
-			realm.beginTransaction();
-			syncState.setLastSyncDate(lastSyncDate);
-			realm.commitTransaction();
-		}
-
-	}
-
-
 }

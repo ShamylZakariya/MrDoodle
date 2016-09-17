@@ -11,11 +11,11 @@ import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.ChangeJournal;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.SyncException;
-import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.TimestampRecorder;
 import org.zakariya.mrdoodle.sync.model.ChangeJournalItem;
 import org.zakariya.mrdoodle.sync.model.ChangeType;
 import org.zakariya.mrdoodle.sync.model.SyncLogEntry;
+import org.zakariya.mrdoodle.sync.model.SyncState;
 
 import java.io.IOException;
 import java.util.Date;
@@ -163,7 +163,6 @@ public class SyncEngine {
 	/**
 	 * Perform a sync pushing local changes to server, and updating local state to match server's
 	 *
-	 * @param realm                   the current realm
 	 * @param account                 the account of the logged-in user
 	 * @param syncState               local timestampHead and lastSyncDate
 	 * @param changeJournal           the journal which records local changes since last sync
@@ -172,9 +171,8 @@ public class SyncEngine {
 	 * @param modelObjectDataConsumer mechanism which takes a blob id, class and bytes and adds it to the app's data store
 	 */
 	synchronized public void sync(
-			Realm realm,
 			SignInAccount account,
-			SyncManager.SyncStateAccess syncState,
+			SyncState syncState,
 			ChangeJournal changeJournal,
 			TimestampRecorder timestampRecorder,
 			ModelObjectDataProvider modelObjectDataProvider,
@@ -199,16 +197,15 @@ public class SyncEngine {
 		// 7) update syncState.timestampHead to status.timestampHead, and update syncState.lastSyncDate to now
 
 		syncing = true;
-		// all logging for duration of sync will go into here
-		realm.beginTransaction();
-		SyncLogEntry log = SyncLogEntry.create(realm);
-		realm.commitTransaction();
+
+		// all logging for duration of sync will go into here. The log
+		// will be copied to the realm at the end of the sync
+		SyncLogEntry log = new SyncLogEntry();
 
 		try {
 
-			log(realm, log, "Starting sync with current timestampHead: " + syncState.getTimestampHead());
+			log(log, "Starting sync with current timestampHead: " + syncState.getTimestampHead());
 			Status status = pushLocalChanges(
-					realm,
 					log,
 					account,
 					syncState,
@@ -216,24 +213,30 @@ public class SyncEngine {
 					timestampRecorder,
 					modelObjectDataProvider);
 
-//			status = pullRemoteChanges(
-//					realm,
-//			        log,
-//					status,
-//					account,
-//					syncState,
-//					timestampRecorder,
-//					modelObjectDataConsumer,
-//					modelObjectDeleter);
+			status = pullRemoteChanges(
+					log,
+					status,
+					account,
+					syncState,
+					timestampRecorder,
+					modelObjectDataConsumer,
+					modelObjectDeleter);
 
 			if (status != null) {
-				log(realm, log, "Sync complete, updating local timestamp head to: " + status.timestampHead);
+				log(log, "Sync complete, updating local timestamp head to: " + status.timestampHead);
 				syncState.setTimestampHead(status.timestampHead);
 				syncState.setLastSyncDate(new Date());
 			}
 
 		} finally {
-			log(realm, log, "DONE");
+			log(log, "DONE");
+
+			Realm realm = Realm.getDefaultInstance();
+			realm.beginTransaction();
+			realm.copyToRealm(log);
+			realm.commitTransaction();
+			realm.close();
+
 			syncing = false;
 		}
 	}
@@ -242,10 +245,9 @@ public class SyncEngine {
 
 	@Nullable
 	Status pushLocalChanges(
-			Realm realm,
 			SyncLogEntry log,
 			SignInAccount account,
-			SyncManager.SyncStateAccess syncState,
+			SyncState syncState,
 			ChangeJournal changeJournal,
 			TimestampRecorder timestampRecorder,
 			ModelObjectDataProvider modelObjectDataProvider)
@@ -255,7 +257,7 @@ public class SyncEngine {
 
 		// nothing to do
 		if (localChanges.isEmpty()) {
-			log(realm, log, "No local changes to push upstream");
+			log(log, "No local changes to push upstream");
 			return null;
 		}
 
@@ -263,7 +265,7 @@ public class SyncEngine {
 
 		// 1) get a write session token
 		String writeSessionToken = startWriteSession(accountId);
-		log(realm, log, "Got write session token: \"" + writeSessionToken + "\" - starting push phase of sync");
+		log(log, "Got write session token: \"" + writeSessionToken + "\" - starting push phase of sync");
 
 		try {
 
@@ -274,8 +276,8 @@ public class SyncEngine {
 
 				// push the change and mark that the change has been pushed
 				pushLocalChange(timestampRecorder, modelObjectDataProvider, accountId, writeSessionToken, change);
-				log(realm, log, "Pushed item: \"" + change.getModelObjectId() + " upstream");
-//				changeJournal.clear(change.getModelObjectId());
+				log(log, "Pushed item: \"" + change.getModelObjectId() + " upstream");
+				changeJournal.clear(change.getModelObjectId());
 			}
 
 			// 3) Commit write session. If we get a status response, the session was closed
@@ -285,7 +287,7 @@ public class SyncEngine {
 				Status status = commitWriteSession(accountId, writeSessionToken);
 				if (status != null) {
 					writeSessionToken = null; // mark null so finally{} block doesn't try again
-					log(realm, log, "Closed write session, push phase of sync complete");
+					log(log, "Closed write session, push phase of sync complete");
 				}
 
 				return status;
@@ -293,7 +295,7 @@ public class SyncEngine {
 
 		} catch (Throwable t) {
 			// log and rethrow
-			log(realm, log, "Sync failed", t);
+			log(log, "Sync failed", t);
 		} finally {
 
 			// if we failed without closing out write session, just give it a stab - note, we're
@@ -302,12 +304,12 @@ public class SyncEngine {
 			// and that exception will already be in-flight
 
 			if (writeSessionToken != null) {
-				log(realm, log, "After failed sync, attempting to close write session: \"" + writeSessionToken + "\"");
+				log(log, "After failed sync, attempting to close write session: \"" + writeSessionToken + "\"");
 				try {
 					syncService.commitWriteSession(accountId, writeSessionToken).execute();
-					log(realm, log, "Write session closed.");
+					log(log, "Write session closed.");
 				} catch (Exception e) {
-					log(realm, log, "Unable to close write session", e);
+					log(log, "Unable to close write session", e);
 				}
 			}
 		}
@@ -399,11 +401,10 @@ public class SyncEngine {
 	///////////////////////////////////////////////////////////////////
 
 	Status pullRemoteChanges(
-			Realm realm,
 			SyncLogEntry log,
 			@Nullable Status status,
 			SignInAccount account,
-			SyncManager.SyncStateAccess syncState,
+			SyncState syncState,
 			TimestampRecorder timestampRecorder,
 			ModelObjectDataConsumer modelObjectDataConsumer,
 			ModelObjectDeleter modelObjectDeleter)
@@ -415,11 +416,11 @@ public class SyncEngine {
 			status = getStatus(accountId);
 		}
 
-		log(realm, log, "Starting pull phase of sync. Remote timestampHead: " + status.timestampHead);
+		log(log, "Starting pull phase of sync. Remote timestampHead: " + status.timestampHead);
 
 		// early exit if we're up to date
 		if (status.timestampHead <= syncState.getTimestampHead()) {
-			log(realm, log, "We're up to date, finishing.");
+			log(log, "We're up to date, finishing.");
 			return status;
 		}
 
@@ -428,8 +429,11 @@ public class SyncEngine {
 
 		for (String id : remoteChanges.keySet()) {
 			TimestampRecordEntry remoteChange = remoteChanges.get(id);
-			pullChange(timestampRecorder, modelObjectDataConsumer, modelObjectDeleter, accountId, id, remoteChange);
-			log(realm, log, "Pulled remote change to object: " + id + " to local");
+			if (pullRemoteChange(timestampRecorder, modelObjectDataConsumer, modelObjectDeleter, accountId, id, remoteChange)) {
+				log(log, "Pulled remote change to object: " + id + " to local");
+			} else {
+				log(log, "Skipped remote change to object: " + id + " as we're up to date on this object");
+			}
 		}
 
 		// we're done
@@ -437,20 +441,25 @@ public class SyncEngine {
 		return status;
 	}
 
-	private void pullChange(TimestampRecorder timestampRecorder, ModelObjectDataConsumer modelObjectDataConsumer, ModelObjectDeleter modelObjectDeleter, String accountId, String id, TimestampRecordEntry remoteChange) throws Exception {
+	private boolean pullRemoteChange(TimestampRecorder timestampRecorder, ModelObjectDataConsumer modelObjectDataConsumer, ModelObjectDeleter modelObjectDeleter, String accountId, String id, TimestampRecordEntry remoteChange) throws Exception {
 		ChangeType changeType = ChangeType.values()[remoteChange.action];
 		switch (changeType) {
 			case MODIFY:
 				long localTimestamp = timestampRecorder.getTimestamp(id);
-				if (remoteChange.timestampSeconds > localTimestamp) {
-					Response<ResponseBody> blobResponse = syncService.getBlob(accountId, remoteChange.modelId).execute();
-					if (!blobResponse.isSuccessful()) {
-						throw new SyncException("Unable to download blob data for id: " + remoteChange.modelId, blobResponse);
-					}
 
-					modelObjectDataConsumer.setModelObjectData(remoteChange.modelId, remoteChange.modelClass, blobResponse.body().bytes());
-					timestampRecorder.setTimestamp(id, remoteChange.timestampSeconds);
+				// early exit if remote timestamp is not newer than ours
+				if (remoteChange.timestampSeconds <= localTimestamp) {
+					return false;
 				}
+
+				Response<ResponseBody> blobResponse = syncService.getBlob(accountId, remoteChange.modelId).execute();
+				if (!blobResponse.isSuccessful()) {
+					throw new SyncException("Unable to download blob data for id: " + remoteChange.modelId, blobResponse);
+				}
+
+				byte [] blobBytes = blobResponse.body().bytes();
+				modelObjectDataConsumer.setModelObjectData(remoteChange.modelId, remoteChange.modelClass, blobBytes);
+				timestampRecorder.setTimestamp(id, remoteChange.timestampSeconds);
 				break;
 
 			case DELETE:
@@ -458,9 +467,11 @@ public class SyncEngine {
 				timestampRecorder.clearTimestamp(id);
 				break;
 		}
+
+		return true;
 	}
 
-	private Map<String, TimestampRecordEntry> getRemoteChanges(SyncManager.SyncStateAccess syncState, String accountId) throws IOException, SyncException {
+	private Map<String, TimestampRecordEntry> getRemoteChanges(SyncState syncState, String accountId) throws IOException, SyncException {
 		Response<Map<String, TimestampRecordEntry>> remoteChanges = syncService.getChanges(accountId, syncState.getTimestampHead()).execute();
 
 		if (!remoteChanges.isSuccessful()) {
@@ -479,18 +490,14 @@ public class SyncEngine {
 		}
 	}
 
-	private void log(Realm realm, SyncLogEntry log, String message) {
+	private void log(SyncLogEntry log, String message) {
 		Log.i(TAG, message);
-		realm.beginTransaction();
-		log.appendLog(message);
-		realm.commitTransaction();
+		log.appendLog(message); // note the log is NOT in the realm until sync completes
 	}
 
-	private void log(Realm realm, SyncLogEntry log, String message, Throwable t) {
+	private void log(SyncLogEntry log, String message, Throwable t) {
 		Log.e(TAG, message, t);
-		realm.beginTransaction();
 		log.appendError(message, t);
-		realm.commitTransaction();
 	}
 
 }

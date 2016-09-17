@@ -125,6 +125,7 @@ public class DoodleDocument extends RealmObject {
 		Doodle doodle = loadDoodle(context);
 		byte [] doodleBytes = doodle.serialize();
 		kryo.writeObject(output, doodleBytes);
+		output.close();
 
 		return stream.toByteArray();
 	}
