@@ -15,6 +15,7 @@ import org.zakariya.mrdoodleserver.util.Preconditions;
 import redis.clients.jedis.JedisPool;
 import spark.Request;
 import spark.Response;
+import spark.ResponseTransformer;
 
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
@@ -43,13 +44,17 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
 	private static final boolean READ_WRITE_LOCK_IS_FAIR = true;
 
+	private static final String RESPONSE_TYPE_JSON = MediaType.JSON_UTF_8.toString();
+	private static final String RESPONSE_TYPE_TEXT = MediaType.PLAIN_TEXT_UTF_8.toString();
+	private static final String RESPONSE_TYPE_OCTET_STREAM = MediaType.OCTET_STREAM.toString();
+
 	private Configuration configuration;
 	private Authenticator authenticator;
 	private JedisPool jedisPool;
 	private Map<String, SyncManager> syncManagersByAccountId = new HashMap<>();
-	private ObjectMapper objectMapper = new ObjectMapper();
 	private boolean authenticationEnabled;
 	private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(READ_WRITE_LOCK_IS_FAIR);
+	private ResponseTransformer jsonResponseTransformer = new JsonResponseTransformer();
 
 	public SyncRouter(Configuration configuration, Authenticator authenticator, JedisPool jedisPool) {
 		this.configuration = configuration;
@@ -64,17 +69,17 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		// all api calls must authenticate
 		before(basePath + "/*", this::authenticate);
 
-		get(basePath + "/status", this::getStatus);
-		get(basePath + "/changes", this::getChanges);
+		get(basePath + "/status", this::getStatus, jsonResponseTransformer);
+		get(basePath + "/changes", this::getChanges, jsonResponseTransformer);
 
 		// get a write session token
 		get(basePath + "/writeSession/start", this::startWriteSession);
 		// end a write session using token received above
-		delete(basePath + "/writeSession/sessions/:token", this::commitWriteSession);
+		delete(basePath + "/writeSession/sessions/:token", this::commitWriteSession, jsonResponseTransformer);
 
 		// blobs
 		get(basePath + "/blob/:blobId", this::getBlob);
-		put(basePath + "/blob/:blobId", this::putBlob);
+		put(basePath + "/blob/:blobId", this::putBlob, jsonResponseTransformer);
 		delete(basePath + "/blob/:blobId", this::deleteBlob);
 	}
 
@@ -105,28 +110,23 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	@Nullable
-	private String getStatus(Request request, Response response) {
+	private Object getStatus(Request request, Response response) {
+		response.type(RESPONSE_TYPE_JSON);
+
 		try {
 			readWriteLock.readLock().lock();
 			String accountId = request.params("accountId");
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
-			Status status = syncManager.getStatus();
-
-			try {
-				return objectMapper.writeValueAsString(status);
-			} catch (JsonProcessingException e) {
-				haltWithError500("SyncRouter::getStatus - Unable to encode SyncManager.Status to JSON string, e: " + e.getLocalizedMessage(), e);
-			}
-
-			// if we're here we already halted the response
-			return null;
+			return syncManager.getStatus();
 		} finally {
 			readWriteLock.readLock().unlock();
 		}
 	}
 
 	@Nullable
-	private String getChanges(Request request, Response response) {
+	private Object getChanges(Request request, Response response) {
+		response.type(RESPONSE_TYPE_JSON);
+
 		try {
 			readWriteLock.readLock().lock();
 
@@ -145,13 +145,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				}
 			}
 
-			try {
-				Map<String, TimestampRecord.Entry> entries = timestampRecord.getEntriesSince(sinceTimestamp);
-				return objectMapper.writeValueAsString(entries);
-			} catch (JsonProcessingException e) {
-				haltWithError500("SyncRouter::getChanges - unable to serialize timestamps map to JSON", e);
-				return null;
-			}
+			return timestampRecord.getEntriesSince(sinceTimestamp);
 		} finally {
 			readWriteLock.readLock().unlock();
 		}
@@ -159,6 +153,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private String startWriteSession(Request request, Response response) {
+		response.type(RESPONSE_TYPE_TEXT);
+
 		String accountId = request.params("accountId");
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
 		SyncManager.WriteSession session = syncManager.startWriteSession();
@@ -171,7 +167,9 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	@Nullable
-	private String commitWriteSession(Request request, Response response) {
+	private Object commitWriteSession(Request request, Response response) {
+		response.type(RESPONSE_TYPE_JSON);
+
 		String accountId = request.params("accountId");
 		String sessionToken = request.params("token");
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
@@ -191,13 +189,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				WebSocketConnection connection = WebSocketConnection.getInstance();
 				connection.broadcast(accountId, status);
 
-				try {
-					return objectMapper.writeValueAsString(status);
-				} catch (JsonProcessingException e) {
-					haltWithError500("SyncRouter::commitWriteSession - unable to serialize status to JSON", e);
-					return null;
-				}
-
+				return status;
 			} else {
 				halt(403, "SyncRouter::commitWriteSession - The write token provided (" + sessionToken + ") was not valid");
 				return null;
@@ -209,6 +201,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private Object getBlob(Request request, Response response) {
+		response.type(RESPONSE_TYPE_OCTET_STREAM);
+
 		try {
 			readWriteLock.readLock().lock();
 
@@ -221,7 +215,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			if (entry != null) {
 				byte[] blobBytes = entry.getData();
 
-				response.type(MediaType.OCTET_STREAM.toString());
 				response.raw().setContentLength(blobBytes.length);
 				response.status(200);
 
@@ -246,7 +239,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	@Nullable
-	private String putBlob(Request request, Response response) {
+	private Object putBlob(Request request, Response response) {
+		response.type(RESPONSE_TYPE_JSON);
 
 		// we need to do this to extract the blob form data
 		request.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp"));
@@ -286,12 +280,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
 			blobStore.set(blobId, modelClass, timestamp, data);
 
-			try {
-				return objectMapper.writeValueAsString(entry);
-			} catch (JsonProcessingException e) {
-				haltWithError500("SyncRouter::putBlob - unable to serialize status to JSON", e);
-				return null;
-			}
+			return entry;
 
 		} catch (ServletException | IOException e) {
 			haltWithError500("SyncRouter::putBlob - Unable to read blob data from request", e);
@@ -301,7 +290,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	@Nullable
-	private String deleteBlob(Request request, Response response) {
+	private Object deleteBlob(Request request, Response response) {
+		response.type(RESPONSE_TYPE_JSON);
 
 		String accountId = request.params("accountId");
 		String blobId = request.params("blobId");
@@ -331,14 +321,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		// record deletion. note, the modelClass of the deleted item is irrelevant
 		long timestamp = syncManager.getTimestampSeconds();
-		TimestampRecord.Entry entry = timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
-
-		try {
-			return objectMapper.writeValueAsString(entry);
-		} catch (JsonProcessingException e) {
-			haltWithError500("SyncRouter::deleteBlob - unable to serialize status to JSON", e);
-			return null;
-		}
+		return timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -368,6 +351,17 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	///////////////////////////////////////////////////////////////////
 
+	private class JsonResponseTransformer implements ResponseTransformer {
+
+		private ObjectMapper objectMapper = new ObjectMapper();
+
+		@Override
+		public String render(Object o) throws Exception {
+			return objectMapper.writeValueAsString(o);
+		}
+	}
+
+	///////////////////////////////////////////////////////////////////
 
 	@Override
 	public void onWebSocketConnectionCreated(WebSocketConnection connection) {
