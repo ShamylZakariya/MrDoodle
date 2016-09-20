@@ -24,15 +24,18 @@ import java.util.stream.Collectors;
 public class SyncServer {
 
 	private static final Logger logger = LoggerFactory.getLogger(SyncServer.class);
-	private static final boolean USE_MOCK_AUTHENTICATOR = true;
 
 	public static void main(String[] args) {
-
-		logger.info("Starting SyncServer");
 
 		Configuration configuration = new Configuration();
 		configuration.addConfigJsonFilePath("configuration.json");
 		configuration.addConfigJsonFilePath("configuration_secret.json");
+
+		start(configuration);
+	}
+
+	public static void start(Configuration configuration) {
+		logger.info("Starting SyncServer");
 
 		Authenticator authenticator = buildAuthenticator(configuration);
 		JedisPool jedisPool = buildJedisPool(configuration);
@@ -68,7 +71,7 @@ public class SyncServer {
 	}
 
 	private static Authenticator buildAuthenticator(Configuration configuration) {
-		if (USE_MOCK_AUTHENTICATOR) {
+		if (configuration.getBoolean("authenticator/useMockAuthenticator", false)) {
 
 			Map<String,Object> tokensMap = configuration.getMap("authenticator/mock/tokens");
 			if (tokensMap == null) {
