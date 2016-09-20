@@ -87,19 +87,22 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			if (authToken == null || authToken.isEmpty()) {
 				sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Missing authorization token");
 			} else {
+				String verifiedId = null;
+
 				try {
-					String verifiedId = authenticator.verify(authToken);
-					String pathAccountId = request.params("accountId");
-					if (verifiedId != null) {
-						// token passed validation, but only allows access to :accountId subpath
-						if (!verifiedId.equals(pathAccountId)) {
-							sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
-						}
-					} else {
-						sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Invalid authorization token");
-					}
+					verifiedId = authenticator.verify(authToken);
 				} catch (Exception e) {
 					sendErrorAndHalt(response, 500, "SyncRouter::authenticate - Unable to verify authorization token, error: " + e.getLocalizedMessage(), e);
+				}
+
+				String pathAccountId = request.params("accountId");
+				if (verifiedId != null) {
+					// token passed validation, but only allows access to :accountId subpath
+					if (!verifiedId.equals(pathAccountId)) {
+						sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
+					}
+				} else {
+					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Invalid authorization token");
 				}
 			}
 		}
