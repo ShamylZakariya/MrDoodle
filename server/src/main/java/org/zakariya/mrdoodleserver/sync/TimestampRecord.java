@@ -84,6 +84,7 @@ class TimestampRecord {
 	private static final long DEBOUNCE_MILLIS = 3000;
 
 	private JedisPool jedisPool;
+	private String namespace;
 	private String accountId;
 	private Map<String, Entry> entriesByUuid = new HashMap<>();
 	private Entry head;
@@ -101,10 +102,12 @@ class TimestampRecord {
 	 * Create a TimestampRecord which persists to redis
 	 *
 	 * @param jedisPool the pool where jedis instances will be extracted for reads and writes
+	 * @param namespace the top-level namespace used for storage in redis (all fields will be named namespace/*)
 	 * @param accountId the account namespace for all writes/reads
 	 */
-	TimestampRecord(JedisPool jedisPool, String accountId) {
+	TimestampRecord(JedisPool jedisPool, String namespace, String accountId) {
 		this.jedisPool = jedisPool;
+		this.namespace = namespace;
 		this.accountId = accountId;
 		load();
 	}
@@ -121,6 +124,10 @@ class TimestampRecord {
 
 	String getAccountId() {
 		return accountId;
+	}
+
+	public String getNamespace() {
+		return namespace;
 	}
 
 	/**
@@ -209,11 +216,11 @@ class TimestampRecord {
 	}
 
 	private String getJedisKey() {
-		return getJedisKey(accountId);
+		return getJedisKey(namespace, accountId);
 	}
 
-	static String getJedisKey(String accountId) {
-		return accountId + ":timestamps";
+	static String getJedisKey(String namespace, String accountId) {
+		return namespace + "/timestamps/" + accountId;
 	}
 
 	private void markDirty() {

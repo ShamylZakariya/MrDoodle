@@ -13,14 +13,16 @@ import static org.junit.Assert.*;
 public class BlobStoreTest {
 
 	final JedisPool pool = new JedisPool("localhost");
-	final String accountId = "blobStoreTestAccount";
+	static final String accountId = "blobStoreTestAccount";
+	static final String MAIN_NAMESPACE = "test";
+	static final String TEMP_NAMESPACE = "test-temp";
 	BlobStore mainStore;
 	BlobStore tempStore;
 
 	@Before
 	public void setUp() throws Exception {
-		mainStore = new BlobStore(pool, accountId);
-		tempStore = new BlobStore(pool, accountId, "temp");
+		mainStore = new BlobStore(pool, MAIN_NAMESPACE, accountId);
+		tempStore = new BlobStore(pool, TEMP_NAMESPACE, accountId);
 	}
 
 	@After
@@ -31,33 +33,28 @@ public class BlobStoreTest {
 
 	@org.junit.Test
 	public void basicReadWriteDeleteTests() throws Exception {
-		BlobStore store = new BlobStore(pool, accountId);
-
 		// confirm writing and then reading out an item results in an equal item
 		BlobStore.Entry e = new BlobStore.Entry("A", "Foo", 10, "Data".getBytes());
-		store.set(e);
-		BlobStore.Entry eCopy = store.get(e.getUuid());
+		mainStore.set(e);
+		BlobStore.Entry eCopy = mainStore.get(e.getUuid());
 		assertEquals("Loaded blob entry should be equal to the original", e, eCopy);
 
 		// confirm that get on a deleted item returns null
-		store.delete(e.getUuid());
-		BlobStore.Entry eNull = store.get(e.getUuid());
+		mainStore.delete(e.getUuid());
+		BlobStore.Entry eNull = mainStore.get(e.getUuid());
 		assertNull("After deleting blob, should be null", eNull);
 
 		// confirm the data is deleted
 		try (Jedis jedis = pool.getResource()) {
-			assertFalse("blob uuid should be deleted", jedis.exists(BlobStore.getEntryUuidKey(accountId, store.getNamespace(), e.getUuid())));
-			assertFalse("blob modelClass should be deleted", jedis.exists(BlobStore.getEntryModelClassKey(accountId, store.getNamespace(), e.getUuid())));
-			assertFalse("blob timestamp should be deleted", jedis.exists(BlobStore.getEntryTimestampKey(accountId, store.getNamespace(), e.getUuid())));
-			assertFalse("blob data should be deleted", jedis.exists(BlobStore.getEntryDataKey(accountId, store.getNamespace(), e.getUuid())));
+			assertFalse("blob uuid should be deleted", jedis.exists(BlobStore.getEntryUuidKey(accountId, mainStore.getNamespace(), e.getUuid())));
+			assertFalse("blob modelClass should be deleted", jedis.exists(BlobStore.getEntryModelClassKey(accountId, mainStore.getNamespace(), e.getUuid())));
+			assertFalse("blob timestamp should be deleted", jedis.exists(BlobStore.getEntryTimestampKey(accountId, mainStore.getNamespace(), e.getUuid())));
+			assertFalse("blob data should be deleted", jedis.exists(BlobStore.getEntryDataKey(accountId, mainStore.getNamespace(), e.getUuid())));
 		}
 	}
 
 	@org.junit.Test
 	public void testBlobStoreMerging() throws Exception {
-		BlobStore mainStore = new BlobStore(pool, accountId);
-		BlobStore tempStore = new BlobStore(pool, accountId, "temp");
-
 		BlobStore.Entry entryInMain = new BlobStore.Entry("A", "Foo", 10, "Main".getBytes());
 		BlobStore.Entry entryInMainThatWillBeDeleted = new BlobStore.Entry("B", "Bar", 11, "Memento Mori".getBytes());
 		BlobStore.Entry entryInTemp = new BlobStore.Entry("C", "Baz", 12, "Temp".getBytes());

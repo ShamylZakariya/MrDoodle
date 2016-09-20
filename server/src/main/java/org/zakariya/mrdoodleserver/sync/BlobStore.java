@@ -12,8 +12,6 @@ import java.util.Set;
  */
 class BlobStore {
 
-	public static final String NAMESPACE_DEFAULT = "default";
-
 	static class Entry {
 		byte[] data;
 		String uuid;
@@ -63,22 +61,13 @@ class BlobStore {
 	/**
 	 * Create a BlobStore which will persist to a given redis connection.
 	 * @param jedisPool pool brokering access to a redis connection
+	 * @param namespace the top-level namespace under which blobs will be persisted
 	 * @param accountId the user account for the blobs which will be persisted
-	 * @param namespace the namespace under which blobs will be persisted
 	 */
-	BlobStore(JedisPool jedisPool, String accountId, String namespace) {
+	BlobStore(JedisPool jedisPool, String namespace, String accountId) {
 		this.jedisPool = jedisPool;
 		this.accountId = accountId;
 		this.namespace = namespace;
-	}
-
-	/**
-	 * Create a BlobStore which will persist to a given redis connection. Blobs will be saved to the default namespace.
-	 * @param jedisPool pool brokering access to a redis connection
-	 * @param accountId the user account for the blobs which will be persisted
-	 */
-	BlobStore(JedisPool jedisPool, String accountId) {
-		this(jedisPool, accountId, NAMESPACE_DEFAULT);
 	}
 
 	String getAccountId() {

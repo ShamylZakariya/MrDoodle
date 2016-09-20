@@ -7,7 +7,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Basic Configuration management.
@@ -48,6 +50,7 @@ public class Configuration {
 
 	/**
 	 * Check if the configuration has a particular value
+	 *
 	 * @param path the path to the value
 	 * @return true if the value exists and is non-empty (when treated as a string)
 	 */
@@ -96,6 +99,18 @@ public class Configuration {
 	}
 
 	/**
+	 * Get the string value of the item at a given path. The path can contain directory separators, as such: "a/b/c/leaf"
+	 *
+	 * @param path the deep path into configuration
+	 * @param fallback the fallback value if the requested value isn't in the configuration
+	 * @return the string value of the item at the end of the path, or fallback
+	 */
+	public String get(String path, String fallback) {
+		String v = get(path);
+		return (v != null) ? v : fallback;
+	}
+
+	/**
 	 * Get the integer value of the item specified by `path`, or the default value if the item didn't exist, or could not be parsed into an integer.
 	 *
 	 * @param path         deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
@@ -137,7 +152,8 @@ public class Configuration {
 
 	/**
 	 * Get the boolean value of the item specified by `path`, or the default value if the item didn't exist
-	 * @param path deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
+	 *
+	 * @param path         deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
 	 * @param defaultValue the default value to return if the item specified did not exist
 	 * @return the bool value of the item specified by the path
 	 */
@@ -152,11 +168,12 @@ public class Configuration {
 
 	/**
 	 * Get an object in the configuration as a simple map
+	 *
 	 * @param path deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
 	 * @return the item at that point in the configuration as a String->Object map
 	 */
 	@Nullable
-	public Map<String,Object> getMap(String path) {
+	public Map<String, Object> getMap(String path) {
 		JsonNode node = getNode(path);
 		if (node != null) {
 			//noinspection unchecked

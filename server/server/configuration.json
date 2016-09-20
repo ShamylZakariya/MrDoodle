@@ -3,6 +3,7 @@
 	"redis": {
 		"host": "localhost"
 	},
+	"prefix":"dev",
 	"authenticator": {
 		"whitelist_grace_period_seconds": 3600,
 		"mock": {

@@ -35,6 +35,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	private static final Logger logger = LoggerFactory.getLogger(SyncRouter.class);
 
+	private static final String DEFAULT_STORAGE_PREFIX = "dev";
 	private static final String REQUEST_HEADER_AUTH = "Authorization";
 	private static final String REQUEST_HEADER_MODEL_CLASS = "X-Model-Class";
 	private static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
@@ -49,6 +50,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private JedisPool jedisPool;
 	private Map<String, SyncManager> syncManagersByAccountId = new HashMap<>();
 	private boolean authenticationEnabled;
+	private String storagePrefix;
 	private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(READ_WRITE_LOCK_IS_FAIR);
 	private ResponseTransformer jsonResponseTransformer = new JsonResponseTransformer();
 
@@ -57,6 +59,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		this.authenticator = authenticator;
 		this.jedisPool = jedisPool;
 		this.authenticationEnabled = configuration.getBoolean("authenticator/enabled", true);
+		this.storagePrefix = configuration.get("prefix", DEFAULT_STORAGE_PREFIX);
 	}
 
 	public void configureRoutes() {
@@ -335,7 +338,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		SyncManager syncManager = syncManagersByAccountId.get(accountId);
 
 		if (syncManager == null) {
-			syncManager = new SyncManager(configuration, jedisPool, accountId);
+			syncManager = new SyncManager(configuration, jedisPool, storagePrefix, accountId);
 			syncManagersByAccountId.put(accountId, syncManager);
 		}
 

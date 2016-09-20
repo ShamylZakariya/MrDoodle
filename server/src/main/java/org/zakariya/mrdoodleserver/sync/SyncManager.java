@@ -22,6 +22,8 @@ import java.util.concurrent.TimeUnit;
  */
 class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener {
 
+	private static final String WRITE_SESSION_NAMESPACE = "write-session";
+
 	private Configuration configuration;
 	private String accountId;
 	private JedisPool jedisPool;
@@ -40,7 +42,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 		WriteSession(JedisPool jedisPool) {
 			token = UUID.randomUUID().toString();
 			timestampRecord = new TimestampRecord();
-			blobStore = new BlobStore(jedisPool, token, "temp");
+			blobStore = new BlobStore(jedisPool, WRITE_SESSION_NAMESPACE, token);
 		}
 
 		String getToken() {
@@ -73,12 +75,12 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 		}
 	}
 
-	SyncManager(Configuration configuration, JedisPool jedisPool, String accountId) {
+	SyncManager(Configuration configuration, JedisPool jedisPool, String storagePrefix, String accountId) {
 		this.configuration = configuration;
 		this.jedisPool = jedisPool;
 		this.accountId = accountId;
-		this.timestampRecord = new TimestampRecord(jedisPool, accountId);
-		this.blobStore = new BlobStore(jedisPool, accountId);
+		this.timestampRecord = new TimestampRecord(jedisPool, storagePrefix, accountId);
+		this.blobStore = new BlobStore(jedisPool, storagePrefix, accountId);
 	}
 
 	void close() {

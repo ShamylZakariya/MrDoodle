@@ -3,6 +3,7 @@
 	"redis": {
 		"host": "localhost"
 	},
+	"prefix":"test",
 	"authenticator": {
 		"useMockAuthenticator":true,
 		"mock": {
