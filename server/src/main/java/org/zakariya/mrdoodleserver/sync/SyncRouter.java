@@ -1,6 +1,5 @@
 package org.zakariya.mrdoodleserver.sync;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
 import org.eclipse.jetty.websocket.api.Session;
@@ -22,11 +21,8 @@ import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static spark.Spark.*;
@@ -37,7 +33,7 @@ import static spark.Spark.*;
  */
 public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreatedListener {
 
-	static final Logger logger = LoggerFactory.getLogger(SyncRouter.class);
+	private static final Logger logger = LoggerFactory.getLogger(SyncRouter.class);
 
 	private static final String REQUEST_HEADER_AUTH = "Authorization";
 	private static final String REQUEST_HEADER_MODEL_CLASS = "X-Model-Class";
@@ -89,7 +85,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		if (authenticationEnabled) {
 			String authToken = request.headers(REQUEST_HEADER_AUTH);
 			if (authToken == null || authToken.isEmpty()) {
-				halt(401, "SyncRouter::authenticate - Missing authorization token");
+				sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Missing authorization token");
 			} else {
 				try {
 					String verifiedId = authenticator.verify(authToken);
@@ -97,13 +93,13 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 					if (verifiedId != null) {
 						// token passed validation, but only allows access to :accountId subpath
 						if (!verifiedId.equals(pathAccountId)) {
-							halt(401, "SyncRouter::authenticate - Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
+							sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
 						}
 					} else {
-						halt(401, "SyncRouter::authenticate - Invalid authorization token");
+						sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Invalid authorization token");
 					}
 				} catch (Exception e) {
-					haltWithError500("SyncRouter::authenticate - Unable to verify authorization token, error: " + e.getLocalizedMessage(), e);
+					sendErrorAndHalt(response, 500, "SyncRouter::authenticate - Unable to verify authorization token, error: " + e.getLocalizedMessage(), e);
 				}
 			}
 		}
@@ -111,13 +107,14 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private Object getStatus(Request request, Response response) {
-		response.type(RESPONSE_TYPE_JSON);
-
 		try {
 			readWriteLock.readLock().lock();
 			String accountId = request.params("accountId");
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
+
+			response.type(RESPONSE_TYPE_JSON);
 			return syncManager.getStatus();
+
 		} finally {
 			readWriteLock.readLock().unlock();
 		}
@@ -125,8 +122,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private Object getChanges(Request request, Response response) {
-		response.type(RESPONSE_TYPE_JSON);
-
 		try {
 			readWriteLock.readLock().lock();
 
@@ -140,12 +135,14 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				try {
 					sinceTimestamp = Long.parseLong(since);
 				} catch (NumberFormatException nfe) {
-					haltWithError500("SyncRouter::getChanges - Unable to parse 'since' query parameter \"" + since + "\" as a number. error: " + nfe.getLocalizedMessage(), nfe);
+					sendErrorAndHalt(response, 500, "SyncRouter::getChanges - Unable to parse 'since' query parameter \"" + since + "\" as a number. error: " + nfe.getLocalizedMessage(), nfe);
 					return null;
 				}
 			}
 
+			response.type(RESPONSE_TYPE_JSON);
 			return timestampRecord.getEntriesSince(sinceTimestamp);
+
 		} finally {
 			readWriteLock.readLock().unlock();
 		}
@@ -153,8 +150,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private String startWriteSession(Request request, Response response) {
-		response.type(RESPONSE_TYPE_TEXT);
-
 		String accountId = request.params("accountId");
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
 		SyncManager.WriteSession session = syncManager.startWriteSession();
@@ -163,13 +158,12 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		String authToken = request.headers(REQUEST_HEADER_AUTH);
 		authenticator.addToWhitelist(authToken);
 
+		response.type(RESPONSE_TYPE_TEXT);
 		return session.getToken();
 	}
 
 	@Nullable
 	private Object commitWriteSession(Request request, Response response) {
-		response.type(RESPONSE_TYPE_JSON);
-
 		String accountId = request.params("accountId");
 		String sessionToken = request.params("token");
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
@@ -189,9 +183,10 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				WebSocketConnection connection = WebSocketConnection.getInstance();
 				connection.broadcast(accountId, status);
 
+				response.type(RESPONSE_TYPE_JSON);
 				return status;
 			} else {
-				halt(403, "SyncRouter::commitWriteSession - The write token provided (" + sessionToken + ") was not valid");
+				sendErrorAndHalt(response, 403, "SyncRouter::commitWriteSession - The write token provided (" + sessionToken + ") was not valid");
 				return null;
 			}
 		} finally {
@@ -201,7 +196,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private Object getBlob(Request request, Response response) {
-		response.type(RESPONSE_TYPE_OCTET_STREAM);
 
 		try {
 			readWriteLock.readLock().lock();
@@ -223,14 +217,14 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				os.flush();
 				os.close();
 
-				// TODO: This is supposed to send the bytes
+				response.type(RESPONSE_TYPE_OCTET_STREAM);
 				return response.raw();
 			} else {
-				halt(404);
+				sendErrorAndHalt(response, 404, "Unknown blob ID");
 			}
 
 		} catch (IOException e) {
-			haltWithError500("SyncRouter::getBlob - Unable to copy blob bytes to response", e);
+			sendErrorAndHalt(response, 500, "SyncRouter::getBlob - Unable to copy blob bytes to response", e);
 		} finally {
 			readWriteLock.readLock().unlock();
 		}
@@ -240,20 +234,19 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private Object putBlob(Request request, Response response) {
-		response.type(RESPONSE_TYPE_JSON);
 
 		// we need to do this to extract the blob form data
 		request.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp"));
 
 		String modelClass = request.headers(REQUEST_HEADER_MODEL_CLASS);
 		if (modelClass == null || modelClass.isEmpty()) {
-			halt(400, "SyncRouter::putBlob - Missing model class header attribute (\"" + REQUEST_HEADER_MODEL_CLASS + "\")");
+			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing model class header attribute (\"" + REQUEST_HEADER_MODEL_CLASS + "\")");
 			return null;
 		}
 
 		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
 		if (writeToken == null || writeToken.isEmpty()) {
-			halt(400, "SyncRouter::putBlob - Missing write token(\"" + REQUEST_HEADER_MODEL_CLASS + "\"); writes are disallowed without a write token");
+			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing write token(\"" + REQUEST_HEADER_MODEL_CLASS + "\"); writes are disallowed without a write token");
 			return null;
 		}
 
@@ -263,7 +256,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		SyncManager.WriteSession session = syncManager.getWriteSession(writeToken);
 
 		if (session == null) {
-			halt(403, "SyncRouter::putBlob - The write token provided is not valid");
+			sendErrorAndHalt(response, 403, "SyncRouter::putBlob - The write token provided is not valid");
 			return null;
 		}
 
@@ -280,10 +273,11 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
 			blobStore.set(blobId, modelClass, timestamp, data);
 
+			response.type(RESPONSE_TYPE_JSON);
 			return entry;
 
 		} catch (ServletException | IOException e) {
-			haltWithError500("SyncRouter::putBlob - Unable to read blob data from request", e);
+			sendErrorAndHalt(response, 500, "SyncRouter::putBlob - Unable to read blob data from request", e);
 		}
 
 		return null;
@@ -291,14 +285,12 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private Object deleteBlob(Request request, Response response) {
-		response.type(RESPONSE_TYPE_JSON);
-
 		String accountId = request.params("accountId");
 		String blobId = request.params("blobId");
 
 		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
 		if (writeToken == null || writeToken.isEmpty()) {
-			halt(400, "SyncRouter::deleteBlob - Missing write token(" + REQUEST_HEADER_MODEL_CLASS + "); writes are disallowed without a write token");
+			sendErrorAndHalt(response, 400, "SyncRouter::deleteBlob - Missing write token(" + REQUEST_HEADER_MODEL_CLASS + "); writes are disallowed without a write token");
 			return null;
 		}
 
@@ -307,7 +299,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		SyncManager.WriteSession session = syncManager.getWriteSession(writeToken);
 
 		if (session == null) {
-			halt(403, "SyncRouter::deleteBlob - The write token provided is not valid");
+			sendErrorAndHalt(response, 403, "SyncRouter::deleteBlob - The write token provided is not valid");
 			return null;
 		}
 
@@ -321,7 +313,10 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		// record deletion. note, the modelClass of the deleted item is irrelevant
 		long timestamp = syncManager.getTimestampSeconds();
-		return timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
+		TimestampRecord.Entry entry = timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
+
+		response.type(RESPONSE_TYPE_JSON);
+		return entry;
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -344,9 +339,16 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		return syncManager;
 	}
 
-	private void haltWithError500(String message, Exception e) {
+	private void sendErrorAndHalt(Response response, int code, String message, Exception e) {
 		logger.error(message, e);
-		halt(500, message);
+		response.type(RESPONSE_TYPE_TEXT);
+		halt(code, message);
+	}
+
+	private void sendErrorAndHalt(Response response, int code, String message) {
+		logger.error(message);
+		response.type(RESPONSE_TYPE_TEXT);
+		halt(code, message);
 	}
 
 	///////////////////////////////////////////////////////////////////
