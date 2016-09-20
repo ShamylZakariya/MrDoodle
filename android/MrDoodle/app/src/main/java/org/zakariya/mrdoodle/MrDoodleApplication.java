@@ -12,7 +12,7 @@ import com.squareup.otto.Subscribe;
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
-import org.zakariya.mrdoodle.events.DoodleDocumentDeletedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentWillBeDeletedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.signin.SignInManager;
@@ -184,7 +184,7 @@ public class MrDoodleApplication extends android.app.Application {
 		}
 
 		@Subscribe
-		public void onDoodleDocumentDeleted(DoodleDocumentDeletedEvent event) {
+		public void onDoodleDocumentWillBeDeleted(DoodleDocumentWillBeDeletedEvent event) {
 			syncManager.getChangeJournal().markDeleted(event.getUuid(), DoodleDocument.BLOB_TYPE);
 		}
 

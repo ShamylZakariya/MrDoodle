@@ -10,7 +10,7 @@ import com.esotericsoftware.kryo.io.Output;
 import org.zakariya.doodle.model.Doodle;
 import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
-import org.zakariya.mrdoodle.events.DoodleDocumentDeletedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentWillBeDeletedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
 
@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InvalidObjectException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.UUID;
 
@@ -77,18 +78,42 @@ public class DoodleDocument extends RealmObject {
 		return doc;
 	}
 
+	/**
+	 * Delete a DoodleDocument and its associated files on disc
+	 * @param context a context, needed to get access to files dir
+	 * @param realm a realm
+	 * @param doc the doodle document
+	 */
 	public static void delete(Context context, Realm realm, DoodleDocument doc) {
+
+		// notify that the document is about to be deleted
 		String uuid = doc.getUuid();
+		BusProvider.postOnMainThread(new DoodleDocumentWillBeDeletedEvent(uuid));
 
 		doc.deleteSaveFile(context);
 
 		realm.beginTransaction();
 		doc.deleteFromRealm();
 		realm.commitTransaction();
-
-		BusProvider.postOnMainThread(new DoodleDocumentDeletedEvent(uuid));
 	}
 
+	/**
+	 * Delete all DoodleDocuments and associated files on disc
+	 * @param context a context, needed to get access to files dir
+	 * @param realm a realm
+	 */
+	public static void deleteAll(Context context, Realm realm) {
+		ArrayList<DoodleDocument> all = new ArrayList<>(DoodleDocument.all(realm));
+		for (DoodleDocument doc : all) {
+			delete(context, realm, doc);
+		}
+	}
+
+	/**
+	 * Get all DoodleDocuments
+	 * @param realm a realm
+	 * @return all DoodleDocuments
+	 */
 	public static RealmResults<DoodleDocument> all(Realm realm) {
 		return realm.where(DoodleDocument.class).findAll();
 	}
@@ -98,7 +123,7 @@ public class DoodleDocument extends RealmObject {
 	 *
 	 * @param context  the context
 	 */
-	public void deleteSaveFile(Context context) {
+	void deleteSaveFile(Context context) {
 		File file = getSaveFile(context);
 		if (file.exists()) {
 			//noinspection ResultOfMethodCallIgnored

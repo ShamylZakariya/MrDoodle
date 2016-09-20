@@ -9,9 +9,9 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
-import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,35 +27,17 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 import io.realm.Realm;
-import io.realm.RealmResults;
 
 /**
- * Created by shamyl on 12/18/15.
+ * RecyclerView.Adapter which prevents a live & updating model of all DoodleDocument instances
  */
 public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAdapter.ViewHolder> {
 
 	private static final String TAG = DoodleDocumentAdapter.class.getSimpleName();
-
-	public interface OnClickListener {
-		/**
-		 * Called when an item is clicked
-		 *
-		 * @param document the document represented by this item
-		 */
-		void onDoodleDocumentClick(DoodleDocument document, View tappedItem);
-	}
-
-	public interface OnLongClickListener {
-		/**
-		 * Called when an item is long clicked
-		 *
-		 * @param document the document represented by this item
-		 * @return true if the long click is handled, false otherwise
-		 */
-		boolean onDoodleDocumentLongClick(DoodleDocument document, View tappedItem);
-	}
 
 	public class ViewHolder extends RecyclerView.ViewHolder {
 		public DoodleDocument doodleDocument;
@@ -89,24 +71,34 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		}
 	}
 
+	private static class Item {
+		String uuid;
+		DoodleDocument document;
+
+		public Item(DoodleDocument document) {
+			this.document = document;
+			this.uuid = document.getUuid();
+		}
+	}
+
 	WeakReference<RecyclerView> weakRecyclerView;
 	Context context;
 	Realm realm;
 	View emptyView;
-	ArrayList<DoodleDocument> doodleDocuments;
+	ArrayList<Item> items = new ArrayList<>();
+	Map<String,Item> hiddenItems = new HashMap<>();
+
 	DateFormat dateFormatter;
-	WeakReference<OnClickListener> weakOnClickListener;
-	WeakReference<OnLongClickListener> weakOnLongClickListener;
 	int columns;
-	int crossfadeDuration;
+	int crossFadeDuration;
 	int itemWidth;
 	float thumbnailPadding;
 
-	Comparator<DoodleDocument> sortComparator = new Comparator<DoodleDocument>() {
+	Comparator<Item> sortComparator = new Comparator<Item>() {
 		@Override
-		public int compare(DoodleDocument lhs, DoodleDocument rhs) {
-			long leftCreationDate = lhs.getCreationDate().getTime();
-			long rightCreationDate = rhs.getCreationDate().getTime();
+		public int compare(Item lhs, Item rhs) {
+			long leftCreationDate = lhs.document.getCreationDate().getTime();
+			long rightCreationDate = rhs.document.getCreationDate().getTime();
 			long delta = rightCreationDate - leftCreationDate;
 
 			// this dance is to avoid long->int precision loss
@@ -119,86 +111,132 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		}
 	};
 
-	public DoodleDocumentAdapter(Context context, RecyclerView recyclerView, int columns, RealmResults<DoodleDocument> items, View emptyView) {
+	public DoodleDocumentAdapter(RecyclerView recyclerView, Context context, int columns, View emptyView) {
 		this.context = context;
 		this.emptyView = emptyView;
 		weakRecyclerView = new WeakReference<>(recyclerView);
 		this.columns = columns;
-		realm = Realm.getDefaultInstance();
+		this.realm = Realm.getDefaultInstance();
 		dateFormatter = DateFormat.getDateTimeInstance();
-		crossfadeDuration = context.getResources().getInteger(android.R.integer.config_shortAnimTime);
-		doodleDocuments = new ArrayList<>();
-
+		crossFadeDuration = context.getResources().getInteger(android.R.integer.config_shortAnimTime);
 		thumbnailPadding = 4 * context.getResources().getDimensionPixelSize(R.dimen.doodle_grid_item_border_width);
 
-		setItems(items);
+		updateItems();
 	}
 
-	public void setOnClickListener(@Nullable OnClickListener listener) {
-		if (listener != null) {
-			weakOnClickListener = new WeakReference<>(listener);
-		} else {
-			weakOnClickListener = null;
-		}
-	}
-
-	@Nullable
-	public OnClickListener getOnClickListener() {
-		return weakOnClickListener != null ? weakOnClickListener.get() : null;
-	}
-
-	public void setOnLongClickListener(@Nullable OnLongClickListener listener) {
-		if (listener != null) {
-			weakOnLongClickListener = new WeakReference<>(listener);
-		} else {
-			weakOnLongClickListener = null;
-		}
-	}
-
-	@Nullable
-	public OnLongClickListener getOnLongClickListener() {
-		return weakOnLongClickListener != null ? weakOnLongClickListener.get() : null;
-	}
-
-	/**
-	 * Your activity/fragment needs to call this to clean up the internal Realm instance
-	 */
 	public void onDestroy() {
 		realm.close();
 	}
 
-	void updateEmptyView() {
-		emptyView.setVisibility(doodleDocuments.isEmpty() ? View.VISIBLE : View.GONE);
+	public DoodleDocument getDocumentAt(int position) {
+		return this.items.get(position).document;
+	}
+
+	public void setDocumentHidden(DoodleDocument document, boolean hidden) {
+
+		if (hidden == isDocumentHidden(document)) {
+			return;
+		}
+
+		if (hidden) {
+			int position = getIndexOfDocument(document);
+			if (position < 0) {
+				throw new IllegalArgumentException("Document: " + document.getUuid() + " is not in the list of visible documents");
+			}
+
+			Item item = items.get(position);
+			items.remove(position);
+			hiddenItems.put(item.uuid, item);
+			notifyItemRemoved(position);
+		} else {
+			Item item = hiddenItems.remove(document.getUuid());
+			if (item == null) {
+				throw new IllegalArgumentException("Document: " + document.getUuid() + " is not in the hidden set");
+			}
+
+			items.add(item);
+			sortDocuments();
+			int position = getIndexOfDocument(item.uuid);
+			notifyItemInserted(position);
+		}
+
+		updateEmptyView();
+	}
+
+	public boolean isDocumentHidden(String documentUuid) {
+		return hiddenItems.containsKey(documentUuid);
+	}
+
+	public boolean isDocumentHidden(DoodleDocument document) {
+		return isDocumentHidden(document.getUuid());
+	}
+
+	public int getIndexOfDocument(String uuid) {
+		// we need to compare UUIDs because object === checks might not work with Realm objects
+		for (int i = 0; i < items.size(); i++) {
+			Item item = items.get(i);
+			if (item.uuid.equals(uuid)) {
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+	public int getIndexOfDocument(DoodleDocument document) {
+		return getIndexOfDocument(document.getUuid());
+	}
+
+	public void onItemAdded(DoodleDocument doc) {
+		Log.d(TAG, "onItemAdded() called with: " + "doc = [" + doc + "]");
+
+		items.add(new Item(doc));
+		sortDocuments();
+
+		int index = getIndexOfDocument(doc);
+		if (index >= 0) {
+			notifyItemInserted(index);
+		} else {
+			notifyDataSetChanged();
+		}
+
+		updateEmptyView();
+	}
+
+	public void onItemDeleted(String documentUuid) {
+		Log.d(TAG, "onItemDeleted() called with: " + "documentUuid = [" + documentUuid + "]");
+
+		hiddenItems.remove(documentUuid);
+		int index = getIndexOfDocument(documentUuid);
+		if (index >= 0) {
+			items.remove(index);
+			notifyItemRemoved(index);
+		}
+
+		updateEmptyView();
+	}
+
+	public void onItemUpdated(DoodleDocument doc) {
+		Log.d(TAG, "onItemUpdated() called with: " + "doc = [" + doc + "]");
+
+		int previousIndex = getIndexOfDocument(doc);
+		if (previousIndex >= 0) {
+			sortDocuments();
+			int newIndex = getIndexOfDocument(doc);
+			if (newIndex != previousIndex) {
+				notifyItemMoved(previousIndex, newIndex);
+			}
+			notifyItemChanged(newIndex);
+		}
+
+		updateEmptyView();
 	}
 
 	@Override
 	public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 		LayoutInflater inflater = LayoutInflater.from(parent.getContext());
 		View v = inflater.inflate(R.layout.doodle_document_grid_item, parent, false);
-
-		final ViewHolder holder = new ViewHolder(v);
-		holder.imageView.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				DoodleDocument doc = holder.doodleDocument;
-				OnClickListener listener = getOnClickListener();
-				if (doc != null && listener != null) {
-					listener.onDoodleDocumentClick(doc, holder.imageView);
-				}
-			}
-		});
-
-		holder.imageView.setLongClickable(true);
-		holder.imageView.setOnLongClickListener(new View.OnLongClickListener() {
-			@Override
-			public boolean onLongClick(View v) {
-				DoodleDocument doc = holder.doodleDocument;
-				OnLongClickListener listener = getOnLongClickListener();
-				return doc != null && listener != null && listener.onDoodleDocumentLongClick(doc, holder.imageView);
-			}
-		});
-
-		return holder;
+		return new ViewHolder(v);
 	}
 
 	@Override
@@ -217,14 +255,14 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 			holder.thumbnailRenderTask = null;
 		}
 
-		DoodleDocument doc = doodleDocuments.get(position);
+		Item item = items.get(position);
 
-		holder.doodleDocument = doc;
+		holder.doodleDocument = item.document;
 		holder.infoTextView.setText(context.getString(R.string.doodle_document_grid_info_text,
-				doc.getName(),
-				dateFormatter.format(doc.getCreationDate()),
-				dateFormatter.format(doc.getModificationDate()),
-				doc.getUuid()));
+				item.document.getName(),
+				dateFormatter.format(item.document.getCreationDate()),
+				dateFormatter.format(item.document.getModificationDate()),
+				item.document.getUuid()));
 
 		// note: Our icons are square, so knowing item width is sufficient
 		int thumbnailWidth = itemWidth;
@@ -232,7 +270,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		int thumbnailHeight = itemWidth;
 
 		// store the id used to represent this thumbnail for quick future lookup
-		holder.thumbnailId = DoodleThumbnailRenderer.getThumbnailId(doc, thumbnailWidth, thumbnailHeight);
+		holder.thumbnailId = DoodleThumbnailRenderer.getThumbnailId(item.document, thumbnailWidth, thumbnailHeight);
 
 		DoodleThumbnailRenderer thumbnailer = DoodleThumbnailRenderer.getInstance();
 		Bitmap thumbnail = thumbnailer.getThumbnailById(holder.thumbnailId);
@@ -257,7 +295,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 			holder.loadingImageView.setVisibility(View.VISIBLE);
 
 			holder.thumbnailRenderTask = DoodleThumbnailRenderer.getInstance().renderThumbnail(
-					doc, thumbnailWidth, thumbnailHeight, thumbnailPadding,
+					item.document, thumbnailWidth, thumbnailHeight, thumbnailPadding,
 					new DoodleThumbnailRenderer.Callbacks() {
 						@Override
 						public void onThumbnailReady(Bitmap thumbnail) {
@@ -265,7 +303,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 							holder.setThumbnailImage(thumbnail);
 							holder.loadingImageView.animate()
 									.alpha(0)
-									.setDuration(crossfadeDuration)
+									.setDuration(crossFadeDuration)
 									.setListener(new AnimatorListenerAdapter() {
 										@Override
 										public void onAnimationEnd(Animator animation) {
@@ -280,13 +318,13 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 
 	@Override
 	public int getItemCount() {
-		return doodleDocuments.size();
+		return items.size();
 	}
 
-	public void setItems(RealmResults<DoodleDocument> items) {
-		doodleDocuments.clear();
-		for (DoodleDocument doc : items) {
-			this.doodleDocuments.add(doc);
+	void updateItems() {
+		this.items.clear();
+		for (DoodleDocument doc : DoodleDocument.all(realm)) {
+			this.items.add(new Item(doc));
 		}
 
 		sortDocuments();
@@ -294,79 +332,12 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		notifyDataSetChanged();
 	}
 
-	/**
-	 * Add a document to the list
-	 *
-	 * @param doc the document
-	 */
-	public void addItem(DoodleDocument doc) {
-		doodleDocuments.add(0, doc);
-		sortDocuments();
-		int index = getIndexOfItem(doc);
-		if (index >= 0) {
-			notifyItemInserted(index);
-		} else {
-			notifyDataSetChanged();
-		}
-
-		updateEmptyView();
+	void sortDocuments() {
+		Collections.sort(items, sortComparator);
 	}
 
-	/**
-	 * Remove a document from the list.
-	 *
-	 * @param doc the document to remove
-	 */
-	public void removeItem(DoodleDocument doc) {
-		int index = getIndexOfItem(doc);
-		if (index >= 0) {
-			doodleDocuments.remove(index);
-			notifyItemRemoved(index);
-		}
-
-		updateEmptyView();
+	void updateEmptyView() {
+		emptyView.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
 	}
 
-	/**
-	 * When a document is edited, it goes to the top of the list. Call this to re-sort storage and move the item.
-	 *
-	 * @param doc the edited document
-	 */
-	public void itemWasUpdated(DoodleDocument doc) {
-		int previousIndex = getIndexOfItem(doc);
-		if (previousIndex >= 0) {
-			sortDocuments();
-			int newIndex = getIndexOfItem(doc);
-			if (newIndex != previousIndex) {
-				notifyItemMoved(previousIndex, newIndex);
-			}
-			notifyItemChanged(newIndex);
-		}
-
-		updateEmptyView();
-	}
-
-	public boolean contains(DoodleDocument document) {
-		return getIndexOfItem(document.getUuid()) >= 0;
-	}
-
-	private void sortDocuments() {
-		Collections.sort(doodleDocuments, sortComparator);
-	}
-
-	private int getIndexOfItem(String uuid) {
-		// we need to compare UUIDs because object === checks might not work with Realm objects
-		for (int i = 0; i < doodleDocuments.size(); i++) {
-			DoodleDocument doc = doodleDocuments.get(i);
-			if (doc.getUuid().equals(uuid)) {
-				return i;
-			}
-		}
-
-		return -1;
-	}
-
-	private int getIndexOfItem(DoodleDocument document) {
-		return getIndexOfItem(document.getUuid());
-	}
 }

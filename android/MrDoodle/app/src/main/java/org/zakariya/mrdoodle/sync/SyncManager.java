@@ -169,10 +169,12 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 */
 	public void resetAndSync(LocalStoreDeleter deleter) throws Exception {
 
+		// TODO We have a race condition here. The deleter may emit change/delete messages, and they may be consumed by the changeJournal
+
+		deleter.deleteLocalStore();
 		persistSyncState(new SyncState());
 		timestampRecorder.clear();
 		changeJournal.clear(false);
-		deleter.deleteLocalStore();
 
 		sync();
 	}

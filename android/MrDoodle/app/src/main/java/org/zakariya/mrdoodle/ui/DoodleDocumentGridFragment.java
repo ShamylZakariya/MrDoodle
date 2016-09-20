@@ -17,7 +17,6 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -28,9 +27,16 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.squareup.otto.Subscribe;
+
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.adapters.DoodleDocumentAdapter;
+import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentWillBeDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
+import org.zakariya.mrdoodle.util.BusProvider;
+import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
 
 import java.lang.ref.WeakReference;
 
@@ -39,12 +45,11 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 import icepick.Icepick;
 import io.realm.Realm;
-import io.realm.RealmResults;
 
 /**
- * Created by shamyl on 12/16/15.
+ * Shows a grid view of doodle documents
  */
-public class DoodleDocumentGridFragment extends Fragment implements DoodleDocumentAdapter.OnClickListener, DoodleDocumentAdapter.OnLongClickListener {
+public class DoodleDocumentGridFragment extends Fragment implements RecyclerItemClickListener.OnItemClickListener {
 
 	private static final String TAG = DoodleDocumentGridFragment.class.getSimpleName();
 	private static final int REQUEST_EDIT_DOODLE = 1;
@@ -69,16 +74,32 @@ public class DoodleDocumentGridFragment extends Fragment implements DoodleDocume
 	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 	@Override
 	public void onCreate(@Nullable Bundle savedInstanceState) {
+		Log.i(TAG, "onCreate: ");
 		super.onCreate(savedInstanceState);
-		Icepick.restoreInstanceState(this, savedInstanceState);
 		realm = Realm.getDefaultInstance();
+		Icepick.restoreInstanceState(this, savedInstanceState);
+		BusProvider.getBus().register(this);
 	}
 
 	@Override
 	public void onDestroy() {
+		Log.i(TAG, "onDestroy: ");
+		BusProvider.getBus().unregister(this);
 		adapter.onDestroy();
 		realm.close();
 		super.onDestroy();
+	}
+
+	@Override
+	public void onResume() {
+		Log.i(TAG, "onResume: ");
+		super.onResume();
+	}
+
+	@Override
+	public void onStop() {
+		Log.i(TAG, "onStop: ");
+		super.onStop();
 	}
 
 	@Override
@@ -124,73 +145,53 @@ public class DoodleDocumentGridFragment extends Fragment implements DoodleDocume
 		float maxItemSize = getResources().getDimension(R.dimen.max_doodle_grid_item_size);
 		int columns = (int) Math.ceil((float) displayWidth / maxItemSize);
 
-		RealmResults<DoodleDocument> docs = DoodleDocument.all(realm);
-		adapter = new DoodleDocumentAdapter(getContext(), recyclerView, columns, docs, emptyView);
-		adapter.setOnClickListener(this);
-		adapter.setOnLongClickListener(this);
-
 
 		layoutManager = new GridLayoutManager(getContext(), columns);
 		recyclerView.setLayoutManager(layoutManager);
-
+		recyclerView.addOnItemTouchListener(new RecyclerItemClickListener(getContext(), recyclerView, this));
 		recyclerView.addItemDecoration(new DividerItemDecoration(
 				getResources().getDimension(R.dimen.doodle_grid_item_border_width),
 				ContextCompat.getColor(getContext(), R.color.doodleGridThumbnailBorder)
 		));
 
+		adapter = new DoodleDocumentAdapter(recyclerView, getContext(), columns, emptyView);
 		recyclerView.setAdapter(adapter);
+
 		return v;
-	}
-
-	@Override
-	public void onResume() {
-
-//		Log.w(TAG, "onResume: jumping directly to editor");
-//		DoodleDocument doc = DoodleDocument.byUUID(realm, "79c3439e-fa18-4a55-a1be-53193ef231c3");
-//		editPhotoDoodle(doc);
-
-		super.onResume();
 	}
 
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		switch (requestCode) {
 			case REQUEST_EDIT_DOODLE:
-				if (resultCode == DoodleActivity.RESULT_OK) {
-					boolean didEdit = data.getBooleanExtra(DoodleActivity.RESULT_DID_EDIT_DOODLE, false);
-					String uuid = data.getStringExtra(DoodleActivity.RESULT_DOODLE_DOCUMENT_UUID);
-
-					if (didEdit && !TextUtils.isEmpty(uuid)) {
-						adapter.itemWasUpdated(DoodleDocument.byUUID(realm, uuid));
-					}
-				}
 				break;
 		}
 
 		super.onActivityResult(requestCode, resultCode, data);
 	}
 
+
 	@OnClick(R.id.fab)
 	public void createNewPhotoDoodle() {
 		DoodleDocument newDoc = DoodleDocument.create(realm, getString(R.string.untitled_document));
-		adapter.addItem(newDoc);
 		recyclerView.smoothScrollToPosition(0);
-
-		editPhotoDoodle(newDoc);
+		editDoodleDocument(newDoc);
 	}
 
 	@Override
-	public void onDoodleDocumentClick(DoodleDocument document, View tappedItem) {
-		editPhotoDoodle(document, tappedItem);
+	public void onItemClick(View view, int position) {
+		DoodleDocument document = adapter.getDocumentAt(position);
+		editDoodleDocument(document);
 	}
 
 	@Override
-	public boolean onDoodleDocumentLongClick(DoodleDocument document, View tappedItem) {
-		queryDeletePhotoDoodle(document);
-		return true;
+	public void onLongItemClick(View view, int position) {
+		DoodleDocument document = adapter.getDocumentAt(position);
+		queryDeleteDoodleDocument(document);
 	}
 
-	void queryDeletePhotoDoodle(final DoodleDocument document) {
+
+	void queryDeleteDoodleDocument(final DoodleDocument document) {
 		final WeakReference<DoodleDocumentGridFragment> weakThis = new WeakReference<>(this);
 
 		// TODO: Figure out why I get "The Activity's LayoutInflater already has a Factory installed so we can not install AppCompat's" warning here.
@@ -221,8 +222,7 @@ public class DoodleDocumentGridFragment extends Fragment implements DoodleDocume
 		}
 
 		// hide document from adapter
-		Log.i(TAG, "deletePhotoDoodle: deleting document");
-		adapter.removeItem(doc);
+		adapter.setDocumentHidden(doc, true);
 
 		Snackbar snackbar = Snackbar.make(rootView, R.string.snackbar_document_deleted, Snackbar.LENGTH_LONG);
 
@@ -238,10 +238,9 @@ public class DoodleDocumentGridFragment extends Fragment implements DoodleDocume
 			public void onDismissed(Snackbar snackbar, int event) {
 				super.onDismissed(snackbar, event);
 				DoodleDocument doc = DoodleDocument.byUUID(realm, docUuid);
-				if (doc != null && !adapter.contains(doc)) {
+				if (doc != null && adapter.isDocumentHidden(doc)) {
 					DoodleDocument.delete(getContext(), realm, doc);
 				}
-
 			}
 		});
 
@@ -249,8 +248,8 @@ public class DoodleDocumentGridFragment extends Fragment implements DoodleDocume
 			@Override
 			public void onClick(View v) {
 				DoodleDocument doc = DoodleDocument.byUUID(realm, docUuid);
-				if (doc != null && !adapter.contains(doc)) {
-					adapter.addItem(doc);
+				if (doc != null && adapter.isDocumentHidden(doc)) {
+					adapter.setDocumentHidden(doc, false);
 				}
 			}
 		});
@@ -261,15 +260,8 @@ public class DoodleDocumentGridFragment extends Fragment implements DoodleDocume
 		snackbar.show();
 	}
 
-	void editPhotoDoodle(DoodleDocument doc) {
-		editPhotoDoodle(doc, null);
-	}
-
-	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
-	void editPhotoDoodle(DoodleDocument doc, @Nullable View tappedItem) {
-
-		Log.i(TAG, "editPhotoDoodle: UUID: " + doc.getUuid());
-
+	void editDoodleDocument(DoodleDocument doc) {
+		Log.i(TAG, "editDoodleDocument: UUID: " + doc.getUuid());
 		Intent intent = new Intent(getContext(), DoodleActivity.class);
 		intent.putExtra(DoodleActivity.EXTRA_DOODLE_DOCUMENT_UUID, doc.getUuid());
 		startActivityForResult(intent, REQUEST_EDIT_DOODLE);
@@ -287,7 +279,31 @@ public class DoodleDocumentGridFragment extends Fragment implements DoodleDocume
 		startActivity(new Intent(getContext(), ModelOverviewActivity.class));
 	}
 
-	private class DividerItemDecoration extends RecyclerView.ItemDecoration {
+	///////////////////////////////////////////////////////////////////
+
+	@Subscribe
+	public void onDoodleDocumentCreated(DoodleDocumentCreatedEvent event) {
+		Log.i(TAG, "onDoodleDocumentCreated: uuid: " + event.getUuid());
+		DoodleDocument document = DoodleDocument.byUUID(realm, event.getUuid());
+		adapter.onItemAdded(document);
+	}
+
+	@Subscribe
+	public void onDoodleDocumentWillBeDeletedEvent(DoodleDocumentWillBeDeletedEvent event) {
+		Log.i(TAG, "onDoodleDocumentWillBeDeletedEvent: uuid: " + event.getUuid());
+		adapter.onItemDeleted(event.getUuid());
+	}
+
+	@Subscribe
+	public void onDoodleDocumentEditedEvent(DoodleDocumentEditedEvent event) {
+		Log.i(TAG, "onDoodleDocumentEditedEvent: uuid: " + event.getUuid());
+		DoodleDocument document = DoodleDocument.byUUID(realm, event.getUuid());
+		adapter.onItemUpdated(document);
+	}
+
+	///////////////////////////////////////////////////////////////////
+
+	class DividerItemDecoration extends RecyclerView.ItemDecoration {
 
 		float thickness;
 		private Paint paint;

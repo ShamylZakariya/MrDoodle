@@ -279,9 +279,7 @@ public class SyncSettingsActivity extends BaseActivity {
 					@Override
 					public void deleteLocalStore() {
 						Realm realm = Realm.getDefaultInstance();
-						realm.beginTransaction();
-						realm.delete(DoodleDocument.class);
-						realm.commitTransaction();
+						DoodleDocument.deleteAll(SyncSettingsActivity.this, realm);
 						realm.close();
 					}
 				});
