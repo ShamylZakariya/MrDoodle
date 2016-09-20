@@ -1,0 +1,17 @@
+{
+	"version": "v1",
+	"redis": {
+		"host": "localhost"
+	},
+	"authenticator": {
+		"useMockAuthenticator":true,
+		"mock": {
+			"tokens": {
+				"VALID-MOCK-TOKEN-I-GUESS": "12345"
+			}
+		}
+	},
+	"syncManager": {
+		"writeSessionInactiveDiscardDelayHours":6
+	}
+}
