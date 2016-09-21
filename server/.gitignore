@@ -31,7 +31,6 @@ local.properties
 .idea/scopes/scope_settings.xml
 .idea/vcs.xml
 .idea/inspectionProfiles/
-#.idea/runConfigurations.xml
 
 *.iml
 
