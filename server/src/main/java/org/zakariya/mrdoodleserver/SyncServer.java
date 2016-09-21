@@ -1,7 +1,5 @@
 package org.zakariya.mrdoodleserver;
 
-import static spark.Spark.*;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
@@ -11,29 +9,54 @@ import org.zakariya.mrdoodleserver.auth.techniques.MockAuthenticator;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.SyncRouter;
 import org.zakariya.mrdoodleserver.util.Configuration;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
+import static spark.Spark.init;
+import static spark.Spark.webSocket;
+
 /**
- * Created by shamyl on 8/1/16.
+ * Top level SyncServer application.
  */
 public class SyncServer {
 
 	private static final Logger logger = LoggerFactory.getLogger(SyncServer.class);
 
+	/**
+	 * Start the server
+	 * pass:
+	 *  --config | -c for path to a config json file
+	 * @param args command line args
+	 */
 	public static void main(String[] args) {
 
 		Configuration configuration = new Configuration();
-		configuration.addConfigJsonFilePath("configuration.json");
-		configuration.addConfigJsonFilePath("configuration_secret.json");
+
+		for (int i = 0; i < args.length; i++) {
+			String arg = args[i];
+			switch (arg) {
+				case "-c":
+				case "--config":
+					configuration.addConfigJsonFilePath(args[++i]);
+					break;
+				default:
+					break;
+			}
+		}
 
 		start(configuration);
 	}
 
+	/**
+	 * Start the server with a given configuration
+	 *
+	 * @param configuration a configuration
+	 */
 	public static void start(Configuration configuration) {
 		logger.info("Starting SyncServer");
 
@@ -50,6 +73,23 @@ public class SyncServer {
 
 		syncRouter.configureRoutes();
 		init();
+	}
+
+	/**
+	 * Delete storage for a given configuration
+	 *
+	 * @param configuration a configuration describing the jedis store, prefix, etc
+	 */
+	public static void flushStorage(Configuration configuration) {
+		String prefix = configuration.get("prefix");
+		if (prefix != null) {
+			logger.info("Deleting all storage under the {}* namespace", prefix);
+			JedisPool pool = buildJedisPool(configuration);
+			try (Jedis jedis = pool.getResource()) {
+				Set<String> keys = jedis.keys(prefix + "*");
+				keys.forEach(jedis::del);
+			}
+		}
 	}
 
 	private static JedisPool buildJedisPool(Configuration configuration) {
@@ -73,7 +113,7 @@ public class SyncServer {
 	private static Authenticator buildAuthenticator(Configuration configuration) {
 		if (configuration.getBoolean("authenticator/useMockAuthenticator", false)) {
 
-			Map<String,Object> tokensMap = configuration.getMap("authenticator/mock/tokens");
+			Map<String, Object> tokensMap = configuration.getMap("authenticator/mock/tokens");
 			if (tokensMap == null) {
 				return new MockAuthenticator();
 			}

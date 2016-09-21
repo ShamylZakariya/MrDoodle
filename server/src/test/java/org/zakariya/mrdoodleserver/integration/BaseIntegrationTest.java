@@ -13,6 +13,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 /**
@@ -20,8 +21,12 @@ import static org.junit.Assert.fail;
  */
 public class BaseIntegrationTest {
 
-	static Configuration startServer(String configurationFilePath) {
-		Configuration configuration = new Configuration();
+	private static Configuration configuration;
+
+	static void startServer(String configurationFilePath) {
+		assertNull(configuration);
+
+		configuration = new Configuration();
 		configuration.addConfigJsonFilePath(configurationFilePath);
 		SyncServer.start(configuration);
 
@@ -31,13 +36,19 @@ public class BaseIntegrationTest {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-
-		return configuration;
 	}
 
 	static void stopServer() {
 		System.out.println("Stopping Spark server");
+		// wait for a beat and shut down
+		try {
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
 		Spark.stop();
+		SyncServer.flushStorage(configuration);
 	}
 
 	static class Header {

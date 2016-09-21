@@ -7,9 +7,9 @@ import org.zakariya.mrdoodleserver.sync.transport.Status;
 import static org.junit.Assert.*;
 
 /**
- * Basic tests of authorization
+ * Basic tests of the SyncRouter
  */
-public class AuthenticationTests extends BaseIntegrationTest {
+public class SyncRouterTests extends BaseIntegrationTest {
 
 	@BeforeClass
 	public static void setup() {
@@ -22,7 +22,7 @@ public class AuthenticationTests extends BaseIntegrationTest {
 		stopServer();
 	}
 
-	String getPath(String accountId) {
+	private String getPath(String accountId) {
 		return "/api/v1/sync/" + accountId + "/";
 	}
 

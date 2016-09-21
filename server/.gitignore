@@ -31,10 +31,10 @@ local.properties
 .idea/scopes/scope_settings.xml
 .idea/vcs.xml
 .idea/inspectionProfiles/
-.idea/runConfigurations.xml
+#.idea/runConfigurations.xml
 
 *.iml
 
 
 # Private/Secret Stuff
-server/configuration_secret.json
+config/configuration_secret.json
