@@ -36,32 +36,45 @@ public class SyncServer {
 	public static void main(String[] args) {
 
 		Configuration configuration = new Configuration();
+		boolean flushStorage = false;
 
 		for (int i = 0; i < args.length; i++) {
 			String arg = args[i];
 			switch (arg) {
+
 				case "-c":
 				case "--config":
 					configuration.addConfigJsonFilePath(args[++i]);
 					break;
+
+				case "-f":
+				case "--flushStorage":
+					flushStorage = true;
+
 				default:
 					break;
 			}
 		}
 
-		start(configuration);
+		start(configuration, flushStorage);
 	}
 
 	/**
 	 * Start the server with a given configuration
 	 *
 	 * @param configuration a configuration
+	 * @param flushStorage if true, all storage under the configuration's prefix will be deleted
 	 */
-	public static void start(Configuration configuration) {
+	public static void start(Configuration configuration, boolean flushStorage) {
 		logger.info("Starting SyncServer");
 
 		Authenticator authenticator = buildAuthenticator(configuration);
 		JedisPool jedisPool = buildJedisPool(configuration);
+
+		if (flushStorage) {
+			String prefix = configuration.get("prefix");
+			flushStorage(jedisPool, prefix);
+		}
 
 		// build the syncRouter. note, we have no control over when WebSocketConnection is created,
 		// so set up our router to be notified when it happens
@@ -83,12 +96,16 @@ public class SyncServer {
 	public static void flushStorage(Configuration configuration) {
 		String prefix = configuration.get("prefix");
 		if (prefix != null) {
-			logger.info("Deleting all storage under the {}* namespace", prefix);
 			JedisPool pool = buildJedisPool(configuration);
-			try (Jedis jedis = pool.getResource()) {
-				Set<String> keys = jedis.keys(prefix + "*");
-				keys.forEach(jedis::del);
-			}
+			flushStorage(pool, prefix);
+		}
+	}
+
+	public static void flushStorage(JedisPool pool, String prefix) {
+		logger.info("Deleting all storage under the {}* namespace", prefix);
+		try (Jedis jedis = pool.getResource()) {
+			Set<String> keys = jedis.keys(prefix + "*");
+			keys.forEach(jedis::del);
 		}
 	}
 

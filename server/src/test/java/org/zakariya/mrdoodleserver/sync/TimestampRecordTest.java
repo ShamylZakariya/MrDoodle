@@ -36,7 +36,7 @@ public class TimestampRecordTest {
 	@org.junit.Test
 	public void testTimestampRecordEntryPersistence() throws IOException {
 		ObjectMapper mapper = new ObjectMapper();
-		TimestampRecord.Entry a = new TimestampRecord.Entry("a", "fooClass", 10, TimestampRecord.Action.WRITE);
+		TimestampRecord.Entry a = new TimestampRecord.Entry("a", "fooClass", 10, TimestampRecord.Action.WRITE.ordinal());
 		String json = mapper.writeValueAsString(a);
 		TimestampRecord.Entry b = mapper.readValue(json, TimestampRecord.Entry.class);
 

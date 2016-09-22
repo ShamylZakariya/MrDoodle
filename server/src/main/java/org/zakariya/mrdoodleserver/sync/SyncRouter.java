@@ -35,10 +35,11 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	private static final Logger logger = LoggerFactory.getLogger(SyncRouter.class);
 
+	public static final String REQUEST_HEADER_AUTH = "Authorization";
+	public static final String REQUEST_HEADER_MODEL_CLASS = "X-Model-Class";
+	public static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
+
 	private static final String DEFAULT_STORAGE_PREFIX = "dev";
-	private static final String REQUEST_HEADER_AUTH = "Authorization";
-	private static final String REQUEST_HEADER_MODEL_CLASS = "X-Model-Class";
-	private static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
 	private static final boolean READ_WRITE_LOCK_IS_FAIR = true;
 
 	private static final String RESPONSE_TYPE_JSON = MediaType.JSON_UTF_8.toString();

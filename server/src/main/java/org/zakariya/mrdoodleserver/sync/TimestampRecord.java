@@ -19,16 +19,16 @@ import java.util.concurrent.ScheduledFuture;
 /**
  *
  */
-class TimestampRecord {
+public class TimestampRecord {
 
 	static final Logger logger = LoggerFactory.getLogger(TimestampRecord.class);
 
-	enum Action {
+	public enum Action {
 		WRITE,
 		DELETE
 	}
 
-	static class Entry {
+	public static class Entry {
 		@JsonProperty
 		String modelId;
 
@@ -45,14 +45,14 @@ class TimestampRecord {
 			super();
 		}
 
-		Entry(String modelId, String modelClass, long timestampSeconds, Action action) {
+		Entry(String modelId, String modelClass, long timestampSeconds, int action) {
 			this.modelId = modelId;
 			this.modelClass = modelClass;
 			this.timestampSeconds = timestampSeconds;
-			this.action = action.ordinal();
+			this.action = action;
 		}
 
-		String getModelId() {
+		public String getModelId() {
 			return modelId;
 		}
 
@@ -60,12 +60,12 @@ class TimestampRecord {
 			return modelClass;
 		}
 
-		long getTimestampSeconds() {
+		public long getTimestampSeconds() {
 			return timestampSeconds;
 		}
 
-		Action getAction() {
-			return Action.values()[action];
+		public int getAction() {
+			return action;
 		}
 
 		@Override
@@ -140,7 +140,7 @@ class TimestampRecord {
 	 * @return the entry that was created
 	 */
 	Entry record(String uuid, String modelClass, long seconds, Action action) {
-		Entry entry = new Entry(uuid, modelClass, seconds, action);
+		Entry entry = new Entry(uuid, modelClass, seconds, action.ordinal());
 		entriesByUuid.put(uuid, entry);
 
 		// update head
@@ -220,7 +220,7 @@ class TimestampRecord {
 	}
 
 	static String getJedisKey(String namespace, String accountId) {
-		return namespace + "/timestamps/" + accountId;
+		return namespace + "/" + accountId +  "/timestamps";
 	}
 
 	private void markDirty() {

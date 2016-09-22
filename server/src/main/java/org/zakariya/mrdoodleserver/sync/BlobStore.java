@@ -206,7 +206,7 @@ class BlobStore {
 	}
 
 	private static String getEntryRootKey(String accountId, String namespace) {
-		return "blob/" + accountId + "/" + namespace + "/";
+		return namespace + "/" + accountId + "/blob/";
 	}
 
 	static String getEntryUuidKey(String accountId, String namespace, String uuid) {

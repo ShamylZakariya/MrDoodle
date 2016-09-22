@@ -25,6 +25,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	private static final String WRITE_SESSION_NAMESPACE = "write-session";
 
 	private Configuration configuration;
+	private String storagePrefix;
 	private String accountId;
 	private JedisPool jedisPool;
 	private TimestampRecord timestampRecord;
@@ -34,19 +35,31 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 
 
 	static class WriteSession {
+		private String storagePrefix;
+		private String accountId;
 		private String token;
 		private TimestampRecord timestampRecord;
 		private BlobStore blobStore;
 		private ScheduledFuture discardFuture;
 
-		WriteSession(JedisPool jedisPool) {
+		WriteSession(JedisPool jedisPool, String storagePrefix, String accountId) {
+			this.storagePrefix = storagePrefix;
+			this.accountId = accountId;
 			token = UUID.randomUUID().toString();
 			timestampRecord = new TimestampRecord();
-			blobStore = new BlobStore(jedisPool, WRITE_SESSION_NAMESPACE, token);
+			blobStore = new BlobStore(jedisPool, storagePrefix + "/" + WRITE_SESSION_NAMESPACE + "/" + token, accountId);
 		}
 
 		String getToken() {
 			return token;
+		}
+
+		public String getStoragePrefix() {
+			return storagePrefix;
+		}
+
+		public String getAccountId() {
+			return accountId;
 		}
 
 		TimestampRecord getTimestampRecord() {
@@ -79,6 +92,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 		this.configuration = configuration;
 		this.jedisPool = jedisPool;
 		this.accountId = accountId;
+		this.storagePrefix = storagePrefix;
 		this.timestampRecord = new TimestampRecord(jedisPool, storagePrefix, accountId);
 		this.blobStore = new BlobStore(jedisPool, storagePrefix, accountId);
 	}
@@ -104,7 +118,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	}
 
 	WriteSession startWriteSession() {
-		WriteSession session = new WriteSession(jedisPool);
+		WriteSession session = new WriteSession(jedisPool, storagePrefix, accountId);
 		writeSessions.put(session.getToken(), session);
 
 		// now schedule a discard after a timeout. this way, if a client fails to close
