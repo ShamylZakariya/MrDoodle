@@ -5,27 +5,28 @@ package org.zakariya.mrdoodle.net.transport;
  */
 public class TimestampRecordEntry {
 
-	public static enum Action {
+	public enum Action {
 		WRITE,
 		DELETE
 	}
 
-	public String modelId;
-	public String modelClass;
+	public String documentId;
+	public String documentType;
 	public long timestampSeconds;
 	public int action;
 
 	public TimestampRecordEntry() {
 	}
 
-	public TimestampRecordEntry(String modelId, long timestampSeconds, int action) {
-		this.modelId = modelId;
+	public TimestampRecordEntry(String documentId, String documentType, long timestampSeconds, int action) {
+		this.documentId = documentId;
+		this.documentType = documentType;
 		this.timestampSeconds = timestampSeconds;
 		this.action = action;
 	}
 
 	@Override
 	public String toString() {
-		return "[TimestampRecordEntry modelId: " + modelId + " timestampSeconds: " + timestampSeconds + " action: " + Action.values()[action] + "]";
+		return "[TimestampRecordEntry documentId: " + documentId + " timestampSeconds: " + timestampSeconds + " action: " + Action.values()[action] + "]";
 	}
 }

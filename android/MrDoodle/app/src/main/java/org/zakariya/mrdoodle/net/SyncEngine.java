@@ -164,9 +164,9 @@ public class SyncEngine {
 	 * Perform a sync pushing local changes to server, and updating local state to match server's
 	 *
 	 * @param account                 the account of the logged-in user
-	 * @param syncState               local timestampHead and lastSyncDate
+	 * @param syncState               local timestampHeadSeconds and lastSyncDate
 	 * @param changeJournal           the journal which records local changes since last sync
-	 * @param timestampRecorder       record of timestamp/modelClass/action
+	 * @param timestampRecorder       record of timestamp/documentType/action
 	 * @param modelObjectDataProvider mechanism which provides bytes representing a blob of a given id and class to send upstream
 	 * @param modelObjectDataConsumer mechanism which takes a blob id, class and bytes and adds it to the app's data store
 	 */
@@ -188,13 +188,13 @@ public class SyncEngine {
 
 		// 4) erase changeJournal
 
-		// 5) get changes since syncState.timestampHead to get remote timestamps
+		// 5) get changes since syncState.timestampHeadSeconds to get remote timestamps
 
 		// 6) for each entry,
 		//      if the remote timestamp is newer than local, pull it down, update entry in timestampRecorder
 		//      if remote element is a deletion, delete locally and remove entry in timestampRecorder
 
-		// 7) update syncState.timestampHead to status.timestampHead, and update syncState.lastSyncDate to now
+		// 7) update syncState.timestampHeadSeconds to status.timestampHeadSeconds, and update syncState.lastSyncDate to now
 
 		syncing = true;
 
@@ -204,7 +204,7 @@ public class SyncEngine {
 
 		try {
 
-			log(log, "Starting sync with current timestampHead: " + syncState.getTimestampHead());
+			log(log, "Starting sync with current timestampHeadSeconds: " + syncState.getTimestampHead());
 			Status status = pushLocalChanges(
 					log,
 					account,
@@ -223,8 +223,8 @@ public class SyncEngine {
 					modelObjectDeleter);
 
 			if (status != null) {
-				log(log, "Sync complete, updating local timestamp head to: " + status.timestampHead);
-				syncState.setTimestampHead(status.timestampHead);
+				log(log, "Sync complete, updating local timestamp head to: " + status.timestampHeadSeconds);
+				syncState.setTimestampHead(status.timestampHeadSeconds);
 				syncState.setLastSyncDate(new Date());
 			}
 
@@ -359,7 +359,7 @@ public class SyncEngine {
 						body).execute();
 
 				if (!timestampResponse.isSuccessful()) {
-					throw new SyncException("Unable to upload object[id: " + id + " modelClass: " + modelClass + "] blob data", timestampResponse);
+					throw new SyncException("Unable to upload object[id: " + id + " documentType: " + modelClass + "] blob data", timestampResponse);
 				}
 
 				timestampRecordEntry = timestampResponse.body();
@@ -372,7 +372,7 @@ public class SyncEngine {
 						id,
 						writeToken).execute();
 				if (!timestampResponse.isSuccessful()) {
-					throw new SyncException("Unable to delete remote object[id: " + id + " modelClass: " + modelClass + "] blob data", timestampResponse);
+					throw new SyncException("Unable to delete remote object[id: " + id + " documentType: " + modelClass + "] blob data", timestampResponse);
 				}
 
 				timestampRecordEntry = timestampResponse.body();
@@ -386,8 +386,8 @@ public class SyncEngine {
 			throw new SyncException("Didn't receive a TimestampRecordEntry from push operation");
 		}
 
-		if (!timestampRecordEntry.modelId.equals(id)) {
-			throw new SyncException("Mismatched object id in TimestampRecordEntry. Expected: " + id + " got: " + timestampRecordEntry.modelId);
+		if (!timestampRecordEntry.documentId.equals(id)) {
+			throw new SyncException("Mismatched object id in TimestampRecordEntry. Expected: " + id + " got: " + timestampRecordEntry.documentId);
 		}
 
 		if (timestampRecordEntry.action != change.getChangeType()) {
@@ -416,10 +416,10 @@ public class SyncEngine {
 			status = getStatus(accountId);
 		}
 
-		log(log, "Starting pull phase of sync. Remote timestampHead: " + status.timestampHead);
+		log(log, "Starting pull phase of sync. Remote timestampHeadSeconds: " + status.timestampHeadSeconds);
 
 		// early exit if we're up to date
-		if (status.timestampHead <= syncState.getTimestampHead()) {
+		if (status.timestampHeadSeconds <= syncState.getTimestampHead()) {
 			log(log, "We're up to date, finishing.");
 			return status;
 		}
@@ -452,18 +452,18 @@ public class SyncEngine {
 					return false;
 				}
 
-				Response<ResponseBody> blobResponse = syncService.getBlob(accountId, remoteChange.modelId).execute();
+				Response<ResponseBody> blobResponse = syncService.getBlob(accountId, remoteChange.documentId).execute();
 				if (!blobResponse.isSuccessful()) {
-					throw new SyncException("Unable to download blob data for id: " + remoteChange.modelId, blobResponse);
+					throw new SyncException("Unable to download blob data for id: " + remoteChange.documentId, blobResponse);
 				}
 
 				byte [] blobBytes = blobResponse.body().bytes();
-				modelObjectDataConsumer.setModelObjectData(remoteChange.modelId, remoteChange.modelClass, blobBytes);
+				modelObjectDataConsumer.setModelObjectData(remoteChange.documentId, remoteChange.documentType, blobBytes);
 				timestampRecorder.setTimestamp(id, remoteChange.timestampSeconds);
 				break;
 
 			case DELETE:
-				modelObjectDeleter.deleteModelObject(remoteChange.modelId, remoteChange.modelClass);
+				modelObjectDeleter.deleteModelObject(remoteChange.documentId, remoteChange.documentType);
 				timestampRecorder.clearTimestamp(id);
 				break;
 		}

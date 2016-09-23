@@ -25,7 +25,7 @@ public interface SyncService {
 
 	String REQUEST_HEADER_AUTH = "Authorization";
 	String REQUEST_HEADER_USER_AGENT = "User-Agent";
-	String REQUEST_HEADER_MODEL_CLASS = "X-Model-Class";
+	String REQUEST_HEADER_DOCUMENT_TYPE = "X-Document-Type";
 	String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
 	MediaType BLOB_MEDIA_TYPE = MediaType.parse("application/octet-stream");
 
@@ -34,7 +34,7 @@ public interface SyncService {
 	 * Get the status for this account.
 	 *
 	 * @param accountId the account id of the signed in user
-	 * @return status, which describes current timestampHead, and document locks
+	 * @return status, which describes current timestampHeadSeconds, and document locks
 	 */
 	@GET("sync/{accountId}/status")
 	Call<Status> getStatus(@Path("accountId") String accountId);
@@ -44,7 +44,7 @@ public interface SyncService {
 	 *
 	 * @param accountId    the account id of the signed in user
 	 * @param sinceSeconds if > 0, the remote store's timestamp records will be filtered to be >= this value
-	 * @return map of document modelId to timestamp record entries
+	 * @return map of document documentId to timestamp record entries
 	 */
 	@GET("sync/{accountId}/changes")
 	Call<Map<String, TimestampRecordEntry>> getChanges(@Path("accountId") String accountId, @Query("since") long sinceSeconds);
@@ -67,7 +67,7 @@ public interface SyncService {
 	 *
 	 * @param accountId  the account id of the signed in user
 	 * @param writeToken the write session token received from getWriteSessionToken
-	 * @return status, which describes current timestampHead, and document locks
+	 * @return status, which describes current timestampHeadSeconds, and document locks
 	 */
 	@DELETE("sync/{accountId}/writeSession/sessions/{writeToken}")
 	Call<Status> commitWriteSession(@Path("accountId") String accountId, @Path("writeToken") String writeToken);
@@ -99,7 +99,7 @@ public interface SyncService {
 			@Path("accountId") String accountId,
 			@Path("blobId") String blobId,
 			@Header(REQUEST_HEADER_WRITE_TOKEN) String writeToken,
-			@Header(REQUEST_HEADER_MODEL_CLASS) String modelClass,
+			@Header(REQUEST_HEADER_DOCUMENT_TYPE) String modelClass,
 			@Part("blob") RequestBody blob);
 
 

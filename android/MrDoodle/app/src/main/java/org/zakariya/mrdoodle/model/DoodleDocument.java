@@ -174,7 +174,7 @@ public class DoodleDocument extends RealmObject {
 
 			boolean wasModified = false;
 
-			// now if we already have a DoodleDocument with this modelId, update it. otherwise, make a new one
+			// now if we already have a DoodleDocument with this documentId, update it. otherwise, make a new one
 			DoodleDocument document = byUUID(realm, uuid);
 			if (document != null) {
 				wasModified = true;
