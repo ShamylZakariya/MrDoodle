@@ -139,6 +139,21 @@ class BlobStore {
 	}
 
 	/**
+	 * Check if a given blob id is accessible to this store
+	 * @param uuid the id of a blob
+	 * @return true if this store has the given blob
+	 */
+	boolean has(String uuid) {
+		try (Jedis jedis = jedisPool.getResource()) {
+			return jedis.exists(
+					getEntryUuidKey(accountId, namespace, uuid),
+					getEntryModelClassKey(accountId, namespace, uuid),
+					getEntryTimestampKey(accountId, namespace, uuid),
+					getEntryDataKey(accountId, namespace, uuid)) == 4;
+		}
+	}
+
+	/**
 	 * Remove a blob and associated data from the store
 	 * @param uuid the id of the blob to remove
 	 */

@@ -1,11 +1,11 @@
 package org.zakariya.mrdoodleserver.sync;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -28,66 +28,13 @@ public class TimestampRecord {
 		DELETE
 	}
 
-	public static class Entry {
-		@JsonProperty
-		String modelId;
-
-		@JsonProperty
-		String modelClass;
-
-		@JsonProperty
-		long timestampSeconds;
-
-		@JsonProperty
-		int action;
-
-		public Entry() {
-			super();
-		}
-
-		Entry(String modelId, String modelClass, long timestampSeconds, int action) {
-			this.modelId = modelId;
-			this.modelClass = modelClass;
-			this.timestampSeconds = timestampSeconds;
-			this.action = action;
-		}
-
-		public String getModelId() {
-			return modelId;
-		}
-
-		public String getModelClass() {
-			return modelClass;
-		}
-
-		public long getTimestampSeconds() {
-			return timestampSeconds;
-		}
-
-		public int getAction() {
-			return action;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj != null && obj instanceof Entry) {
-				Entry other = (Entry) obj;
-				return modelId.equals(other.modelId) &&
-						modelClass.equals(other.modelClass) &&
-						timestampSeconds == other.timestampSeconds &&
-						action == other.action;
-			}
-			return false;
-		}
-	}
-
 	private static final long DEBOUNCE_MILLIS = 3000;
 
 	private JedisPool jedisPool;
 	private String namespace;
 	private String accountId;
-	private Map<String, Entry> entriesByUuid = new HashMap<>();
-	private Entry head;
+	private Map<String, TimestampRecordEntry> entriesByUuid = new HashMap<>();
+	private TimestampRecordEntry head;
 	private Runnable saver = new Runnable() {
 		public void run() {
 			save();
@@ -139,8 +86,8 @@ public class TimestampRecord {
 	 * @param action     the type of event (write/delete)
 	 * @return the entry that was created
 	 */
-	Entry record(String uuid, String modelClass, long seconds, Action action) {
-		Entry entry = new Entry(uuid, modelClass, seconds, action.ordinal());
+	TimestampRecordEntry record(String uuid, String modelClass, long seconds, Action action) {
+		TimestampRecordEntry entry = new TimestampRecordEntry(uuid, modelClass, seconds, action.ordinal());
 		entriesByUuid.put(uuid, entry);
 
 		// update head
@@ -173,13 +120,13 @@ public class TimestampRecord {
 	 * @param sinceTimestampSeconds a timestamp in seconds
 	 * @return map of modelId->Entry of all events which occurred after said timestamp
 	 */
-	Map<String, Entry> getEntriesSince(long sinceTimestampSeconds) {
+	Map<String, TimestampRecordEntry> getEntriesSince(long sinceTimestampSeconds) {
 		if (sinceTimestampSeconds > 0) {
 
 			// filter to subset of modelId:timestampSeconds pairs AFTER `sinceTimestampSeconds
-			Map<String, Entry> entries = new HashMap<>();
+			Map<String, TimestampRecordEntry> entries = new HashMap<>();
 			for (String uuid : entriesByUuid.keySet()) {
-				Entry entry = entriesByUuid.get(uuid);
+				TimestampRecordEntry entry = entriesByUuid.get(uuid);
 				if (entry.getTimestampSeconds() >= sinceTimestampSeconds) {
 					entries.put(uuid, entry);
 				}
@@ -195,14 +142,14 @@ public class TimestampRecord {
 	/**
 	 * @return Get all entries in record, mapping the event's modelId to the event
 	 */
-	Map<String, Entry> getEntries() {
+	Map<String, TimestampRecordEntry> getEntries() {
 		return getEntriesSince(-1);
 	}
 
 	/**
 	 * @return the Entry representing the most recent event to be added to the record
 	 */
-	Entry getTimestampHead() {
+	TimestampRecordEntry getTimestampHead() {
 		if (head == null) {
 			head = findHeadEntry();
 		}
@@ -245,7 +192,7 @@ public class TimestampRecord {
 	 * @param target the TimestampRecord which will receive this TimestampRecord's values
 	 */
 	void save(TimestampRecord target) {
-		for (Entry entry : entriesByUuid.values()) {
+		for (TimestampRecordEntry entry : entriesByUuid.values()) {
 			target.entriesByUuid.put(entry.getModelId(), entry);
 		}
 
@@ -277,7 +224,7 @@ public class TimestampRecord {
 			if (jsonString != null && !jsonString.isEmpty()) {
 				try {
 					entriesByUuid = objectMapper.reader()
-							.forType(new TypeReference<Map<String, Entry>>() {
+							.forType(new TypeReference<Map<String, TimestampRecordEntry>>() {
 							})
 							.readValue(jsonString);
 
@@ -292,12 +239,12 @@ public class TimestampRecord {
 	/**
 	 * Walk the entriesByUuid map and find the newest entry, and assign it to `head
 	 */
-	private Entry findHeadEntry() {
-		Entry headEntry = null;
+	private TimestampRecordEntry findHeadEntry() {
+		TimestampRecordEntry headEntry = null;
 		long headTimestamp = 0;
 
 		for (String uuid : entriesByUuid.keySet()) {
-			Entry entry = entriesByUuid.get(uuid);
+			TimestampRecordEntry entry = entriesByUuid.get(uuid);
 			if (entry.getTimestampSeconds() > headTimestamp) {
 				headEntry = entry;
 				headTimestamp = entry.getTimestampSeconds();

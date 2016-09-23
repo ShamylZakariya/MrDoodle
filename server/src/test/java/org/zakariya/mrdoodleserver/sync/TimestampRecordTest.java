@@ -1,9 +1,9 @@
 package org.zakariya.mrdoodleserver.sync;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
+import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
@@ -36,9 +36,9 @@ public class TimestampRecordTest {
 	@org.junit.Test
 	public void testTimestampRecordEntryPersistence() throws IOException {
 		ObjectMapper mapper = new ObjectMapper();
-		TimestampRecord.Entry a = new TimestampRecord.Entry("a", "fooClass", 10, TimestampRecord.Action.WRITE.ordinal());
+		TimestampRecordEntry a = new TimestampRecordEntry("a", "fooClass", 10, TimestampRecord.Action.WRITE.ordinal());
 		String json = mapper.writeValueAsString(a);
-		TimestampRecord.Entry b = mapper.readValue(json, TimestampRecord.Entry.class);
+		TimestampRecordEntry b = mapper.readValue(json, TimestampRecordEntry.class);
 
 		assertEquals("Deserialized entry should be equal", a, b);
 	}
@@ -64,7 +64,7 @@ public class TimestampRecordTest {
 		assertEquals("should have 1 entries", 1, timestampRecord.getEntriesSince(13).size());
 		assertEquals("should have 0 entries", 0, timestampRecord.getEntriesSince(14).size());
 
-		Map<String, TimestampRecord.Entry> result = timestampRecord.getEntriesSince(12);
+		Map<String, TimestampRecordEntry> result = timestampRecord.getEntriesSince(12);
 		assertEquals("timestamps since 12 should have \"C\" == 12", 12, result.get("C").getTimestampSeconds());
 		assertEquals("timestamps since 12 should have \"D\" == 13", 13, result.get("D").getTimestampSeconds());
 	}

@@ -4,6 +4,7 @@ import org.eclipse.jetty.websocket.api.Session;
 import org.jetbrains.annotations.Nullable;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
+import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.JedisPool;
 
@@ -171,7 +172,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	Status getStatus() {
 		Status status = new Status();
 
-		TimestampRecord.Entry timestampHead = timestampRecord.getTimestampHead();
+		TimestampRecordEntry timestampHead = timestampRecord.getTimestampHead();
 		if (timestampHead != null) {
 			status.timestampHead = timestampHead.getTimestampSeconds();
 		}

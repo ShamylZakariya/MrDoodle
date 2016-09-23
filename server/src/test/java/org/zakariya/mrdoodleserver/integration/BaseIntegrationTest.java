@@ -165,6 +165,10 @@ public class BaseIntegrationTest {
 			return body;
 		}
 
+		byte[] getBodyBytes() {
+			return body.getBytes();
+		}
+
 		<T> T getBody(Class c) {
 			ObjectMapper mapper = new ObjectMapper();
 			try {
@@ -295,9 +299,8 @@ public class BaseIntegrationTest {
 			// pump data into outputStream which routes to writer
 			outputStream.write(data);
 			outputStream.flush();
-
-			writer.append(LINE_FEED);
 			writer.flush();
+
 			return this;
 		}
 

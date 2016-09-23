@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
+import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import org.zakariya.mrdoodleserver.util.Preconditions;
 import redis.clients.jedis.JedisPool;
@@ -275,7 +276,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		try (InputStream is = request.raw().getPart("blob").getInputStream()) {
 
 			long timestamp = syncManager.getTimestampSeconds();
-			TimestampRecord.Entry entry = timestampRecord.record(blobId, modelClass, timestamp, TimestampRecord.Action.WRITE);
+			TimestampRecordEntry entry = timestampRecord.record(blobId, modelClass, timestamp, TimestampRecord.Action.WRITE);
 
 			byte[] data = org.apache.commons.io.IOUtils.toByteArray(is);
 			blobStore.set(blobId, modelClass, timestamp, data);
@@ -315,12 +316,18 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		TimestampRecord timestampRecord = session.getTimestampRecord();
 		BlobStore blobStore = session.getBlobStore();
 
+		// the blob may be in the current write session or the committed main store
+		if (!syncManager.getBlobStore().has(blobId) && !blobStore.has(blobId)) {
+			sendErrorAndHalt(response, 404, "SyncRouter::deleteBlob - The blob id is not valid");
+			return null;
+		}
+
 		// delete blob
 		blobStore.delete(blobId);
 
 		// record deletion. note, the modelClass of the deleted item is irrelevant
 		long timestamp = syncManager.getTimestampSeconds();
-		TimestampRecord.Entry entry = timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
+		TimestampRecordEntry entry = timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
 
 		response.type(RESPONSE_TYPE_JSON);
 		return entry;
