@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
  * SyncManager
  * Top level coordinator for sync activities for a specific google account
  */
-class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener {
+public class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener {
 
 	private static final String WRITE_SESSION_NAMESPACE = "write-session";
 
@@ -35,7 +35,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	private ScheduledExecutorService writeSessionDiscardScheduler = Executors.newSingleThreadScheduledExecutor();
 
 
-	static class WriteSession {
+	public static class WriteSession {
 		private String storagePrefix;
 		private String accountId;
 		private String token;
@@ -51,7 +51,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 			blobStore = new BlobStore(jedisPool, storagePrefix + "/" + WRITE_SESSION_NAMESPACE + "/" + token, accountId);
 		}
 
-		String getToken() {
+		public String getToken() {
 			return token;
 		}
 
@@ -63,11 +63,11 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 			return accountId;
 		}
 
-		TimestampRecord getTimestampRecord() {
+		public TimestampRecord getTimestampRecord() {
 			return timestampRecord;
 		}
 
-		BlobStore getBlobStore() {
+		public BlobStore getBlobStore() {
 			return blobStore;
 		}
 
@@ -79,17 +79,17 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 			this.discardFuture = discardFuture;
 		}
 
-		void commit(TimestampRecord toTimestampRecord, BlobStore toBlobStore) {
+		public void commit(TimestampRecord toTimestampRecord, BlobStore toBlobStore) {
 			timestampRecord.save(toTimestampRecord);
 			blobStore.save(toBlobStore);
 		}
 
-		void discard() {
+		public void discard() {
 			blobStore.discard();
 		}
 	}
 
-	SyncManager(Configuration configuration, JedisPool jedisPool, String storagePrefix, String accountId) {
+	public SyncManager(Configuration configuration, JedisPool jedisPool, String storagePrefix, String accountId) {
 		this.configuration = configuration;
 		this.jedisPool = jedisPool;
 		this.accountId = accountId;
@@ -98,27 +98,27 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 		this.blobStore = new BlobStore(jedisPool, storagePrefix, accountId);
 	}
 
-	void close() {
+	public void close() {
 		// nothing, for now
 	}
 
-	JedisPool getJedisPool() {
+	public JedisPool getJedisPool() {
 		return jedisPool;
 	}
 
-	String getAccountId() {
+	public String getAccountId() {
 		return accountId;
 	}
 
-	TimestampRecord getTimestampRecord() {
+	public TimestampRecord getTimestampRecord() {
 		return timestampRecord;
 	}
 
-	BlobStore getBlobStore() {
+	public BlobStore getBlobStore() {
 		return blobStore;
 	}
 
-	WriteSession startWriteSession() {
+	public WriteSession startWriteSession() {
 		WriteSession session = new WriteSession(jedisPool, storagePrefix, accountId);
 		writeSessions.put(session.getToken(), session);
 
@@ -136,11 +136,11 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	}
 
 	@Nullable
-	WriteSession getWriteSession(String token) {
+	public WriteSession getWriteSession(String token) {
 		return writeSessions.get(token);
 	}
 
-	boolean commitWriteSession(String token) {
+	public boolean commitWriteSession(String token) {
 		WriteSession session = writeSessions.get(token);
 		if (session != null) {
 			session.commit(timestampRecord, blobStore);
@@ -169,7 +169,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	 *
 	 * @return the current account status
 	 */
-	Status getStatus() {
+	public Status getStatus() {
 		Status status = new Status();
 
 		TimestampRecordEntry timestampHead = timestampRecord.getTimestampHead();
@@ -178,6 +178,13 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 		}
 
 		return status;
+	}
+
+	/**
+	 * @return the current timestamp, in seconds
+	 */
+	public long getTimestampSeconds() {
+		return (new Date()).getTime() / 1000;
 	}
 
 	@Override
@@ -189,11 +196,5 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 	@Override
 	public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId) {
 	}
-
-	/**
-	 * @return the current timestamp, in seconds
-	 */
-	long getTimestampSeconds() {
-		return (new Date()).getTime() / 1000;
-	}
 }
+

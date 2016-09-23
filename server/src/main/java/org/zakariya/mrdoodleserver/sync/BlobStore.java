@@ -10,9 +10,9 @@ import java.util.Set;
 /**
  * Created by shamyl on 8/25/16.
  */
-class BlobStore {
+public class BlobStore {
 
-	static class Entry {
+	public static class Entry {
 		byte[] data;
 		String id;
 		String type;
@@ -25,19 +25,19 @@ class BlobStore {
 			this.timestamp = timestamp;
 		}
 
-		byte[] getData() {
+		public byte[] getData() {
 			return data;
 		}
 
-		String getId() {
+		public String getId() {
 			return id;
 		}
 
-		String getType() {
+		public String getType() {
 			return type;
 		}
 
-		long getTimestamp() {
+		public long getTimestamp() {
 			return timestamp;
 		}
 
@@ -64,21 +64,21 @@ class BlobStore {
 	 * @param namespace the top-level namespace under which blobs will be persisted
 	 * @param accountId the user account for the blobs which will be persisted
 	 */
-	BlobStore(JedisPool jedisPool, String namespace, String accountId) {
+	public BlobStore(JedisPool jedisPool, String namespace, String accountId) {
 		this.jedisPool = jedisPool;
 		this.accountId = accountId;
 		this.namespace = namespace;
 	}
 
-	String getAccountId() {
+	public String getAccountId() {
 		return accountId;
 	}
 
-	JedisPool getJedisPool() {
+	public JedisPool getJedisPool() {
 		return jedisPool;
 	}
 
-	String getNamespace() {
+	public String getNamespace() {
 		return namespace;
 	}
 
@@ -86,7 +86,7 @@ class BlobStore {
 	 * Persist an entry to the store
 	 * @param e a BlobStore.Entry to persist
 	 */
-	void set(Entry e) {
+	public void set(Entry e) {
 		set(e.getId(), e.getType(), e.getTimestamp(), e.getData());
 	}
 
@@ -97,7 +97,7 @@ class BlobStore {
 	 * @param timestamp the timestamp (generally in seconds) of the data
 	 * @param data the actual blob data
 	 */
-	void set(String id, String type, long timestamp, byte[] data) {
+	public void set(String id, String type, long timestamp, byte[] data) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
 			transaction.set(getEntryIdKey(accountId, namespace, id), id);
@@ -114,7 +114,7 @@ class BlobStore {
 	 * @return the Entry for a given blob in the store
 	 */
 	@Nullable
-	Entry get(String id) {
+	public Entry get(String id) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
 			Response<String> idResponse = transaction.get(getEntryIdKey(accountId, namespace, id));
@@ -143,7 +143,7 @@ class BlobStore {
 	 * @param id the id of a blob
 	 * @return true if this store has the given blob
 	 */
-	boolean has(String id) {
+	public boolean has(String id) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			return jedis.exists(
 					getEntryIdKey(accountId, namespace, id),
@@ -157,7 +157,7 @@ class BlobStore {
 	 * Remove a blob and associated data from the store
 	 * @param id the id of the blob to remove
 	 */
-	void delete(String id) {
+	public void delete(String id) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
 			transaction.del(getEntryIdKey(accountId, namespace, id));
@@ -172,7 +172,7 @@ class BlobStore {
 	/**
 	 * Deletes ALL blobs and associated data for this blob store's account and namespace
 	 */
-	void discard() {
+	public void discard() {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Set<String> keys = jedis.keys(getEntryRootKey(accountId,namespace) + "*");
 			keys.forEach(jedis::del);
@@ -189,7 +189,7 @@ class BlobStore {
 	 * can be committed at a later date to the "real" blob store for that account.
 	 * @param store the store to copy changes from this store to
 	 */
-	void save(BlobStore store) {
+	public void save(BlobStore store) {
 		try (Jedis jedis = store.getJedisPool().getResource()) {
 
 			// rename all our writes from our temp namespace to the actual one

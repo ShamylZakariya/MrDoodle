@@ -7,7 +7,7 @@ import org.zakariya.mrdoodleserver.auth.Whitelist;
 import org.zakariya.mrdoodleserver.auth.techniques.GoogleIdTokenAuthenticator;
 import org.zakariya.mrdoodleserver.auth.techniques.MockAuthenticator;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
-import org.zakariya.mrdoodleserver.sync.SyncRouter;
+import org.zakariya.mrdoodleserver.routes.SyncRouter;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;

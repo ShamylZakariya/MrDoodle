@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodleserver.sync;
+package org.zakariya.mrdoodleserver.routes;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
@@ -8,6 +8,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
+import org.zakariya.mrdoodleserver.sync.BlobStore;
+import org.zakariya.mrdoodleserver.sync.SyncManager;
+import org.zakariya.mrdoodleserver.sync.TimestampRecord;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
 import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Configuration;

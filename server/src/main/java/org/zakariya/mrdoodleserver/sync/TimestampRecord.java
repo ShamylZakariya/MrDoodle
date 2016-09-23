@@ -52,7 +52,7 @@ public class TimestampRecord {
 	 * @param namespace the top-level namespace used for storage in redis (all fields will be named namespace/*)
 	 * @param accountId the account namespace for all writes/reads
 	 */
-	TimestampRecord(JedisPool jedisPool, String namespace, String accountId) {
+	public TimestampRecord(JedisPool jedisPool, String namespace, String accountId) {
 		this.jedisPool = jedisPool;
 		this.namespace = namespace;
 		this.accountId = accountId;
@@ -62,14 +62,14 @@ public class TimestampRecord {
 	/**
 	 * Create an in-memory TimestampRecord
 	 */
-	TimestampRecord() {
+	public TimestampRecord() {
 	}
 
-	JedisPool getJedisPool() {
+	public JedisPool getJedisPool() {
 		return jedisPool;
 	}
 
-	String getAccountId() {
+	public String getAccountId() {
 		return accountId;
 	}
 
@@ -86,7 +86,7 @@ public class TimestampRecord {
 	 * @param action     the type of event (write/delete)
 	 * @return the entry that was created
 	 */
-	TimestampRecordEntry record(String documentId, String documentType, long seconds, Action action) {
+	public TimestampRecordEntry record(String documentId, String documentType, long seconds, Action action) {
 		TimestampRecordEntry entry = new TimestampRecordEntry(documentId, documentType, seconds, action.ordinal());
 		entriesByDocumentId.put(documentId, entry);
 
@@ -110,7 +110,7 @@ public class TimestampRecord {
 	 * @param documentId the id of the document to query
 	 * @return the timestamp seconds associated with the document id, or -1 if none is set
 	 */
-	long getTimestampSeconds(String documentId) {
+	public long getTimestampSeconds(String documentId) {
 		return entriesByDocumentId.containsKey(documentId) ? entriesByDocumentId.get(documentId).getTimestampSeconds() : -1;
 	}
 
@@ -120,7 +120,7 @@ public class TimestampRecord {
 	 * @param sinceTimestampSeconds a timestamp in seconds
 	 * @return map of modelId->Entry of all events which occurred after said timestamp
 	 */
-	Map<String, TimestampRecordEntry> getEntriesSince(long sinceTimestampSeconds) {
+	public Map<String, TimestampRecordEntry> getEntriesSince(long sinceTimestampSeconds) {
 		if (sinceTimestampSeconds > 0) {
 
 			// filter to subset of modelId:timestampSeconds pairs AFTER `sinceTimestampSeconds
@@ -142,14 +142,14 @@ public class TimestampRecord {
 	/**
 	 * @return Get all entries in record, mapping the event's modelId to the event
 	 */
-	Map<String, TimestampRecordEntry> getEntries() {
+	public Map<String, TimestampRecordEntry> getEntries() {
 		return getEntriesSince(-1);
 	}
 
 	/**
 	 * @return the Entry representing the most recent event to be added to the record
 	 */
-	TimestampRecordEntry getTimestampHead() {
+	public TimestampRecordEntry getTimestampHead() {
 		if (head == null) {
 			head = findHeadEntry();
 		}
@@ -158,7 +158,7 @@ public class TimestampRecord {
 	}
 
 
-	boolean isEmpty() {
+	public boolean isEmpty() {
 		return entriesByDocumentId.isEmpty();
 	}
 
@@ -166,7 +166,7 @@ public class TimestampRecord {
 		return getJedisKey(namespace, accountId);
 	}
 
-	static String getJedisKey(String namespace, String accountId) {
+	public static String getJedisKey(String namespace, String accountId) {
 		return namespace + "/" + accountId +  "/timestamps";
 	}
 
@@ -191,7 +191,7 @@ public class TimestampRecord {
 	 *
 	 * @param target the TimestampRecord which will receive this TimestampRecord's values
 	 */
-	void save(TimestampRecord target) {
+	public void save(TimestampRecord target) {
 		for (TimestampRecordEntry entry : entriesByDocumentId.values()) {
 			target.entriesByDocumentId.put(entry.getDocumentId(), entry);
 		}
@@ -200,7 +200,7 @@ public class TimestampRecord {
 		target.save();
 	}
 
-	void save() {
+	public void save() {
 		if (jedisPool == null) {
 			return;
 		}
