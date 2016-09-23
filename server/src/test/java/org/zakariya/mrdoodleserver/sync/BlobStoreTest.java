@@ -36,20 +36,20 @@ public class BlobStoreTest {
 		// confirm writing and then reading out an item results in an equal item
 		BlobStore.Entry e = new BlobStore.Entry("A", "Foo", 10, "Data".getBytes());
 		mainStore.set(e);
-		BlobStore.Entry eCopy = mainStore.get(e.getUuid());
+		BlobStore.Entry eCopy = mainStore.get(e.getId());
 		assertEquals("Loaded blob entry should be equal to the original", e, eCopy);
 
 		// confirm that get on a deleted item returns null
-		mainStore.delete(e.getUuid());
-		BlobStore.Entry eNull = mainStore.get(e.getUuid());
+		mainStore.delete(e.getId());
+		BlobStore.Entry eNull = mainStore.get(e.getId());
 		assertNull("After deleting blob, should be null", eNull);
 
 		// confirm the data is deleted
 		try (Jedis jedis = pool.getResource()) {
-			assertFalse("blob uuid should be deleted", jedis.exists(BlobStore.getEntryUuidKey(accountId, mainStore.getNamespace(), e.getUuid())));
-			assertFalse("blob modelClass should be deleted", jedis.exists(BlobStore.getEntryModelClassKey(accountId, mainStore.getNamespace(), e.getUuid())));
-			assertFalse("blob timestamp should be deleted", jedis.exists(BlobStore.getEntryTimestampKey(accountId, mainStore.getNamespace(), e.getUuid())));
-			assertFalse("blob data should be deleted", jedis.exists(BlobStore.getEntryDataKey(accountId, mainStore.getNamespace(), e.getUuid())));
+			assertFalse("blob id should be deleted", jedis.exists(BlobStore.getEntryIdKey(accountId, mainStore.getNamespace(), e.getId())));
+			assertFalse("blob type should be deleted", jedis.exists(BlobStore.getEntryModelClassKey(accountId, mainStore.getNamespace(), e.getId())));
+			assertFalse("blob timestamp should be deleted", jedis.exists(BlobStore.getEntryTimestampKey(accountId, mainStore.getNamespace(), e.getId())));
+			assertFalse("blob data should be deleted", jedis.exists(BlobStore.getEntryDataKey(accountId, mainStore.getNamespace(), e.getId())));
 		}
 	}
 
@@ -63,29 +63,29 @@ public class BlobStoreTest {
 		mainStore.set(entryInMainThatWillBeDeleted);
 
 		tempStore.set(entryInTemp);
-		tempStore.delete(entryInMainThatWillBeDeleted.getUuid());
+		tempStore.delete(entryInMainThatWillBeDeleted.getId());
 
 		// confirm that mainStore has entryInMain, and entryInMainThatWillBeDeleted, and that they're not in tempStore
-		assertNotNull(mainStore.get(entryInMain.getUuid()));
-		assertEquals(entryInMain, mainStore.get(entryInMain.getUuid()));
-		assertNotNull(mainStore.get(entryInMainThatWillBeDeleted.getUuid()));
-		assertEquals(entryInMainThatWillBeDeleted, mainStore.get(entryInMainThatWillBeDeleted.getUuid()));
-		assertNull("entryInMain shouldn't be in the temp store", tempStore.get(entryInMain.getUuid()));
-		assertNull("entryInMainThatWillBeDeleted shouldn't be in the temp store", tempStore.get(entryInMainThatWillBeDeleted.getUuid()));
+		assertNotNull(mainStore.get(entryInMain.getId()));
+		assertEquals(entryInMain, mainStore.get(entryInMain.getId()));
+		assertNotNull(mainStore.get(entryInMainThatWillBeDeleted.getId()));
+		assertEquals(entryInMainThatWillBeDeleted, mainStore.get(entryInMainThatWillBeDeleted.getId()));
+		assertNull("entryInMain shouldn't be in the temp store", tempStore.get(entryInMain.getId()));
+		assertNull("entryInMainThatWillBeDeleted shouldn't be in the temp store", tempStore.get(entryInMainThatWillBeDeleted.getId()));
 
 		// confirm tempStore has entryInTemp
-		assertNotNull(tempStore.get(entryInTemp.getUuid()));
-		assertEquals(entryInTemp, tempStore.get(entryInTemp.getUuid()));
-		assertNull("entryInMainThatWillBeDeleted shouldn't be in the tempStore", tempStore.get(entryInMainThatWillBeDeleted.getUuid()));
-		assertNull("entryInTemp shouldn't be in the main store", mainStore.get(entryInTemp.getUuid()));
+		assertNotNull(tempStore.get(entryInTemp.getId()));
+		assertEquals(entryInTemp, tempStore.get(entryInTemp.getId()));
+		assertNull("entryInMainThatWillBeDeleted shouldn't be in the tempStore", tempStore.get(entryInMainThatWillBeDeleted.getId()));
+		assertNull("entryInTemp shouldn't be in the main store", mainStore.get(entryInTemp.getId()));
 
 		// now merge
 		tempStore.save(mainStore);
 
 		// now confirm entryInTemp is in the mainStore, and entryInMainThatWillBeDeleted is NOT
-		assertNotNull(mainStore.get(entryInTemp.getUuid()));
-		assertEquals(entryInTemp, mainStore.get(entryInTemp.getUuid()));
-		assertNull("entryInMainThatWillBeDeleted should no longer be in the main store", mainStore.get(entryInMainThatWillBeDeleted.getUuid()));
+		assertNotNull(mainStore.get(entryInTemp.getId()));
+		assertEquals(entryInTemp, mainStore.get(entryInTemp.getId()));
+		assertNull("entryInMainThatWillBeDeleted should no longer be in the main store", mainStore.get(entryInMainThatWillBeDeleted.getId()));
 	}
 
 }

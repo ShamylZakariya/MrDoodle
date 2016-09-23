@@ -37,7 +37,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private static final Logger logger = LoggerFactory.getLogger(SyncRouter.class);
 
 	public static final String REQUEST_HEADER_AUTH = "Authorization";
-	public static final String REQUEST_HEADER_MODEL_CLASS = "X-Model-Class";
+	public static final String REQUEST_HEADER_DOCUMENT_TYPE = "X-Document-Type";
 	public static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
 
 	private static final String DEFAULT_STORAGE_PREFIX = "dev";
@@ -185,7 +185,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			if (syncManager.commitWriteSession(sessionToken)) {
 
 				// sync session is complete! time to broadcast status (which includes updated
-				// timestampHead) to clients
+				// timestampHeadSeconds) to clients
 				Status status = syncManager.getStatus();
 
 				WebSocketConnection connection = WebSocketConnection.getInstance();
@@ -246,15 +246,15 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		// we need to do this to extract the blob form data
 		request.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/temp"));
 
-		String modelClass = request.headers(REQUEST_HEADER_MODEL_CLASS);
+		String modelClass = request.headers(REQUEST_HEADER_DOCUMENT_TYPE);
 		if (modelClass == null || modelClass.isEmpty()) {
-			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing model class header attribute (\"" + REQUEST_HEADER_MODEL_CLASS + "\")");
+			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing model class header attribute (\"" + REQUEST_HEADER_DOCUMENT_TYPE + "\")");
 			return null;
 		}
 
 		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
 		if (writeToken == null || writeToken.isEmpty()) {
-			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing write token(\"" + REQUEST_HEADER_MODEL_CLASS + "\"); writes are disallowed without a write token");
+			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing write token(\"" + REQUEST_HEADER_DOCUMENT_TYPE + "\"); writes are disallowed without a write token");
 			return null;
 		}
 
@@ -298,7 +298,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
 		if (writeToken == null || writeToken.isEmpty()) {
-			sendErrorAndHalt(response, 400, "SyncRouter::deleteBlob - Missing write token(" + REQUEST_HEADER_MODEL_CLASS + "); writes are disallowed without a write token");
+			sendErrorAndHalt(response, 400, "SyncRouter::deleteBlob - Missing write token(" + REQUEST_HEADER_DOCUMENT_TYPE + "); writes are disallowed without a write token");
 			return null;
 		}
 
@@ -325,7 +325,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		// delete blob
 		blobStore.delete(blobId);
 
-		// record deletion. note, the modelClass of the deleted item is irrelevant
+		// record deletion. note, the type of the deleted item is irrelevant
 		long timestamp = syncManager.getTimestampSeconds();
 		TimestampRecordEntry entry = timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
 

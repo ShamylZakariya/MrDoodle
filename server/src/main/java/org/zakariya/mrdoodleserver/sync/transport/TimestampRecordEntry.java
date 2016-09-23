@@ -1,17 +1,16 @@
 package org.zakariya.mrdoodleserver.sync.transport;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.zakariya.mrdoodleserver.sync.TimestampRecord;
 
 /**
  * Represents a single entry in the TimestampRecord, and meant for serializing to json
  */
 public class TimestampRecordEntry {
 	@JsonProperty
-	private String modelId;
+	private String documentId;
 
 	@JsonProperty
-	private String modelClass;
+	private String documentType;
 
 	@JsonProperty
 	private long timestampSeconds;
@@ -23,19 +22,19 @@ public class TimestampRecordEntry {
 		super();
 	}
 
-	public TimestampRecordEntry(String modelId, String modelClass, long timestampSeconds, int action) {
-		this.modelId = modelId;
-		this.modelClass = modelClass;
+	public TimestampRecordEntry(String documentId, String documentType, long timestampSeconds, int action) {
+		this.documentId = documentId;
+		this.documentType = documentType;
 		this.timestampSeconds = timestampSeconds;
 		this.action = action;
 	}
 
-	public String getModelId() {
-		return modelId;
+	public String getDocumentId() {
+		return documentId;
 	}
 
-	public String getModelClass() {
-		return modelClass;
+	public String getDocumentType() {
+		return documentType;
 	}
 
 	public long getTimestampSeconds() {
@@ -50,8 +49,8 @@ public class TimestampRecordEntry {
 	public boolean equals(Object obj) {
 		if (obj != null && obj instanceof TimestampRecordEntry) {
 			TimestampRecordEntry other = (TimestampRecordEntry) obj;
-			return modelId.equals(other.modelId) &&
-					modelClass.equals(other.modelClass) &&
+			return documentId.equals(other.documentId) &&
+					documentType.equals(other.documentType) &&
 					timestampSeconds == other.timestampSeconds &&
 					action == other.action;
 		}

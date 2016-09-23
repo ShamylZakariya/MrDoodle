@@ -174,7 +174,7 @@ class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListen
 
 		TimestampRecordEntry timestampHead = timestampRecord.getTimestampHead();
 		if (timestampHead != null) {
-			status.timestampHead = timestampHead.getTimestampSeconds();
+			status.timestampHeadSeconds = timestampHead.getTimestampSeconds();
 		}
 
 		return status;

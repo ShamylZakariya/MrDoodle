@@ -14,14 +14,14 @@ class BlobStore {
 
 	static class Entry {
 		byte[] data;
-		String uuid;
-		String modelClass;
+		String id;
+		String type;
 		long timestamp;
 
-		Entry(String uuid, String modelClass, long timestamp, byte[] data) {
+		Entry(String id, String type, long timestamp, byte[] data) {
 			this.data = data;
-			this.uuid = uuid;
-			this.modelClass = modelClass;
+			this.id = id;
+			this.type = type;
 			this.timestamp = timestamp;
 		}
 
@@ -29,12 +29,12 @@ class BlobStore {
 			return data;
 		}
 
-		String getUuid() {
-			return uuid;
+		String getId() {
+			return id;
 		}
 
-		String getModelClass() {
-			return modelClass;
+		String getType() {
+			return type;
 		}
 
 		long getTimestamp() {
@@ -45,7 +45,7 @@ class BlobStore {
 		public boolean equals(Object obj) {
 			if (obj != null && obj instanceof Entry) {
 				Entry other = (Entry) obj;
-				return uuid.equals(other.uuid) && modelClass.equals(other.modelClass) && Arrays.equals(data, other.data);
+				return id.equals(other.id) && type.equals(other.type) && Arrays.equals(data, other.data);
 			} else {
 				return false;
 			}
@@ -87,51 +87,51 @@ class BlobStore {
 	 * @param e a BlobStore.Entry to persist
 	 */
 	void set(Entry e) {
-		set(e.getUuid(), e.getModelClass(), e.getTimestamp(), e.getData());
+		set(e.getId(), e.getType(), e.getTimestamp(), e.getData());
 	}
 
 	/**
 	 * Persist a blob and associated data to the store
-	 * @param uuid the id of the blob
-	 * @param modelClass the "type" of blob - this might map to a java object on the client side
+	 * @param id the id of the blob
+	 * @param type the "type" of blob - this might map to a java object on the client side
 	 * @param timestamp the timestamp (generally in seconds) of the data
 	 * @param data the actual blob data
 	 */
-	void set(String uuid, String modelClass, long timestamp, byte[] data) {
+	void set(String id, String type, long timestamp, byte[] data) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
-			transaction.set(getEntryUuidKey(accountId, namespace, uuid), uuid);
-			transaction.set(getEntryModelClassKey(accountId, namespace, uuid), modelClass);
-			transaction.set(getEntryTimestampKey(accountId, namespace, uuid), Long.toString(timestamp));
-			transaction.set(getEntryDataKey(accountId, namespace, uuid).getBytes(), data);
+			transaction.set(getEntryIdKey(accountId, namespace, id), id);
+			transaction.set(getEntryModelClassKey(accountId, namespace, id), type);
+			transaction.set(getEntryTimestampKey(accountId, namespace, id), Long.toString(timestamp));
+			transaction.set(getEntryDataKey(accountId, namespace, id).getBytes(), data);
 			transaction.exec();
-			writes.add(uuid);
+			writes.add(id);
 		}
 	}
 
 	/**
-	 * @param uuid the id of the blob
+	 * @param id the id of the blob
 	 * @return the Entry for a given blob in the store
 	 */
 	@Nullable
-	Entry get(String uuid) {
+	Entry get(String id) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
-			Response<String> uuidResponse = transaction.get(getEntryUuidKey(accountId, namespace, uuid));
-			Response<String> modelClassResponse = transaction.get(getEntryModelClassKey(accountId, namespace, uuid));
-			Response<String> timestampResponse = transaction.get(getEntryTimestampKey(accountId, namespace, uuid));
-			Response<byte[]> byteResponse = transaction.get(getEntryDataKey(accountId, namespace, uuid).getBytes());
+			Response<String> idResponse = transaction.get(getEntryIdKey(accountId, namespace, id));
+			Response<String> modelClassResponse = transaction.get(getEntryModelClassKey(accountId, namespace, id));
+			Response<String> timestampResponse = transaction.get(getEntryTimestampKey(accountId, namespace, id));
+			Response<byte[]> byteResponse = transaction.get(getEntryDataKey(accountId, namespace, id).getBytes());
 
 			transaction.exec();
 
-			String uuid2 = uuidResponse.get();
+			String id2 = idResponse.get();
 			String modelClass = modelClassResponse.get();
 			String timestampString = timestampResponse.get();
 			byte[] data = byteResponse.get();
 
-			if (uuid2 != null && uuid2.equals(uuid) && modelClass != null && !modelClass.isEmpty() && timestampString != null && !timestampString.isEmpty()) {
+			if (id2 != null && id2.equals(id) && modelClass != null && !modelClass.isEmpty() && timestampString != null && !timestampString.isEmpty()) {
 				long timestamp = Long.parseLong(timestampString);
-				return new Entry(uuid2, modelClass, timestamp, data);
+				return new Entry(id2, modelClass, timestamp, data);
 			} else {
 				return null;
 			}
@@ -140,32 +140,32 @@ class BlobStore {
 
 	/**
 	 * Check if a given blob id is accessible to this store
-	 * @param uuid the id of a blob
+	 * @param id the id of a blob
 	 * @return true if this store has the given blob
 	 */
-	boolean has(String uuid) {
+	boolean has(String id) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			return jedis.exists(
-					getEntryUuidKey(accountId, namespace, uuid),
-					getEntryModelClassKey(accountId, namespace, uuid),
-					getEntryTimestampKey(accountId, namespace, uuid),
-					getEntryDataKey(accountId, namespace, uuid)) == 4;
+					getEntryIdKey(accountId, namespace, id),
+					getEntryModelClassKey(accountId, namespace, id),
+					getEntryTimestampKey(accountId, namespace, id),
+					getEntryDataKey(accountId, namespace, id)) == 4;
 		}
 	}
 
 	/**
 	 * Remove a blob and associated data from the store
-	 * @param uuid the id of the blob to remove
+	 * @param id the id of the blob to remove
 	 */
-	void delete(String uuid) {
+	void delete(String id) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
-			transaction.del(getEntryUuidKey(accountId, namespace, uuid));
-			transaction.del(getEntryModelClassKey(accountId, namespace, uuid));
-			transaction.del(getEntryTimestampKey(accountId, namespace, uuid));
-			transaction.del(getEntryDataKey(accountId, namespace, uuid));
+			transaction.del(getEntryIdKey(accountId, namespace, id));
+			transaction.del(getEntryModelClassKey(accountId, namespace, id));
+			transaction.del(getEntryTimestampKey(accountId, namespace, id));
+			transaction.del(getEntryDataKey(accountId, namespace, id));
 			transaction.exec();
-			deletions.add(uuid);
+			deletions.add(id);
 		}
 	}
 
@@ -195,11 +195,11 @@ class BlobStore {
 			// rename all our writes from our temp namespace to the actual one
 			if (!writes.isEmpty()) {
 				Transaction writeTransaction = jedis.multi();
-				for (String uuid : writes) {
-					writeTransaction.rename(getEntryUuidKey(accountId, namespace, uuid), getEntryUuidKey(store.getAccountId(), store.getNamespace(), uuid));
-					writeTransaction.rename(getEntryModelClassKey(accountId, namespace, uuid), getEntryModelClassKey(store.getAccountId(), store.getNamespace(), uuid));
-					writeTransaction.rename(getEntryTimestampKey(accountId, namespace, uuid), getEntryTimestampKey(store.getAccountId(), store.getNamespace(), uuid));
-					writeTransaction.rename(getEntryDataKey(accountId, namespace, uuid), getEntryDataKey(store.getAccountId(), store.getNamespace(), uuid));
+				for (String id : writes) {
+					writeTransaction.rename(getEntryIdKey(accountId, namespace, id), getEntryIdKey(store.getAccountId(), store.getNamespace(), id));
+					writeTransaction.rename(getEntryModelClassKey(accountId, namespace, id), getEntryModelClassKey(store.getAccountId(), store.getNamespace(), id));
+					writeTransaction.rename(getEntryTimestampKey(accountId, namespace, id), getEntryTimestampKey(store.getAccountId(), store.getNamespace(), id));
+					writeTransaction.rename(getEntryDataKey(accountId, namespace, id), getEntryDataKey(store.getAccountId(), store.getNamespace(), id));
 				}
 				writeTransaction.exec();
 				store.writes.addAll(writes);
@@ -208,11 +208,11 @@ class BlobStore {
 			// now delete everything from our deletions record
 			if (!deletions.isEmpty()) {
 				Transaction deleteTransaction = jedis.multi();
-				for (String uuid : deletions) {
-					deleteTransaction.del(getEntryUuidKey(store.getAccountId(), store.getNamespace(), uuid));
-					deleteTransaction.del(getEntryModelClassKey(store.getAccountId(), store.getNamespace(), uuid));
-					deleteTransaction.del(getEntryTimestampKey(store.getAccountId(), store.getNamespace(), uuid));
-					deleteTransaction.del(getEntryDataKey(store.getAccountId(), store.getNamespace(), uuid));
+				for (String id : deletions) {
+					deleteTransaction.del(getEntryIdKey(store.getAccountId(), store.getNamespace(), id));
+					deleteTransaction.del(getEntryModelClassKey(store.getAccountId(), store.getNamespace(), id));
+					deleteTransaction.del(getEntryTimestampKey(store.getAccountId(), store.getNamespace(), id));
+					deleteTransaction.del(getEntryDataKey(store.getAccountId(), store.getNamespace(), id));
 				}
 				deleteTransaction.exec();
 				store.deletions.addAll(deletions);
@@ -224,20 +224,20 @@ class BlobStore {
 		return namespace + "/" + accountId + "/blob/";
 	}
 
-	static String getEntryUuidKey(String accountId, String namespace, String uuid) {
-		return getEntryRootKey(accountId, namespace) + uuid + ":uuid";
+	static String getEntryIdKey(String accountId, String namespace, String id) {
+		return getEntryRootKey(accountId, namespace) + id + ":id";
 	}
 
-	static String getEntryDataKey(String accountId, String namespace, String uuid) {
-		return getEntryRootKey(accountId, namespace) + uuid + ":data";
+	static String getEntryDataKey(String accountId, String namespace, String id) {
+		return getEntryRootKey(accountId, namespace) + id + ":data";
 	}
 
-	static String getEntryModelClassKey(String accountId, String namespace, String uuid) {
-		return getEntryRootKey(accountId, namespace) + uuid + ":modelClass";
+	static String getEntryModelClassKey(String accountId, String namespace, String id) {
+		return getEntryRootKey(accountId, namespace) + id + ":type";
 	}
 
-	static String getEntryTimestampKey(String accountId, String namespace, String uuid) {
-		return getEntryRootKey(accountId, namespace) + uuid + ":timestamp";
+	static String getEntryTimestampKey(String accountId, String namespace, String id) {
+		return getEntryRootKey(accountId, namespace) + id + ":timestamp";
 	}
 
 }

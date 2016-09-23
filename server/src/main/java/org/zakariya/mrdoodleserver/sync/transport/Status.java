@@ -8,6 +8,6 @@ import java.util.List;
  * POJO sent to notify clients of the current timestamp head, and lock status of items
  */
 public final class Status {
-	public long timestampHead = 0;
-	public List<String> lockedUUIDs = new ArrayList<>();
+	public long timestampHeadSeconds = 0;
+	public List<String> lockedDocumentIds = new ArrayList<>();
 }

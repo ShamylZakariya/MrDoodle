@@ -70,7 +70,7 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		TestResponse response = request("GET", getPath() + "status", authHeader());
 		assertEquals("Status response code should be 200", 200, response.getStatus());
 		Status status = response.getBody(Status.class);
-		assertEquals("TimestampHead should be zero for empty store", 0, status.timestampHead);
+		assertEquals("TimestampHead should be zero for empty store", 0, status.timestampHeadSeconds);
 
 		// confirm that the change list is empty
 		final TypeReference timestampRecordTypeReference = new TypeReference<Map<String, TimestampRecordEntry>>() {
@@ -89,7 +89,7 @@ public class SyncRouterTests extends BaseIntegrationTest {
 
 		Map<String,String> authHeader = this.authHeader();
 		Map<String, String> authorizedWriteSessionHeaders = authHeader();
-		authorizedWriteSessionHeaders.put(SyncRouter.REQUEST_HEADER_MODEL_CLASS, DATA_TYPE);
+		authorizedWriteSessionHeaders.put(SyncRouter.REQUEST_HEADER_DOCUMENT_TYPE, DATA_TYPE);
 
 		// confirm uploads are denied without a write token
 		response = request("PUT", getPath() + "blob/" + DATA1_ID, authorizedWriteSessionHeaders, new BytePart("blob", DATA1));
@@ -114,17 +114,17 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		response = request("PUT", getPath() + "blob/" + DATA1_ID, authorizedWriteSessionHeaders, new BytePart("blob", DATA1));
 		assertEquals("Uploading a blob should have status 200", 200, response.getStatus());
 		TimestampRecordEntry timestampEntry = response.getBody(TimestampRecordEntry.class);
-		assertEquals("Response timestamp entry modelId should match", DATA1_ID, timestampEntry.getModelId());
+		assertEquals("Response timestamp entry modelId should match", DATA1_ID, timestampEntry.getDocumentId());
 		assertEquals("Response timestamp entry timestampSeconds should be > 0", true, timestampEntry.getTimestampSeconds() > 0);
-		assertEquals("Response timestamp entry modelClass should match", DATA_TYPE, timestampEntry.getModelClass());
+		assertEquals("Response timestamp entry modelClass should match", DATA_TYPE, timestampEntry.getDocumentType());
 		assertEquals("Response timestamp entry action should be WRITE", TimestampRecord.Action.WRITE.ordinal(), timestampEntry.getAction());
 
 		response = request("PUT", getPath() + "blob/" + DATA2_ID, authorizedWriteSessionHeaders, new BytePart("blob", DATA2));
 		assertEquals("Uploading a blob should have status 200", 200, response.getStatus());
 		timestampEntry = response.getBody(TimestampRecordEntry.class);
-		assertEquals("Response timestamp entry modelId should match", DATA2_ID, timestampEntry.getModelId());
+		assertEquals("Response timestamp entry modelId should match", DATA2_ID, timestampEntry.getDocumentId());
 		assertEquals("Response timestamp entry timestampSeconds should be > 0", true, timestampEntry.getTimestampSeconds() > 0);
-		assertEquals("Response timestamp entry modelClass should match", DATA_TYPE, timestampEntry.getModelClass());
+		assertEquals("Response timestamp entry modelClass should match", DATA_TYPE, timestampEntry.getDocumentType());
 		assertEquals("Response timestamp entry action should be WRITE", TimestampRecord.Action.WRITE.ordinal(), timestampEntry.getAction());
 
 
@@ -141,7 +141,7 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		response = request("DELETE", getPath() + "writeSession/sessions/" + writeSessionToken, authHeader);
 		assertEquals("Committing a valid write session response code should be 200", 200, response.getStatus());
 		status = response.getBody(Status.class);
-		assertEquals("After committing write session, status timestampHead should be > 0", true, status.timestampHead > 0);
+		assertEquals("After committing write session, status timestampHeadSeconds should be > 0", true, status.timestampHeadSeconds > 0);
 
 		// now confirm change list has the TWO expected entries, both with action WRITE
 		response = request("GET", getPath() + "changes", authHeader);
@@ -198,7 +198,7 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		response = request("DELETE", getPath() + "writeSession/sessions/" + writeSessionToken, authHeader);
 		assertEquals("Committing a valid write session response code should be 200", 200, response.getStatus());
 		status = response.getBody(Status.class);
-		assertEquals("After committing write session, status timestampHead should be > 0", true, status.timestampHead > 0);
+		assertEquals("After committing write session, status timestampHeadSeconds should be > 0", true, status.timestampHeadSeconds > 0);
 
 		// now a get of DATA1 should 404
 		response = request("GET", getPath() + "blob/" + DATA1_ID, authHeader);

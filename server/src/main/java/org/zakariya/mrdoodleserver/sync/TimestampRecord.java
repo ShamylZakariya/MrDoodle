@@ -33,7 +33,7 @@ public class TimestampRecord {
 	private JedisPool jedisPool;
 	private String namespace;
 	private String accountId;
-	private Map<String, TimestampRecordEntry> entriesByUuid = new HashMap<>();
+	private Map<String, TimestampRecordEntry> entriesByDocumentId = new HashMap<>();
 	private TimestampRecordEntry head;
 	private Runnable saver = new Runnable() {
 		public void run() {
@@ -80,15 +80,15 @@ public class TimestampRecord {
 	/**
 	 * Record an event into the timestamp record
 	 *
-	 * @param uuid       id of the thing that the action happened to
-	 * @param modelClass the model class of the thing represented by the modelId
+	 * @param documentId       id of the thing that the action happened to
+	 * @param documentType the model class of the thing represented by the modelId
 	 * @param seconds    the timestamp, in seconds, of the event
 	 * @param action     the type of event (write/delete)
 	 * @return the entry that was created
 	 */
-	TimestampRecordEntry record(String uuid, String modelClass, long seconds, Action action) {
-		TimestampRecordEntry entry = new TimestampRecordEntry(uuid, modelClass, seconds, action.ordinal());
-		entriesByUuid.put(uuid, entry);
+	TimestampRecordEntry record(String documentId, String documentType, long seconds, Action action) {
+		TimestampRecordEntry entry = new TimestampRecordEntry(documentId, documentType, seconds, action.ordinal());
+		entriesByDocumentId.put(documentId, entry);
 
 		// update head
 		if (head == null) {
@@ -105,13 +105,13 @@ public class TimestampRecord {
 	}
 
 	/**
-	 * Get the timestampSeconds for a given UUID
+	 * Get the timestampSeconds for a given document
 	 *
-	 * @param uuid the modelId
-	 * @return the timestamp seconds associated with UUID, or -1 if none is set
+	 * @param documentId the id of the document to query
+	 * @return the timestamp seconds associated with the document id, or -1 if none is set
 	 */
-	long getTimestampSeconds(String uuid) {
-		return entriesByUuid.containsKey(uuid) ? entriesByUuid.get(uuid).getTimestampSeconds() : -1;
+	long getTimestampSeconds(String documentId) {
+		return entriesByDocumentId.containsKey(documentId) ? entriesByDocumentId.get(documentId).getTimestampSeconds() : -1;
 	}
 
 	/**
@@ -125,17 +125,17 @@ public class TimestampRecord {
 
 			// filter to subset of modelId:timestampSeconds pairs AFTER `sinceTimestampSeconds
 			Map<String, TimestampRecordEntry> entries = new HashMap<>();
-			for (String uuid : entriesByUuid.keySet()) {
-				TimestampRecordEntry entry = entriesByUuid.get(uuid);
+			for (String documentId : entriesByDocumentId.keySet()) {
+				TimestampRecordEntry entry = entriesByDocumentId.get(documentId);
 				if (entry.getTimestampSeconds() >= sinceTimestampSeconds) {
-					entries.put(uuid, entry);
+					entries.put(documentId, entry);
 				}
 			}
 
 			return entries;
 
 		} else {
-			return new HashMap<>(entriesByUuid);
+			return new HashMap<>(entriesByDocumentId);
 		}
 	}
 
@@ -159,7 +159,7 @@ public class TimestampRecord {
 
 
 	boolean isEmpty() {
-		return entriesByUuid.isEmpty();
+		return entriesByDocumentId.isEmpty();
 	}
 
 	private String getJedisKey() {
@@ -192,8 +192,8 @@ public class TimestampRecord {
 	 * @param target the TimestampRecord which will receive this TimestampRecord's values
 	 */
 	void save(TimestampRecord target) {
-		for (TimestampRecordEntry entry : entriesByUuid.values()) {
-			target.entriesByUuid.put(entry.getModelId(), entry);
+		for (TimestampRecordEntry entry : entriesByDocumentId.values()) {
+			target.entriesByDocumentId.put(entry.getDocumentId(), entry);
 		}
 
 		target.head = null; // invalidate
@@ -207,10 +207,10 @@ public class TimestampRecord {
 
 		cancelDebouncedSave();
 		try (Jedis jedis = jedisPool.getResource()) {
-			String jsonString = objectMapper.writeValueAsString(entriesByUuid);
+			String jsonString = objectMapper.writeValueAsString(entriesByDocumentId);
 			jedis.set(getJedisKey(), jsonString);
 		} catch (JsonProcessingException e) {
-			logger.error("TimestampRecord::save - unable to serialize timestampsByUuid map to JSON", e);
+			logger.error("TimestampRecord::save - unable to serialize entriesByDocumentId map to JSON", e);
 		}
 	}
 
@@ -223,28 +223,28 @@ public class TimestampRecord {
 			String jsonString = jedis.get(getJedisKey());
 			if (jsonString != null && !jsonString.isEmpty()) {
 				try {
-					entriesByUuid = objectMapper.reader()
+					entriesByDocumentId = objectMapper.reader()
 							.forType(new TypeReference<Map<String, TimestampRecordEntry>>() {
 							})
 							.readValue(jsonString);
 
 					head = findHeadEntry();
 				} catch (IOException e) {
-					logger.error("TimestampRecord::load - unable to load timestampsByUuid map from JSON", e);
+					logger.error("TimestampRecord::load - unable to create entriesByDocumentId map from JSON", e);
 				}
 			}
 		}
 	}
 
 	/**
-	 * Walk the entriesByUuid map and find the newest entry, and assign it to `head
+	 * Walk the entriesByDocumentId map and find the newest entry, and assign it to `head
 	 */
 	private TimestampRecordEntry findHeadEntry() {
 		TimestampRecordEntry headEntry = null;
 		long headTimestamp = 0;
 
-		for (String uuid : entriesByUuid.keySet()) {
-			TimestampRecordEntry entry = entriesByUuid.get(uuid);
+		for (String documentId : entriesByDocumentId.keySet()) {
+			TimestampRecordEntry entry = entriesByDocumentId.get(documentId);
 			if (entry.getTimestampSeconds() > headTimestamp) {
 				headEntry = entry;
 				headTimestamp = entry.getTimestampSeconds();
