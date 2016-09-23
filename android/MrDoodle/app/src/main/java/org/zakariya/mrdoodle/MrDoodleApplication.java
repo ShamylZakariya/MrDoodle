@@ -104,8 +104,8 @@ public class MrDoodleApplication extends android.app.Application {
 
 			@SuppressWarnings("TryFinallyCanBeTryWithResources") // not for API 17 it's can't
 			@Override
-			public void setModelObjectData(String blobId, String blobClass, byte[] blobData) throws Exception {
-				switch (blobClass) {
+			public void setModelObjectData(String blobId, String blobType, byte[] blobData) throws Exception {
+				switch (blobType) {
 					case DoodleDocument.BLOB_TYPE: {
 
 						Realm realm = Realm.getDefaultInstance();
@@ -124,8 +124,8 @@ public class MrDoodleApplication extends android.app.Application {
 			@SuppressWarnings("TryFinallyCanBeTryWithResources")
 			@Nullable
 			@Override
-			public byte[] getModelObjectData(String blobId, String blobClass) throws Exception {
-				switch (blobClass) {
+			public byte[] getModelObjectData(String blobId, String blobType) throws Exception {
+				switch (blobType) {
 					case DoodleDocument.BLOB_TYPE: {
 
 						Realm realm = Realm.getDefaultInstance();
@@ -146,8 +146,8 @@ public class MrDoodleApplication extends android.app.Application {
 
 			@SuppressWarnings("TryFinallyCanBeTryWithResources")
 			@Override
-			public void deleteModelObject(String modelId, String modelClass) throws Exception {
-				switch(modelClass) {
+			public void deleteModelObject(String modelId, String modelType) throws Exception {
+				switch(modelType) {
 					case DoodleDocument.BLOB_TYPE:
 						Realm realm = Realm.getDefaultInstance();
 						try {

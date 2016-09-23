@@ -125,13 +125,13 @@ public class SyncEngine {
 		/**
 		 * Given a model object with an id and a specified class, get its byte [] serialization or null
 		 *
-		 * @param blobId    id of the model object
-		 * @param blobClass the model class
+		 * @param blobId   id of the model object
+		 * @param blobType the internal type/name/class of the model object for your reference
 		 * @return the referenced model object's byte[] serialized form, or null if no such item exists
 		 * @throws Exception
 		 */
 		@Nullable
-		byte[] getModelObjectData(String blobId, String blobClass) throws Exception;
+		byte[] getModelObjectData(String blobId, String blobType) throws Exception;
 	}
 
 
@@ -140,12 +140,12 @@ public class SyncEngine {
 		 * Given a byte[] of the serialized form of a model object, and the items id and class,
 		 * either update the existing item or create a new one in the application's persistent store
 		 *
-		 * @param blobId    id of the model object
-		 * @param blobClass model class
-		 * @param blobData  the byte[] serialized form
+		 * @param blobId   id of the model object
+		 * @param blobType the internal type/name/class of the model object for your reference
+		 * @param blobData the byte[] serialized form
 		 * @throws Exception
 		 */
-		void setModelObjectData(String blobId, String blobClass, byte[] blobData) throws Exception;
+		void setModelObjectData(String blobId, String blobType, byte[] blobData) throws Exception;
 
 	}
 
@@ -153,11 +153,11 @@ public class SyncEngine {
 		/**
 		 * Delete the model object of a given id and class
 		 *
-		 * @param modelId    the id of the model object
-		 * @param modelClass the classname of the object
+		 * @param modelId   the id of the model object
+		 * @param modelType internal name/class of model for your reference
 		 * @throws Exception
 		 */
-		void deleteModelObject(String modelId, String modelClass) throws Exception;
+		void deleteModelObject(String modelId, String modelType) throws Exception;
 	}
 
 	/**
@@ -457,7 +457,7 @@ public class SyncEngine {
 					throw new SyncException("Unable to download blob data for id: " + remoteChange.documentId, blobResponse);
 				}
 
-				byte [] blobBytes = blobResponse.body().bytes();
+				byte[] blobBytes = blobResponse.body().bytes();
 				modelObjectDataConsumer.setModelObjectData(remoteChange.documentId, remoteChange.documentType, blobBytes);
 				timestampRecorder.setTimestamp(id, remoteChange.timestampSeconds);
 				break;
