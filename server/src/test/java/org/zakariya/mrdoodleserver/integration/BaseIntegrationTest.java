@@ -205,7 +205,7 @@ public class BaseIntegrationTest {
 		private String name;
 		private byte[] data;
 
-		public BytePart(String name, byte[] data) {
+		BytePart(String name, byte[] data) {
 			this.name = name;
 			this.data = data;
 		}
@@ -251,14 +251,14 @@ public class BaseIntegrationTest {
 	 * This utility class provides an abstraction layer for sending multipart HTTP
 	 * Adapted from www.codejava.net
 	 */
-	static class MultipartFormBuilder {
+	private static class MultipartFormBuilder {
 		private final String boundary;
 		private static final String LINE_FEED = "\r\n";
 		private static final String CHARSET = "UTF-8";
 		private OutputStream outputStream;
 		private PrintWriter writer;
 
-		public static MultipartFormBuilder with(HttpURLConnection httpConn) throws IOException {
+		static MultipartFormBuilder with(HttpURLConnection httpConn) throws IOException {
 			return new MultipartFormBuilder(httpConn);
 		}
 
@@ -278,7 +278,7 @@ public class BaseIntegrationTest {
 		 * @param name  field name
 		 * @param value field value
 		 */
-		public MultipartFormBuilder addFormFieldPart(String name, String value) {
+		MultipartFormBuilder addFormFieldPart(String name, String value) {
 			writer.append("--").append(boundary).append(LINE_FEED);
 			writer.append("Content-Disposition: form-data; name=\"").append(name).append("\"").append(LINE_FEED);
 			writer.append("Content-Type: text/plain; charset=" + CHARSET).append(LINE_FEED);
@@ -288,7 +288,7 @@ public class BaseIntegrationTest {
 			return this;
 		}
 
-		public MultipartFormBuilder addFormDataPart(String name, byte[] data) throws IOException {
+		MultipartFormBuilder addFormDataPart(String name, byte[] data) throws IOException {
 			writer.append("--").append(boundary).append(LINE_FEED);
 			writer.append("Content-Disposition: form-data; name=\"").append(name).append("\"").append(LINE_FEED);
 			writer.append("Content-Type: application/octet-stream").append(LINE_FEED);
@@ -304,7 +304,7 @@ public class BaseIntegrationTest {
 			return this;
 		}
 
-		public MultipartFormBuilder finish() {
+		MultipartFormBuilder finish() {
 			writer.append(LINE_FEED).flush();
 			writer.append("--").append(boundary).append("--").append(LINE_FEED);
 			writer.close();

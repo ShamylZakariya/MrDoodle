@@ -21,7 +21,7 @@ import java.util.concurrent.ScheduledFuture;
  */
 public class TimestampRecord {
 
-	static final Logger logger = LoggerFactory.getLogger(TimestampRecord.class);
+	private static final Logger logger = LoggerFactory.getLogger(TimestampRecord.class);
 
 	public enum Action {
 		WRITE,
@@ -52,7 +52,7 @@ public class TimestampRecord {
 	 * @param namespace the top-level namespace used for storage in redis (all fields will be named namespace/*)
 	 * @param accountId the account namespace for all writes/reads
 	 */
-	public TimestampRecord(JedisPool jedisPool, String namespace, String accountId) {
+	TimestampRecord(JedisPool jedisPool, String namespace, String accountId) {
 		this.jedisPool = jedisPool;
 		this.namespace = namespace;
 		this.accountId = accountId;
@@ -62,7 +62,7 @@ public class TimestampRecord {
 	/**
 	 * Create an in-memory TimestampRecord
 	 */
-	public TimestampRecord() {
+	TimestampRecord() {
 	}
 
 	public JedisPool getJedisPool() {
@@ -110,7 +110,7 @@ public class TimestampRecord {
 	 * @param documentId the id of the document to query
 	 * @return the timestamp seconds associated with the document id, or -1 if none is set
 	 */
-	public long getTimestampSeconds(String documentId) {
+	long getTimestampSeconds(String documentId) {
 		return entriesByDocumentId.containsKey(documentId) ? entriesByDocumentId.get(documentId).getTimestampSeconds() : -1;
 	}
 
@@ -142,14 +142,14 @@ public class TimestampRecord {
 	/**
 	 * @return Get all entries in record, mapping the event's modelId to the event
 	 */
-	public Map<String, TimestampRecordEntry> getEntries() {
+	Map<String, TimestampRecordEntry> getEntries() {
 		return getEntriesSince(-1);
 	}
 
 	/**
 	 * @return the Entry representing the most recent event to be added to the record
 	 */
-	public TimestampRecordEntry getTimestampHead() {
+	TimestampRecordEntry getTimestampHead() {
 		if (head == null) {
 			head = findHeadEntry();
 		}
@@ -158,7 +158,7 @@ public class TimestampRecord {
 	}
 
 
-	public boolean isEmpty() {
+	boolean isEmpty() {
 		return entriesByDocumentId.isEmpty();
 	}
 
@@ -166,7 +166,7 @@ public class TimestampRecord {
 		return getJedisKey(namespace, accountId);
 	}
 
-	public static String getJedisKey(String namespace, String accountId) {
+	static String getJedisKey(String namespace, String accountId) {
 		return namespace + "/" + accountId +  "/timestamps";
 	}
 
@@ -191,7 +191,7 @@ public class TimestampRecord {
 	 *
 	 * @param target the TimestampRecord which will receive this TimestampRecord's values
 	 */
-	public void save(TimestampRecord target) {
+	void save(TimestampRecord target) {
 		for (TimestampRecordEntry entry : entriesByDocumentId.values()) {
 			target.entriesByDocumentId.put(entry.getDocumentId(), entry);
 		}
@@ -200,7 +200,7 @@ public class TimestampRecord {
 		target.save();
 	}
 
-	public void save() {
+	void save() {
 		if (jedisPool == null) {
 			return;
 		}
