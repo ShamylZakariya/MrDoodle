@@ -6,8 +6,8 @@ import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.auth.Whitelist;
 import org.zakariya.mrdoodleserver.auth.techniques.GoogleIdTokenAuthenticator;
 import org.zakariya.mrdoodleserver.auth.techniques.MockAuthenticator;
-import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.routes.SyncRouter;
+import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -30,7 +30,8 @@ public class SyncServer {
 	/**
 	 * Start the server
 	 * pass:
-	 *  --config | -c for path to a config json file
+	 * --config | -c for path to a config json file
+	 *
 	 * @param args command line args
 	 */
 	public static void main(String[] args) {
@@ -63,7 +64,7 @@ public class SyncServer {
 	 * Start the server with a given configuration
 	 *
 	 * @param configuration a configuration
-	 * @param flushStorage if true, all storage under the configuration's prefix will be deleted
+	 * @param flushStorage  if true, all storage under the configuration's prefix will be deleted
 	 */
 	public static void start(Configuration configuration, boolean flushStorage) {
 		logger.info("Starting SyncServer");

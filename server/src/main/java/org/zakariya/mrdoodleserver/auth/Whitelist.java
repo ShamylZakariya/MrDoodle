@@ -5,7 +5,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-import static org.zakariya.mrdoodleserver.util.Preconditions.*;
+import static org.zakariya.mrdoodleserver.util.Preconditions.checkArgument;
 
 /**
  * Whitelist
@@ -96,8 +96,8 @@ public class Whitelist {
 		}
 	}
 
-	private static double nowSeconds(){
-		return ((double)(new Date()).getTime()) / 1000.0;
+	private static double nowSeconds() {
+		return ((double) (new Date()).getTime()) / 1000.0;
 	}
 
 	/**

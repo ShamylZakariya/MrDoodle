@@ -1,7 +1,10 @@
 package org.zakariya.mrdoodleserver.sync;
 
 import org.jetbrains.annotations.Nullable;
-import redis.clients.jedis.*;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.Response;
+import redis.clients.jedis.Transaction;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -60,6 +63,7 @@ public class BlobStore {
 
 	/**
 	 * Create a BlobStore which will persist to a given redis connection.
+	 *
 	 * @param jedisPool pool brokering access to a redis connection
 	 * @param namespace the top-level namespace under which blobs will be persisted
 	 * @param accountId the user account for the blobs which will be persisted
@@ -84,6 +88,7 @@ public class BlobStore {
 
 	/**
 	 * Persist an entry to the store
+	 *
 	 * @param e a BlobStore.Entry to persist
 	 */
 	public void set(Entry e) {
@@ -92,10 +97,11 @@ public class BlobStore {
 
 	/**
 	 * Persist a blob and associated data to the store
-	 * @param id the id of the blob
-	 * @param type the "type" of blob - this might map to a java object on the client side
+	 *
+	 * @param id        the id of the blob
+	 * @param type      the "type" of blob - this might map to a java object on the client side
 	 * @param timestamp the timestamp (generally in seconds) of the data
-	 * @param data the actual blob data
+	 * @param data      the actual blob data
 	 */
 	public void set(String id, String type, long timestamp, byte[] data) {
 		try (Jedis jedis = jedisPool.getResource()) {
@@ -140,6 +146,7 @@ public class BlobStore {
 
 	/**
 	 * Check if a given blob id is accessible to this store
+	 *
 	 * @param id the id of a blob
 	 * @return true if this store has the given blob
 	 */
@@ -155,6 +162,7 @@ public class BlobStore {
 
 	/**
 	 * Remove a blob and associated data from the store
+	 *
 	 * @param id the id of the blob to remove
 	 */
 	public void delete(String id) {
@@ -174,7 +182,7 @@ public class BlobStore {
 	 */
 	public void discard() {
 		try (Jedis jedis = jedisPool.getResource()) {
-			Set<String> keys = jedis.keys(getEntryRootKey(accountId,namespace) + "*");
+			Set<String> keys = jedis.keys(getEntryRootKey(accountId, namespace) + "*");
 			keys.forEach(jedis::del);
 		}
 
@@ -187,6 +195,7 @@ public class BlobStore {
 	 * and the destination store has no blob 'A', and DOES have a blob 'B', after the save, the destination store will have 'A', and will
 	 * no longer have a blob 'B'. The purpose of this is to enable one blob store to represent a batch of "temp" writes and deletes, which
 	 * can be committed at a later date to the "real" blob store for that account.
+	 *
 	 * @param store the store to copy changes from this store to
 	 */
 	public void save(BlobStore store) {

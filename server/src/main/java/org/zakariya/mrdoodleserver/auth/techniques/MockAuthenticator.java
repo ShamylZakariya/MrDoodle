@@ -1,7 +1,6 @@
 package org.zakariya.mrdoodleserver.auth.techniques;
 
 import org.zakariya.mrdoodleserver.auth.Authenticator;
-import org.zakariya.mrdoodleserver.auth.Whitelist;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -13,9 +12,9 @@ import java.util.Set;
  * MockAuthenticator
  * A mock authenticator technique for testing
  */
-public class MockAuthenticator implements Authenticator{
+public class MockAuthenticator implements Authenticator {
 
-	private Map<String,String> tokenToIdMap;
+	private Map<String, String> tokenToIdMap;
 	private Set<String> whitelist = new HashSet<>();
 
 	/**
@@ -27,9 +26,10 @@ public class MockAuthenticator implements Authenticator{
 
 	/**
 	 * Create a mock authenticator which will accept a fake auth token, and return a user id.
+	 *
 	 * @param tokenToIdMap map of fake tokens to fake user ids
 	 */
-	public MockAuthenticator(Map<String,String> tokenToIdMap) {
+	public MockAuthenticator(Map<String, String> tokenToIdMap) {
 		this.tokenToIdMap = new HashMap<>(tokenToIdMap);
 	}
 

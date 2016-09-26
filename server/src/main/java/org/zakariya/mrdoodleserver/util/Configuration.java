@@ -101,7 +101,7 @@ public class Configuration {
 	/**
 	 * Get the string value of the item at a given path. The path can contain directory separators, as such: "a/b/c/leaf"
 	 *
-	 * @param path the deep path into configuration
+	 * @param path     the deep path into configuration
 	 * @param fallback the fallback value if the requested value isn't in the configuration
 	 * @return the string value of the item at the end of the path, or fallback
 	 */

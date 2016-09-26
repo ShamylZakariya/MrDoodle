@@ -52,8 +52,8 @@ public class WebSocketConnection {
 		 * Invoked when a user/device is connected and authenticated
 		 *
 		 * @param connection the websocket connection
-		 * @param session  the user/device websocket session
-		 * @param userId the user id of the connected user/device
+		 * @param session    the user/device websocket session
+		 * @param userId     the user id of the connected user/device
 		 */
 		void onUserSessionConnected(WebSocketConnection connection, Session session, String userId);
 
@@ -61,8 +61,8 @@ public class WebSocketConnection {
 		 * Invoked when a user/device disconnects
 		 *
 		 * @param connection the websocket connection
-		 * @param session  the user/device websocket session
-		 * @param userId the user id of the connected user/device
+		 * @param session    the user/device websocket session
+		 * @param userId     the user id of the connected user/device
 		 */
 		void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId);
 	}
@@ -229,7 +229,7 @@ public class WebSocketConnection {
 			boolean didAuthenticate = false;
 			if (!isSessionAuthenticated(userSession)) {
 				String userId = authenticate(userSession, authToken);
-				sendAuthenticationResponse(userSession, userId  != null);
+				sendAuthenticationResponse(userSession, userId != null);
 
 				if (userId != null) {
 					didAuthenticate = true;
@@ -239,7 +239,7 @@ public class WebSocketConnection {
 						listener.onUserSessionConnected(this, userSession, userId);
 					}
 				}
-				
+
 				logger.info("onMessage - after handling authentication, we have {} connected devices", getTotalConnectedDeviceCount());
 			}
 
@@ -368,7 +368,7 @@ public class WebSocketConnection {
 	/**
 	 * Broadcast the message object as JSON to every user connected to this service authenticated by a given google id
 	 *
-	 * @param userId      the user id representing a number of connected devices using same sign-in
+	 * @param userId        the user id representing a number of connected devices using same sign-in
 	 * @param messageObject and arbitrary POJO to send
 	 */
 	public void broadcast(String userId, Object messageObject) {

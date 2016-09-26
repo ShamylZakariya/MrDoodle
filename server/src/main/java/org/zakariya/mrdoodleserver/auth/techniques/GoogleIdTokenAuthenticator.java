@@ -19,7 +19,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.zakariya.mrdoodleserver.util.Preconditions.*;
+import static org.zakariya.mrdoodleserver.util.Preconditions.checkArgument;
 
 
 /**
@@ -36,7 +36,7 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 	private GoogleIdTokenVerifier googleIdTokenVerifier;
 	private Whitelist whitelist;
 	private Whitelist verifiedTokensWhitelist;
-	private Map<String,String> googleIdsByToken = new HashMap<>();
+	private Map<String, String> googleIdsByToken = new HashMap<>();
 
 	public GoogleIdTokenAuthenticator(String oathClientId, @Nullable Whitelist whitelist) {
 		checkArgument(oathClientId != null && oathClientId.length() > 0, "oath client id must be non-null & non-empty");
@@ -71,6 +71,7 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 
 	/**
 	 * Verifies a google JWT token, returning the google user ID if the token's valid (or whitelisted), or null if not
+	 *
 	 * @param token a google ID token
 	 * @return the google user's ID if the token is valid, null otherwise
 	 */
@@ -112,6 +113,7 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 
 	/**
 	 * Get the google user ID from a google auth token, without verifying token
+	 *
 	 * @param token the google jwt auth token string
 	 * @return the google id encoded in the token, or null if it couldn't parse
 	 */

@@ -80,10 +80,10 @@ public class TimestampRecord {
 	/**
 	 * Record an event into the timestamp record
 	 *
-	 * @param documentId       id of the thing that the action happened to
+	 * @param documentId   id of the thing that the action happened to
 	 * @param documentType the model class of the thing represented by the modelId
-	 * @param seconds    the timestamp, in seconds, of the event
-	 * @param action     the type of event (write/delete)
+	 * @param seconds      the timestamp, in seconds, of the event
+	 * @param action       the type of event (write/delete)
 	 * @return the entry that was created
 	 */
 	public TimestampRecordEntry record(String documentId, String documentType, long seconds, Action action) {
@@ -167,7 +167,7 @@ public class TimestampRecord {
 	}
 
 	static String getJedisKey(String namespace, String accountId) {
-		return namespace + "/" + accountId +  "/timestamps";
+		return namespace + "/" + accountId + "/timestamps";
 	}
 
 	private void markDirty() {
