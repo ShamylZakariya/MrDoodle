@@ -130,8 +130,7 @@ public class SyncLogEntry extends RealmObject {
 		this.failure = failure;
 	}
 
-	private static String throwableStacktraceToString(Throwable t)
-	{
+	private static String throwableStacktraceToString(Throwable t) {
 		ByteArrayOutputStream s = new ByteArrayOutputStream();
 		PrintStream ps = new PrintStream(s);
 		t.printStackTrace(ps);

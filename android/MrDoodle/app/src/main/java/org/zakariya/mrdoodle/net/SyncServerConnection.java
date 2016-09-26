@@ -50,6 +50,7 @@ public class SyncServerConnection extends WebSocketConnection {
 
 	/**
 	 * Add a listener to be notified as messages arrive from the web socket connection
+	 *
 	 * @param listener listener to be notified as messages arrive from the web socket connection
 	 */
 	public void addNotificationListener(NotificationListener listener) {
@@ -142,7 +143,7 @@ public class SyncServerConnection extends WebSocketConnection {
 					}
 				}
 			} catch (JsonSyntaxException e) {
-				Log.e(TAG, "onTextMessage: unable to parse " + text + " as JSON", e );
+				Log.e(TAG, "onTextMessage: unable to parse " + text + " as JSON", e);
 				e.printStackTrace();
 			}
 		}
@@ -151,7 +152,7 @@ public class SyncServerConnection extends WebSocketConnection {
 	@Override
 	protected void onConnectionStatusChanged(WebSocketConnection.ConnectionStatus previousStatus, WebSocketConnection.ConnectionStatus newStatus) {
 
-		switch( newStatus) {
+		switch (newStatus) {
 			case CONNECTING:
 				BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTING));
 				break;
@@ -162,7 +163,8 @@ public class SyncServerConnection extends WebSocketConnection {
 				BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.DISCONNECTED));
 				break;
 
-			default: break;
+			default:
+				break;
 		}
 	}
 

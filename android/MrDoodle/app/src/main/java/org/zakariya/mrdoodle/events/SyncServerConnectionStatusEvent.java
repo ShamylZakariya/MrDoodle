@@ -22,7 +22,7 @@ public class SyncServerConnectionStatusEvent {
 		return status;
 	}
 
-	public boolean isDisconnected(){
+	public boolean isDisconnected() {
 		return status == Status.DISCONNECTED;
 	}
 

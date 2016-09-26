@@ -68,7 +68,7 @@ public class TimestampRecorder {
 		commit();
 	}
 
-	public Map<String,Long> getTimestamps() {
+	public Map<String, Long> getTimestamps() {
 		return timestamps;
 	}
 
@@ -157,7 +157,6 @@ public class TimestampRecorder {
 		}
 		return timestampStore;
 	}
-
 
 
 }

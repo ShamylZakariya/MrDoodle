@@ -83,7 +83,7 @@ public class WebSocketConnection extends WebSocketAdapter {
 							return new Date().toString().getBytes();
 						}
 					});
-					webSocket.setPingInterval(60*1000);
+					webSocket.setPingInterval(60 * 1000);
 					webSocket.connectAsynchronously();
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -123,8 +123,9 @@ public class WebSocketConnection extends WebSocketAdapter {
 
 	/**
 	 * Called when connection status to host changes
+	 *
 	 * @param previousStatus the previous connection status
-	 * @param newStatus the new connection status
+	 * @param newStatus      the new connection status
 	 */
 	protected void onConnectionStatusChanged(ConnectionStatus previousStatus, ConnectionStatus newStatus) {
 	}
@@ -152,6 +153,7 @@ public class WebSocketConnection extends WebSocketAdapter {
 
 	/**
 	 * Send a simple POJO to the remote host
+	 *
 	 * @param object simple POJO to serialize to JSON and send over the wire
 	 */
 	public void send(Object object) {

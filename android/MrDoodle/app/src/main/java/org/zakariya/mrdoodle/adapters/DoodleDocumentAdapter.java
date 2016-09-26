@@ -86,7 +86,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 	Realm realm;
 	View emptyView;
 	ArrayList<Item> items = new ArrayList<>();
-	Map<String,Item> hiddenItems = new HashMap<>();
+	Map<String, Item> hiddenItems = new HashMap<>();
 
 	DateFormat dateFormatter;
 	int columns;

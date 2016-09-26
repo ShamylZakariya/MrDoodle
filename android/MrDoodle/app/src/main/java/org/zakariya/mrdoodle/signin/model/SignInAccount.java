@@ -36,6 +36,7 @@ public class SignInAccount {
 	 * To authenticate the user, you need a token. Tokens expire, tokens may need to be
 	 * negotiated with the authenticating service. So, to get a token, we implement this
 	 * simple async-type callback interface.
+	 *
 	 * @param receiver is called when the token is available, or if an error occurs
 	 */
 	public void getAuthenticationToken(AuthenticationTokenReceiver receiver) {

@@ -43,6 +43,7 @@ public interface SignInTechnique {
 	 * Since this may be an async operation (due to complexities of Google sign in API) this is implemented
 	 * as an async operation. The callback will always be invoked on the main thread. And if the
 	 * auth token is currently valid, it will be called immediately.
+	 *
 	 * @param receiver an implementation ot AuthenticationTokenReceiver to receive the token, or an error
 	 */
 	void getAuthenticationToken(AuthenticationTokenReceiver receiver);
@@ -50,6 +51,7 @@ public interface SignInTechnique {
 
 	/**
 	 * If signing in requires showing a UI, techniques should return true here
+	 *
 	 * @return true if signing in requires a UI
 	 */
 	boolean requiresSignInIntent();
@@ -65,10 +67,10 @@ public interface SignInTechnique {
 	/**
 	 * If signing in required launching an intent, callers must forward their onActivityResult values here
 	 * to handle the sign in results
+	 *
 	 * @param data intent data bearing sign in result info
 	 */
 	void handleSignInIntentResult(Intent data);
-
 
 
 }

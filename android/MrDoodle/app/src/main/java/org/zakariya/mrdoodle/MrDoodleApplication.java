@@ -12,8 +12,8 @@ import com.squareup.otto.Subscribe;
 import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
-import org.zakariya.mrdoodle.events.DoodleDocumentWillBeDeletedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentWillBeDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.techniques.MockSignInTechnique;
@@ -147,7 +147,7 @@ public class MrDoodleApplication extends android.app.Application {
 			@SuppressWarnings("TryFinallyCanBeTryWithResources")
 			@Override
 			public void deleteModelObject(String modelId, String modelType) throws Exception {
-				switch(modelType) {
+				switch (modelType) {
 					case DoodleDocument.BLOB_TYPE:
 						Realm realm = Realm.getDefaultInstance();
 						try {

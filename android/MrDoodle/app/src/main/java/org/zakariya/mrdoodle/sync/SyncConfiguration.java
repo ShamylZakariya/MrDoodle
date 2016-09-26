@@ -10,7 +10,7 @@ public class SyncConfiguration {
 
 	private boolean isEmulator;
 
-	public SyncConfiguration(){
+	public SyncConfiguration() {
 		this(EmulatorDetection.isEmulator());
 	}
 

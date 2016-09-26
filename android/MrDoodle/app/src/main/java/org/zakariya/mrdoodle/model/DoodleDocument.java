@@ -10,8 +10,8 @@ import com.esotericsoftware.kryo.io.Output;
 import org.zakariya.doodle.model.Doodle;
 import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
-import org.zakariya.mrdoodle.events.DoodleDocumentWillBeDeletedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentWillBeDeletedEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.io.BufferedInputStream;
@@ -80,9 +80,10 @@ public class DoodleDocument extends RealmObject {
 
 	/**
 	 * Delete a DoodleDocument and its associated files on disc
+	 *
 	 * @param context a context, needed to get access to files dir
-	 * @param realm a realm
-	 * @param doc the doodle document
+	 * @param realm   a realm
+	 * @param doc     the doodle document
 	 */
 	public static void delete(Context context, Realm realm, DoodleDocument doc) {
 
@@ -99,8 +100,9 @@ public class DoodleDocument extends RealmObject {
 
 	/**
 	 * Delete all DoodleDocuments and associated files on disc
+	 *
 	 * @param context a context, needed to get access to files dir
-	 * @param realm a realm
+	 * @param realm   a realm
 	 */
 	public static void deleteAll(Context context, Realm realm) {
 		ArrayList<DoodleDocument> all = new ArrayList<>(DoodleDocument.all(realm));
@@ -111,6 +113,7 @@ public class DoodleDocument extends RealmObject {
 
 	/**
 	 * Get all DoodleDocuments
+	 *
 	 * @param realm a realm
 	 * @return all DoodleDocuments
 	 */
@@ -121,7 +124,7 @@ public class DoodleDocument extends RealmObject {
 	/**
 	 * Delete the document's save file
 	 *
-	 * @param context  the context
+	 * @param context the context
 	 */
 	void deleteSaveFile(Context context) {
 		File file = getSaveFile(context);
@@ -148,14 +151,14 @@ public class DoodleDocument extends RealmObject {
 		kryo.writeObject(output, getModificationDate());
 
 		Doodle doodle = loadDoodle(context);
-		byte [] doodleBytes = doodle.serialize();
+		byte[] doodleBytes = doodle.serialize();
 		kryo.writeObject(output, doodleBytes);
 		output.close();
 
 		return stream.toByteArray();
 	}
 
-	public static void createOrUpdate(Context context, Realm realm, byte [] serializedBytes) throws Exception {
+	public static void createOrUpdate(Context context, Realm realm, byte[] serializedBytes) throws Exception {
 		ByteArrayInputStream inputStream = new ByteArrayInputStream(serializedBytes);
 		Input input = new Input(inputStream);
 		Kryo kryo = new Kryo();
@@ -167,7 +170,7 @@ public class DoodleDocument extends RealmObject {
 			String name = kryo.readObject(input, String.class);
 			Date creationDate = kryo.readObject(input, Date.class);
 			Date modificationDate = kryo.readObject(input, Date.class);
-			byte [] doodleBytes = kryo.readObject(input, byte[].class);
+			byte[] doodleBytes = kryo.readObject(input, byte[].class);
 
 			// create the doodle
 			StrokeDoodle doodle = new StrokeDoodle(context, new ByteArrayInputStream(doodleBytes));
@@ -211,7 +214,7 @@ public class DoodleDocument extends RealmObject {
 	 * Get the file used by a DoodleDocument to save its doodle.
 	 * Note, the doodle is not saved in the realm because realm doesn't like big binary blobs.
 	 *
-	 * @param context  the context
+	 * @param context the context
 	 * @return a File object referring to the document's doodle's save data. May not exist if nothing has been saved
 	 */
 	public File getSaveFile(Context context) {

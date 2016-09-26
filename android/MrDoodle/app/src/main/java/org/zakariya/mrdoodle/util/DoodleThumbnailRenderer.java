@@ -137,7 +137,7 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 	 * @param document the document
 	 * @param width    the width to render the thumbnail
 	 * @param height   the height to render the thumbnail
-	 * @param padding   the padding around the thumbnail in pixels
+	 * @param padding  the padding around the thumbnail in pixels
 	 * @return a bitmap containing the document's rendering, at the provided width/height
 	 */
 	public Pair<Bitmap, String> renderThumbnail(Context context, DoodleDocument document, int width, int height, float padding) {

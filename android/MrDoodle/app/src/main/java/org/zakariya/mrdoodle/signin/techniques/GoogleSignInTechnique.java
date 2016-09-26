@@ -252,14 +252,14 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 		disconnected = false;
 		connected = false;
 		connectionSuspendedCount++;
-		long reconnectDelayMillis = 1000 * (long)Math.pow(1.4, connectionSuspendedCount);
+		long reconnectDelayMillis = 1000 * (long) Math.pow(1.4, connectionSuspendedCount);
 
 		switch (i) {
 			case CAUSE_NETWORK_LOST:
-				Log.w(TAG, "onConnectionSuspended: CAUSE_NETWORK_LOST - connectionSuspendedCount: " + connectionSuspendedCount + " will attempt reconnect in : " + reconnectDelayMillis/1000 + " seconds...");
+				Log.w(TAG, "onConnectionSuspended: CAUSE_NETWORK_LOST - connectionSuspendedCount: " + connectionSuspendedCount + " will attempt reconnect in : " + reconnectDelayMillis / 1000 + " seconds...");
 				break;
 			case CAUSE_SERVICE_DISCONNECTED:
-				Log.w(TAG, "onConnectionSuspended: CAUSE_SERVICE_DISCONNECTED - connectionSuspendedCount: " + connectionSuspendedCount + " will attempt reconnect in : " + reconnectDelayMillis/1000 + " seconds...");
+				Log.w(TAG, "onConnectionSuspended: CAUSE_SERVICE_DISCONNECTED - connectionSuspendedCount: " + connectionSuspendedCount + " will attempt reconnect in : " + reconnectDelayMillis / 1000 + " seconds...");
 				break;
 		}
 

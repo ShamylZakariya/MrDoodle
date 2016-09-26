@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
 import org.zakariya.mrdoodle.signin.SignInTechnique;
@@ -32,7 +31,7 @@ public class MockSignInTechnique implements SignInTechnique {
 		this.context = context;
 
 		Uri photoUri = Uri.parse("https://avatars0.githubusercontent.com/u/1743604");
-		this.account = new SignInAccount(this,"12345", "Shamyl Zakariya", "shamyl@gmail.com", photoUri);
+		this.account = new SignInAccount(this, "12345", "Shamyl Zakariya", "shamyl@gmail.com", photoUri);
 
 		SharedPreferences prefs = getPreferences();
 		this.signedIn = prefs.getBoolean(PREF_KEY_SIGNED_IN, false);

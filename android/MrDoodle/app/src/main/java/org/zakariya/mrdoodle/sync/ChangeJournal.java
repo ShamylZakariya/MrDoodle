@@ -38,7 +38,7 @@ public class ChangeJournal {
 	 * be persistent, saving to a realm. Otherwise, it will be in-memory only.
 	 *
 	 * @param persistPrefix a "namespace" under which this journal reads/writes ChangeJournalItems. If null, ChangeJournal will not persist and will be in-memory only
-	 * @param notifies if true, changes to the journal will post ChangeJournalUpdatedEvent, after a short debounce period
+	 * @param notifies      if true, changes to the journal will post ChangeJournalUpdatedEvent, after a short debounce period
 	 */
 	public ChangeJournal(@Nullable String persistPrefix, boolean notifies) {
 		this.persistPrefix = persistPrefix;
@@ -57,6 +57,7 @@ public class ChangeJournal {
 
 	/**
 	 * Creates a copy of the provided source journal, but the copy will be a non-persisting in-memory journal which will not post change notifications.
+	 *
 	 * @param source the journal to copy
 	 * @return a non-persisting, non-event-emitting ChangeJournal with the same entries as the source
 	 */
@@ -81,6 +82,7 @@ public class ChangeJournal {
 
 	/**
 	 * Get this ChangeJournal's items
+	 *
 	 * @param realm if this ChangeJournal persists, it needs a realm instance to query for its items
 	 * @return this ChangeJournal's items
 	 */
@@ -110,7 +112,8 @@ public class ChangeJournal {
 
 	/**
 	 * Merge the items in src to this journal.
-	 * @param src a ChangeJournal to copy items from
+	 *
+	 * @param src      a ChangeJournal to copy items from
 	 * @param notifies if true, this journal will post ChangeJournalUpdatedEvent
 	 */
 	public void merge(ChangeJournal src, boolean notifies) {

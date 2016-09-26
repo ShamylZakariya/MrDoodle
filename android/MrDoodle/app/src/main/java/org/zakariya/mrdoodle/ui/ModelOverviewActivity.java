@@ -22,9 +22,9 @@ import android.widget.TextView;
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.sync.ChangeJournal;
-import org.zakariya.mrdoodle.sync.model.ChangeJournalItem;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.TimestampRecorder;
+import org.zakariya.mrdoodle.sync.model.ChangeJournalItem;
 import org.zakariya.mrdoodle.sync.model.ChangeType;
 
 import java.text.DateFormat;
@@ -150,7 +150,7 @@ public class ModelOverviewActivity extends AppCompatActivity {
 		@Override
 		public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 			View view = inflater.inflate(R.layout.fragment_model_overview_page, container, false);
-			ButterKnife.bind(this,view);
+			ButterKnife.bind(this, view);
 
 			listView.setAdapter(new ListItemModelArrayAdapter(getActivity(), getListItems()));
 
@@ -225,7 +225,7 @@ public class ModelOverviewActivity extends AppCompatActivity {
 			ArrayList<ListItemModel> itemModels = new ArrayList<>();
 			TimestampRecorder timestampRecorder = SyncManager.getInstance().getTimestampRecorder();
 
-			if (timestampRecorder != null ) {
+			if (timestampRecorder != null) {
 				for (String id : timestampRecorder.getTimestamps().keySet()) {
 					ListItemModel listItemModel = new ListItemModel();
 					String referencedItemClass = classOfItemWithId(id);
@@ -257,7 +257,7 @@ public class ModelOverviewActivity extends AppCompatActivity {
 		}
 
 		private String classOfItemWithId(String id) {
-			if (realm.where(DoodleDocument.class).equalTo("uuid",id).findFirst() != null) {
+			if (realm.where(DoodleDocument.class).equalTo("uuid", id).findFirst() != null) {
 				return DoodleDocument.class.getSimpleName();
 			}
 			return null;

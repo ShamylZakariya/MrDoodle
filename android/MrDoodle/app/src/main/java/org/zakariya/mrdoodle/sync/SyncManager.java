@@ -111,6 +111,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	/**
 	 * Using Rx, return an observable which calls performSync()
+	 *
 	 * @return an observable bearing Status
 	 */
 	public Observable<Status> sync() {
@@ -124,6 +125,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	/**
 	 * Using Rx, return an observable which calls resetAndPerformSync()
+	 *
 	 * @return an observable bearing Status
 	 */
 	public Observable<Status> resetAndSync(final LocalStoreDeleter deleter) {
@@ -282,6 +284,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	/**
 	 * Persist changes made to a SyncState instance
+	 *
 	 * @param syncState the instance to persist
 	 */
 	void persistSyncState(SyncState syncState) {

@@ -448,7 +448,7 @@ public class DoodleActivity extends BaseActivity {
 	}
 
 	void updateBrush() {
-		doodle.setBrush(new Brush(getBrushColor(), getBrushSize()/2, getBrushSize(), 600, isBrushEraser()));
+		doodle.setBrush(new Brush(getBrushColor(), getBrushSize() / 2, getBrushSize(), 600, isBrushEraser()));
 	}
 
 	float dp2px(float dp) {
@@ -551,7 +551,6 @@ public class DoodleActivity extends BaseActivity {
 	}
 
 
-
 	private static final class PaletteFlyoutButtonRenderer extends FlyoutMenuView.ButtonRenderer {
 
 		Paint paint;
@@ -576,7 +575,6 @@ public class DoodleActivity extends BaseActivity {
 			this.currentColor = currentColor;
 			currentColorLuminance = ColorUtils.calculateLuminance(this.currentColor);
 		}
-
 
 
 		@Override
