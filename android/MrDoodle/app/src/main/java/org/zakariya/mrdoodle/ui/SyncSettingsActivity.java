@@ -36,11 +36,11 @@ import org.zakariya.mrdoodle.signin.events.SignOutEvent;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.model.SyncLogEntry;
-import org.zakariya.mrdoodle.util.AsyncExecutor;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
 
 import java.text.DateFormat;
+import java.util.concurrent.Callable;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -49,6 +49,11 @@ import io.realm.Realm;
 import io.realm.RealmChangeListener;
 import io.realm.RealmResults;
 import retrofit2.Response;
+import rx.Observable;
+import rx.Observer;
+import rx.Subscription;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 /**
  * Created by shamyl on 1/2/16.
@@ -89,6 +94,7 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	Realm realm;
 	SyncLogAdapter syncLogAdapter;
+	Subscription syncSubscription;
 
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -126,6 +132,10 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	@Override
 	protected void onDestroy() {
+		if (syncSubscription != null && !syncSubscription.isUnsubscribed()) {
+			syncSubscription.unsubscribe();
+		}
+
 		BusProvider.getBus().unregister(this);
 		syncLogAdapter.onDestroy();
 		realm.close();
@@ -199,30 +209,39 @@ public class SyncSettingsActivity extends BaseActivity {
 		SyncManager syncManager = SyncManager.getInstance();
 		SyncEngine syncEngine = syncManager.getSyncEngine();
 		final SyncService service = syncEngine.getSyncService();
-		AsyncExecutor executor = syncManager.getExecutor();
 		final SignInAccount account = SignInManager.getInstance().getAccount();
 
 		if (account != null) {
-			executor.execute("getStatus", new AsyncExecutor.Job<Response<Status>>() {
+			Callable<Response<Status>> statusCall = new Callable<Response<Status>>() {
 				@Override
-				public Response<Status> execute() throws Exception {
+				public Response<Status> call() throws Exception {
 					return service.getStatus(account.getId()).execute();
 				}
-			}, new AsyncExecutor.JobListener<Response<Status>>() {
-				@Override
-				public void onComplete(Response<Status> response) {
-					if (response.isSuccessful()) {
-						Log.i(TAG, "AsyncExecutor::onResponse: successful : status: " + response.body());
-					} else {
-						Log.e(TAG, "AsyncExecutor::onResponse: not successful, code; " + response.code() + " message: " + response.message());
-					}
-				}
+			};
 
-				@Override
-				public void onError(Throwable error) {
-					Log.e(TAG, "AsyncExecutor::onError: ", error);
-				}
-			});
+			syncSubscription = Observable.fromCallable(statusCall)
+					.subscribeOn(Schedulers.io())
+					.observeOn(AndroidSchedulers.mainThread())
+					.subscribe(new Observer<Response<Status>>() {
+						@Override
+						public void onCompleted() {
+							Log.i(TAG, "onCompleted: ");
+						}
+
+						@Override
+						public void onError(Throwable e) {
+							Log.e(TAG, "status error: ", e);
+						}
+
+						@Override
+						public void onNext(Response<Status> statusResponse) {
+							if (statusResponse.isSuccessful()) {
+								Log.i(TAG, "status() - status: " + statusResponse.body());
+							} else {
+								Log.e(TAG, "status() - failed, code; " + statusResponse.code() + " message: " + statusResponse.message());
+							}
+						}
+					});
 		}
 	}
 
@@ -241,24 +260,24 @@ public class SyncSettingsActivity extends BaseActivity {
 			return;
 		}
 
+		syncSubscription = syncManager.sync()
+				.subscribeOn(Schedulers.io())
+				.observeOn(AndroidSchedulers.mainThread())
+				.subscribe(new Observer<Status>() {
+					@Override
+					public void onCompleted() {
+					}
 
-		syncManager.getExecutor().execute("sync", new AsyncExecutor.Job<Void>() {
-			@Override
-			public Void execute() throws Exception {
-				SyncManager.getInstance().sync();
-				return null;
-			}
-		}, new AsyncExecutor.JobListener<Void>() {
-			@Override
-			public void onComplete(Void result) {
-				Log.i(TAG, "syncNow - onComplete: SUCCESS, I GUESS");
-			}
+					@Override
+					public void onError(Throwable e) {
+						Log.e(TAG, "sync - onError: ", e);
+					}
 
-			@Override
-			public void onError(Throwable error) {
-				Log.e(TAG, "syncNow - onError: ", error);
-			}
-		});
+					@Override
+					public void onNext(Status status) {
+						Log.i(TAG, "sync - onNext: SUCCESS, I GUESS. Status: " + status);
+					}
+				});
 	}
 
 	@OnClick(R.id.resetAndSyncButton)
@@ -270,33 +289,33 @@ public class SyncSettingsActivity extends BaseActivity {
 			return;
 		}
 
-
-		syncManager.getExecutor().execute("resetAndSync", new AsyncExecutor.Job<Void>() {
+		SyncManager.LocalStoreDeleter deleter = new SyncManager.LocalStoreDeleter() {
 			@Override
-			public Void execute() throws Exception {
+			public void deleteLocalStore() {
+				Realm realm = Realm.getDefaultInstance();
+				DoodleDocument.deleteAll(SyncSettingsActivity.this, realm);
+				realm.close();
+			}
+		};
 
-				SyncManager.getInstance().resetAndSync(new SyncManager.LocalStoreDeleter() {
+		syncSubscription = syncManager.resetAndSync(deleter)
+				.subscribeOn(Schedulers.io())
+				.observeOn(AndroidSchedulers.mainThread())
+				.subscribe(new Observer<Status>() {
 					@Override
-					public void deleteLocalStore() {
-						Realm realm = Realm.getDefaultInstance();
-						DoodleDocument.deleteAll(SyncSettingsActivity.this, realm);
-						realm.close();
+					public void onCompleted() {
+					}
+
+					@Override
+					public void onError(Throwable e) {
+						Log.e(TAG, "resetAndSync - onError: ", e);
+					}
+
+					@Override
+					public void onNext(Status status) {
+						Log.i(TAG, "resetAndSync - onNext: SUCCESS, I GUESS. Status: " + status);
 					}
 				});
-
-				return null;
-			}
-		}, new AsyncExecutor.JobListener<Void>() {
-			@Override
-			public void onComplete(Void result) {
-				Log.i(TAG, "syncNow - onComplete: SUCCESS, I GUESS");
-			}
-
-			@Override
-			public void onError(Throwable error) {
-				Log.e(TAG, "syncNow - onError: ", error);
-			}
-		});
 	}
 
 	@OnClick(R.id.clearSyncHistoryButton)

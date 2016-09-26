@@ -169,8 +169,10 @@ public class SyncEngine {
 	 * @param timestampRecorder       record of timestamp/documentType/action
 	 * @param modelObjectDataProvider mechanism which provides bytes representing a blob of a given id and class to send upstream
 	 * @param modelObjectDataConsumer mechanism which takes a blob id, class and bytes and adds it to the app's data store
+	 * @param modelObjectDeleter      mechanism which deletes blobs of a gien id
+	 * @return the current status (timestamp head, locked documents, etc)
 	 */
-	synchronized public void sync(
+	synchronized public Status sync(
 			SignInAccount account,
 			SyncState syncState,
 			ChangeJournal changeJournal,
@@ -208,7 +210,6 @@ public class SyncEngine {
 			Status status = pushLocalChanges(
 					log,
 					account,
-					syncState,
 					changeJournal,
 					timestampRecorder,
 					modelObjectDataProvider);
@@ -228,6 +229,8 @@ public class SyncEngine {
 				syncState.setLastSyncDate(new Date());
 			}
 
+			return status;
+
 		} finally {
 			log(log, "DONE");
 
@@ -244,10 +247,9 @@ public class SyncEngine {
 	///////////////////////////////////////////////////////////////////
 
 	@Nullable
-	Status pushLocalChanges(
+	private Status pushLocalChanges(
 			SyncLogEntry log,
 			SignInAccount account,
-			SyncState syncState,
 			ChangeJournal changeJournal,
 			TimestampRecorder timestampRecorder,
 			ModelObjectDataProvider modelObjectDataProvider)
@@ -400,7 +402,7 @@ public class SyncEngine {
 
 	///////////////////////////////////////////////////////////////////
 
-	Status pullRemoteChanges(
+	private Status pullRemoteChanges(
 			SyncLogEntry log,
 			@Nullable Status status,
 			SignInAccount account,

@@ -15,12 +15,13 @@ import org.zakariya.mrdoodle.signin.events.SignInEvent;
 import org.zakariya.mrdoodle.signin.events.SignOutEvent;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.model.SyncState;
-import org.zakariya.mrdoodle.util.AsyncExecutor;
 import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.util.Date;
+import java.util.concurrent.Callable;
 
 import io.realm.Realm;
+import rx.Observable;
 
 /**
  * Top level access point for sync services
@@ -38,8 +39,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private SignInAccount userAccount;
 	private boolean applicationIsActive, running;
 	private SyncConfiguration syncConfiguration;
-	private Context context;
-	private AsyncExecutor executor;
 	private SyncServerConnection syncServerConnection;
 	private ChangeJournal changeJournal;
 	private TimestampRecorder timestampRecorder;
@@ -59,8 +58,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private SyncManager(Context context, SyncConfiguration syncConfiguration, ModelDataAdapter modelDataAdapter) {
 		BusProvider.getBus().register(this);
 
-		this.context = context;
-		this.executor = new AsyncExecutor();
 		this.syncConfiguration = syncConfiguration;
 		this.modelDataAdapter = modelDataAdapter;
 
@@ -83,10 +80,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		return syncConfiguration;
 	}
 
-	public Context getContext() {
-		return context;
-	}
-
 	public SyncServerConnection getSyncServerConnection() {
 		return syncServerConnection;
 	}
@@ -103,10 +96,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		return syncEngine;
 	}
 
-	public AsyncExecutor getExecutor() {
-		return executor;
-	}
-
 	/**
 	 * @return true iff connected to server and sync services are running
 	 */
@@ -121,9 +110,37 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	/**
-	 * Initiate a sync
+	 * Using Rx, return an observable which calls performSync()
+	 * @return an observable bearing Status
 	 */
-	public void sync() throws Exception {
+	public Observable<Status> sync() {
+		return Observable.fromCallable(new Callable<Status>() {
+			@Override
+			public Status call() throws Exception {
+				return performSync();
+			}
+		});
+	}
+
+	/**
+	 * Using Rx, return an observable which calls resetAndPerformSync()
+	 * @return an observable bearing Status
+	 */
+	public Observable<Status> resetAndSync(final LocalStoreDeleter deleter) {
+		return Observable.fromCallable(new Callable<Status>() {
+			@Override
+			public Status call() throws Exception {
+				return resetAndPerformSync(deleter);
+			}
+		});
+	}
+
+	/**
+	 * Perform sync, synchronously. Sync will either complete successfully, or throw an exception.
+	 * When sync is complete without an exception, all local changes will have been pushed to
+	 * the server, and remote changes will have been pulled from the server.
+	 */
+	Status performSync() throws Exception {
 
 		SyncState syncState = getSyncState();
 
@@ -138,7 +155,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		changeJournal.clear(false);
 
 		try {
-			syncEngine.sync(userAccount,
+			Status status = syncEngine.sync(userAccount,
 					syncState,
 					syncChangeJournal,
 					timestampRecorder,
@@ -148,6 +165,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 			persistSyncState(syncState);
 
+			return status;
 		} finally {
 			// merge - sync may have failed leaving some items un-synced, put those back in the persisting change journal
 			// to be pushed upstream next time
@@ -167,16 +185,16 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 * @param deleter the deleter is responsible for deleting local
 	 *                state, e.g., clearing out your realm instance
 	 */
-	public void resetAndSync(LocalStoreDeleter deleter) throws Exception {
+	Status resetAndPerformSync(LocalStoreDeleter deleter) throws Exception {
 
-		// TODO We have a race condition here. The deleter may emit change/delete messages, and they may be consumed by the changeJournal
+		// TODO We have a race condition here. When deleting items from local store, events are emitted ON MAIN THREAD which means they go through a Handler, and have a delay. Even though we clear the changeJournal here, it will then receive delete events LATER. Ugh.
 
 		deleter.deleteLocalStore();
 		persistSyncState(new SyncState());
 		timestampRecorder.clear();
 		changeJournal.clear(false);
 
-		sync();
+		return performSync();
 	}
 
 	public void start() {
