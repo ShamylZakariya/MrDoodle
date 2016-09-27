@@ -7,10 +7,17 @@
 	android:orientation="vertical"
 	>
 
-	<android.support.v7.widget.Toolbar
-		android:id="@+id/toolbar"
-		style="@style/DefaultToolbarStyle"
-		/>
+	<android.support.design.widget.AppBarLayout
+		android:id="@+id/appbar"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:theme="@style/AppTheme.AppBarOverlay">
+
+		<android.support.v7.widget.Toolbar
+			android:id="@+id/toolbar"
+			style="@style/DefaultToolbarStyle"
+			/>
+	</android.support.design.widget.AppBarLayout>
 
 	<FrameLayout
 		android:id="@+id/container"

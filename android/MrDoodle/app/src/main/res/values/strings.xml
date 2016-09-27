@@ -39,6 +39,9 @@
 	<string name="dialog_rename_document_title">Rename</string>
 	<string name="untitled_document">Untitled Doodle</string>
 
+	<string name="dialog_doodle_action_title">Actions</string>
+	<string name="dialog_doodle_action_share">Share</string>
+	<string name="dialog_doodle_action_delete">Discard</string>
 	<string name="dialog_delete_document_message">Discard doodle?</string>
 	<string name="dialog_delete_document_destructive_button_title">Discard</string>
 	<string name="snackbar_document_deleted">Discarded</string>

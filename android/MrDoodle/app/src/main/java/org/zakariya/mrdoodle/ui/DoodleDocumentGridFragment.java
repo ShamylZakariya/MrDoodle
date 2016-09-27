@@ -33,7 +33,7 @@ import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.adapters.DoodleDocumentAdapter;
 import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
-import org.zakariya.mrdoodle.events.DoodleDocumentWillBeDeletedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
@@ -173,9 +173,12 @@ public class DoodleDocumentGridFragment extends Fragment implements RecyclerItem
 
 	@OnClick(R.id.fab)
 	public void createNewPhotoDoodle() {
-		DoodleDocument newDoc = DoodleDocument.create(realm, getString(R.string.untitled_document));
+		DoodleDocument document = DoodleDocument.create(realm, getString(R.string.untitled_document));
+
+		BusProvider.getBus().post(new DoodleDocumentCreatedEvent(document.getUuid()));
 		recyclerView.smoothScrollToPosition(0);
-		editDoodleDocument(newDoc);
+
+		editDoodleDocument(document);
 	}
 
 	@Override
@@ -240,6 +243,7 @@ public class DoodleDocumentGridFragment extends Fragment implements RecyclerItem
 				DoodleDocument doc = DoodleDocument.byUUID(realm, docUuid);
 				if (doc != null && adapter.isDocumentHidden(doc)) {
 					DoodleDocument.delete(getContext(), realm, doc);
+					BusProvider.getBus().post(new DoodleDocumentWasDeletedEvent(docUuid));
 				}
 			}
 		});
@@ -289,7 +293,7 @@ public class DoodleDocumentGridFragment extends Fragment implements RecyclerItem
 	}
 
 	@Subscribe
-	public void onDoodleDocumentWillBeDeletedEvent(DoodleDocumentWillBeDeletedEvent event) {
+	public void onDoodleDocumentWillBeDeletedEvent(DoodleDocumentWasDeletedEvent event) {
 		Log.i(TAG, "onDoodleDocumentWillBeDeletedEvent: uuid: " + event.getUuid());
 		adapter.onItemDeleted(event.getUuid());
 	}
