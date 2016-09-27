@@ -1,7 +1,6 @@
 package org.zakariya.mrdoodle.ui;
 
 import android.annotation.TargetApi;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Canvas;
@@ -10,13 +9,15 @@ import android.graphics.Paint;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.design.widget.AppBarLayout;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -27,6 +28,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.github.rubensousa.bottomsheetbuilder.BottomSheetBuilder;
+import com.github.rubensousa.bottomsheetbuilder.BottomSheetMenuDialog;
+import com.github.rubensousa.bottomsheetbuilder.adapter.BottomSheetItemClickListener;
 import com.squareup.otto.Subscribe;
 
 import org.zakariya.mrdoodle.R;
@@ -38,21 +42,24 @@ import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
 
-import java.lang.ref.WeakReference;
-
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import icepick.Icepick;
+import icepick.State;
 import io.realm.Realm;
 
 /**
  * Shows a grid view of doodle documents
  */
-public class DoodleDocumentGridFragment extends Fragment implements RecyclerItemClickListener.OnItemClickListener {
+public class DoodleDocumentGridFragment extends Fragment
+		implements RecyclerItemClickListener.OnItemClickListener {
 
 	private static final String TAG = DoodleDocumentGridFragment.class.getSimpleName();
 	private static final int REQUEST_EDIT_DOODLE = 1;
+
+	@Bind(R.id.coordinatorLayout)
+	CoordinatorLayout coordinatorLayout;
 
 	@Bind(R.id.recyclerView)
 	RecyclerView recyclerView;
@@ -63,9 +70,16 @@ public class DoodleDocumentGridFragment extends Fragment implements RecyclerItem
 	@Bind(R.id.emptyView)
 	View emptyView;
 
+	AppBarLayout appBarLayout;
+
 	Realm realm;
 	RecyclerView.LayoutManager layoutManager;
 	DoodleDocumentAdapter adapter;
+
+	private BottomSheetMenuDialog bottomSheetDialog;
+
+	@State
+	String selectedDocumentUuid;
 
 	public DoodleDocumentGridFragment() {
 		setHasOptionsMenu(true);
@@ -74,7 +88,6 @@ public class DoodleDocumentGridFragment extends Fragment implements RecyclerItem
 	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 	@Override
 	public void onCreate(@Nullable Bundle savedInstanceState) {
-		Log.i(TAG, "onCreate: ");
 		super.onCreate(savedInstanceState);
 		realm = Realm.getDefaultInstance();
 		Icepick.restoreInstanceState(this, savedInstanceState);
@@ -84,6 +97,11 @@ public class DoodleDocumentGridFragment extends Fragment implements RecyclerItem
 	@Override
 	public void onDestroy() {
 		Log.i(TAG, "onDestroy: ");
+
+		if (bottomSheetDialog != null) {
+			bottomSheetDialog.dismiss();
+		}
+
 		BusProvider.getBus().unregister(this);
 		adapter.onDestroy();
 		realm.close();
@@ -106,6 +124,20 @@ public class DoodleDocumentGridFragment extends Fragment implements RecyclerItem
 	public void onSaveInstanceState(Bundle outState) {
 		Icepick.saveInstanceState(this, outState);
 		super.onSaveInstanceState(outState);
+	}
+
+	@Override
+	public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
+		super.onViewStateRestored(savedInstanceState);
+
+		// if user was viewing action sheet for a document when state was destroyed, show action sheet again
+		if (!TextUtils.isEmpty(selectedDocumentUuid)) {
+			DoodleDocument document = DoodleDocument.byUUID(realm, selectedDocumentUuid);
+			selectedDocumentUuid = null;
+			if (document != null) {
+				queryDoodleDocumentAction(document);
+			}
+		}
 	}
 
 	@Override
@@ -190,34 +222,63 @@ public class DoodleDocumentGridFragment extends Fragment implements RecyclerItem
 	@Override
 	public void onLongItemClick(View view, int position) {
 		DoodleDocument document = adapter.getDocumentAt(position);
-		queryDeleteDoodleDocument(document);
+		queryDoodleDocumentAction(document);
 	}
 
 
-	void queryDeleteDoodleDocument(final DoodleDocument document) {
-		final WeakReference<DoodleDocumentGridFragment> weakThis = new WeakReference<>(this);
+	void queryDoodleDocumentAction(final DoodleDocument document) {
 
-		// TODO: Figure out why I get "The Activity's LayoutInflater already has a Factory installed so we can not install AppCompat's" warning here.
-		// Using getThemedContext() doesn't fix the problem.
-		// Context context = ((AppCompatActivity)getActivity()).getSupportActionBar().getThemedContext();
-		Context context = getActivity();
+		if (bottomSheetDialog != null) {
+			bottomSheetDialog.dismiss();
+		}
 
-		AlertDialog.Builder builder = new AlertDialog.Builder(context);
-		builder.setMessage(R.string.dialog_delete_document_message)
-				.setNegativeButton(android.R.string.cancel, null)
-				.setPositiveButton(R.string.dialog_delete_document_destructive_button_title, new DialogInterface.OnClickListener() {
+		if (appBarLayout == null) {
+			appBarLayout = (AppBarLayout)getActivity().findViewById(R.id.appbar);
+		}
+
+		// TODO: Save state about what document is in question, and whether the dialog is showing
+
+		selectedDocumentUuid = document.getUuid();
+		bottomSheetDialog = new BottomSheetBuilder(getActivity())
+				.setMode(BottomSheetBuilder.MODE_LIST)
+				.setAppBarLayout(appBarLayout)
+				.setMenu(R.menu.menu_doodle_action)
+				.expandOnStart(true)
+				.setIconTintColorResource(R.color.primary)
+				.setItemClickListener(new BottomSheetItemClickListener() {
 					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						DoodleDocumentGridFragment strongThis = weakThis.get();
-						if (strongThis != null) {
-							strongThis.deletePhotoDoodle(document);
+					public void onBottomSheetItemClick(MenuItem item) {
+						switch(item.getItemId()) {
+							case R.id.doodle_action_share:
+								shareDoodleDocument(document);
+								break;
+							case R.id.doodle_action_delete:
+								deleteDoodleDocument(document);
+								break;
 						}
+						selectedDocumentUuid = null;
+						newDoodleFab.show();
 					}
 				})
-				.show();
+				.createDialog();
+
+		bottomSheetDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+			@Override
+			public void onCancel(DialogInterface dialog) {
+				selectedDocumentUuid = null;
+				newDoodleFab.show();
+			}
+		});
+		bottomSheetDialog.show();
+		newDoodleFab.hide();
 	}
 
-	void deletePhotoDoodle(DoodleDocument doc) {
+	void shareDoodleDocument(DoodleDocument doc) {
+		// TODO: Implement me! Presumably, render a high-quality image and share it
+		Log.i(TAG, "shareDoodleDocument: will share: " + doc);
+	}
+
+	void deleteDoodleDocument(DoodleDocument doc) {
 
 		View rootView = getView();
 		if (rootView == null) {
