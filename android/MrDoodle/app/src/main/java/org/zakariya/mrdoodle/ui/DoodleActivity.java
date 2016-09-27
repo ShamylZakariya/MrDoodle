@@ -376,8 +376,8 @@ public class DoodleActivity extends BaseActivity {
 	private void markDocumentModified() {
 		realm.beginTransaction();
 		document.markModified();
-		BusProvider.getBus().post(new DoodleDocumentEditedEvent(document.getUuid()));
 		realm.commitTransaction();
+		BusProvider.getBus().post(new DoodleDocumentEditedEvent(document.getUuid()));
 	}
 
 	private void saveAndSetActivityResult() {
