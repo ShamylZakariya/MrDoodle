@@ -90,7 +90,8 @@ public class SyncLogEntry extends RealmObject {
 	}
 
 	public void appendError(String message, Throwable t) {
-		message = "ERROR:\t" + message + "\n" + t.getMessage() + "\n" + throwableStacktraceToString(t) + "\n";
+		failure = t.getMessage();
+		message = "ERROR:\t" + message + "\n" + failure + "\n" + throwableStacktraceToString(t) + "\n";
 		if (log != null) {
 			log += message;
 		} else {
