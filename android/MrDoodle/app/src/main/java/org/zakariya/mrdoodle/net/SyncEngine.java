@@ -315,6 +315,7 @@ public class SyncEngine {
 		} catch (Throwable t) {
 			// log and rethrow
 			log(log, "Sync failed", t);
+			throw t;
 		} finally {
 
 			// if we failed without closing out write session, just give it a stab - note, we're
@@ -390,7 +391,10 @@ public class SyncEngine {
 						accountId,
 						id,
 						writeToken).execute();
-				if (!timestampResponse.isSuccessful()) {
+
+				// a 404 is OK, because we might be pushing a deletion of something
+				// which hasn't yet been pushed to the server. 
+				if (!timestampResponse.isSuccessful() && timestampResponse.code() != 404) {
 					throw new SyncException("Unable to delete remote object[id: " + id + " documentType: " + modelClass + "] blob data", timestampResponse);
 				}
 
@@ -399,22 +403,23 @@ public class SyncEngine {
 			}
 		}
 
-		// sanity check our response
+		// if the push was a delete of something which was never on the server, we'll have a null timestampRecordEntry
+		// which is OK. So, IFF we got a timestampRecordEntry, sanity check it, and record it.
 
-		if (timestampRecordEntry == null) {
-			throw new SyncException("Didn't receive a TimestampRecordEntry from push operation");
+		if (timestampRecordEntry != null) {
+
+			if (!timestampRecordEntry.documentId.equals(id)) {
+				throw new SyncException("Mismatched object id in TimestampRecordEntry. Expected: " + id + " got: " + timestampRecordEntry.documentId);
+			}
+
+			if (timestampRecordEntry.action != change.getChangeType()) {
+				throw new SyncException("Mismatched action type in TimestampRecordEntry. Expected: " + change.getChangeType() + " got: " + timestampRecordEntry.action);
+			}
+
+			// record response
+			timestampRecorder.setTimestamp(id, timestampRecordEntry.timestampSeconds);
 		}
 
-		if (!timestampRecordEntry.documentId.equals(id)) {
-			throw new SyncException("Mismatched object id in TimestampRecordEntry. Expected: " + id + " got: " + timestampRecordEntry.documentId);
-		}
-
-		if (timestampRecordEntry.action != change.getChangeType()) {
-			throw new SyncException("Mismatched action type in TimestampRecordEntry. Expected: " + change.getChangeType() + " got: " + timestampRecordEntry.action);
-		}
-
-		// record response
-		timestampRecorder.setTimestamp(id, timestampRecordEntry.timestampSeconds);
 	}
 
 	///////////////////////////////////////////////////////////////////
