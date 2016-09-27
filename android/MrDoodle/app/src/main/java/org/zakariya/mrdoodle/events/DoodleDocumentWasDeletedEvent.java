@@ -3,11 +3,11 @@ package org.zakariya.mrdoodle.events;
 /**
  * Event emitted when a DoodleDocument is deleted.
  */
-public class DoodleDocumentWillBeDeletedEvent {
+public class DoodleDocumentWasDeletedEvent {
 
 	private String uuid;
 
-	public DoodleDocumentWillBeDeletedEvent(String uuid) {
+	public DoodleDocumentWasDeletedEvent(String uuid) {
 		this.uuid = uuid;
 	}
 

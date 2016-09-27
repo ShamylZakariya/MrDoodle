@@ -5,6 +5,8 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import org.zakariya.mrdoodle.net.api.SyncService;
+import org.zakariya.mrdoodle.net.model.RemoteChangeReport;
+import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.net.transport.Status;
 import org.zakariya.mrdoodle.net.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
@@ -18,8 +20,10 @@ import org.zakariya.mrdoodle.sync.model.SyncLogEntry;
 import org.zakariya.mrdoodle.sync.model.SyncState;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -136,6 +140,13 @@ public class SyncEngine {
 
 
 	public interface ModelObjectDataConsumer {
+
+		enum Action {
+			CREATE,
+			UPDATE,
+			NOTHING
+		}
+
 		/**
 		 * Given a byte[] of the serialized form of a model object, and the items id and class,
 		 * either update the existing item or create a new one in the application's persistent store
@@ -143,9 +154,10 @@ public class SyncEngine {
 		 * @param blobId   id of the model object
 		 * @param blobType the internal type/name/class of the model object for your reference
 		 * @param blobData the byte[] serialized form
+		 * @return Action.UPDATE if an existing model object was updated, Action.CREATE if a new one was created, or Action.NOTHING if the blobType was unrecognized
 		 * @throws Exception
 		 */
-		void setModelObjectData(String blobId, String blobType, byte[] blobData) throws Exception;
+		Action setModelObjectData(String blobId, String blobType, byte[] blobData) throws Exception;
 
 	}
 
@@ -155,9 +167,10 @@ public class SyncEngine {
 		 *
 		 * @param modelId   the id of the model object
 		 * @param modelType internal name/class of model for your reference
+		 * @return true iff the referenced model existed and could be deleted
 		 * @throws Exception
 		 */
-		void deleteModelObject(String modelId, String modelType) throws Exception;
+		boolean deleteModelObject(String modelId, String modelType) throws Exception;
 	}
 
 	/**
@@ -172,7 +185,7 @@ public class SyncEngine {
 	 * @param modelObjectDeleter      mechanism which deletes blobs of a gien id
 	 * @return the current status (timestamp head, locked documents, etc)
 	 */
-	synchronized public Status sync(
+	synchronized public SyncReport sync(
 			SignInAccount account,
 			SyncState syncState,
 			ChangeJournal changeJournal,
@@ -181,6 +194,11 @@ public class SyncEngine {
 			ModelObjectDataConsumer modelObjectDataConsumer,
 			ModelObjectDeleter modelObjectDeleter)
 			throws Exception {
+
+
+		if (syncing) {
+			throw new IllegalStateException("Can't start a sync() when SyncEngine is currently syncing");
+		}
 
 		// 1) if we have local changes we request a write token, and go to step 2. if not, go to step 5
 
@@ -207,6 +225,7 @@ public class SyncEngine {
 		try {
 
 			log(log, "Starting sync with current timestampHeadSeconds: " + syncState.getTimestampHead());
+
 			Status status = pushLocalChanges(
 					log,
 					account,
@@ -214,7 +233,7 @@ public class SyncEngine {
 					timestampRecorder,
 					modelObjectDataProvider);
 
-			status = pullRemoteChanges(
+			SyncReport syncReport = pullRemoteChanges(
 					log,
 					status,
 					account,
@@ -223,13 +242,11 @@ public class SyncEngine {
 					modelObjectDataConsumer,
 					modelObjectDeleter);
 
-			if (status != null) {
-				log(log, "Sync complete, updating local timestamp head to: " + status.timestampHeadSeconds);
-				syncState.setTimestampHead(status.timestampHeadSeconds);
-				syncState.setLastSyncDate(new Date());
-			}
+			log(log, "Sync complete, updating local timestamp head to: " + syncReport.getTimestampHeadSeconds());
+			syncState.setTimestampHead(syncReport.getTimestampHeadSeconds());
+			syncState.setLastSyncDate(new Date());
 
-			return status;
+			return syncReport;
 
 		} finally {
 			log(log, "DONE");
@@ -402,7 +419,7 @@ public class SyncEngine {
 
 	///////////////////////////////////////////////////////////////////
 
-	private Status pullRemoteChanges(
+	private SyncReport pullRemoteChanges(
 			SyncLogEntry log,
 			@Nullable Status status,
 			SignInAccount account,
@@ -413,6 +430,7 @@ public class SyncEngine {
 			throws Exception {
 
 		String accountId = account.getId();
+		List<RemoteChangeReport> remoteChangeReports = new ArrayList<>();
 
 		if (status == null) {
 			status = getStatus(accountId);
@@ -423,54 +441,73 @@ public class SyncEngine {
 		// early exit if we're up to date
 		if (status.timestampHeadSeconds <= syncState.getTimestampHead()) {
 			log(log, "We're up to date, finishing.");
-			return status;
+			return new SyncReport(status.timestampHeadSeconds);
 		}
 
-		// now get list of changes since local timestamp head
+		// get list of changes since local timestamp head
 		Map<String, TimestampRecordEntry> remoteChanges = getRemoteChanges(syncState, accountId);
 
+		// for each change, apply it and record it
 		for (String id : remoteChanges.keySet()) {
 			TimestampRecordEntry remoteChange = remoteChanges.get(id);
-			if (pullRemoteChange(timestampRecorder, modelObjectDataConsumer, modelObjectDeleter, accountId, id, remoteChange)) {
+			RemoteChangeReport report = pullRemoteChange(timestampRecorder, modelObjectDataConsumer, modelObjectDeleter, accountId, id, remoteChange);
+
+			if (report != null) {
+				remoteChangeReports.add(report);
 				log(log, "Pulled remote change to object: " + id + " to local");
 			} else {
 				log(log, "Skipped remote change to object: " + id + " as we're up to date on this object");
 			}
+
 		}
 
 		// we're done
-
-		return status;
+		return new SyncReport(remoteChangeReports, status.timestampHeadSeconds);
 	}
 
-	private boolean pullRemoteChange(TimestampRecorder timestampRecorder, ModelObjectDataConsumer modelObjectDataConsumer, ModelObjectDeleter modelObjectDeleter, String accountId, String id, TimestampRecordEntry remoteChange) throws Exception {
+	@Nullable
+	private RemoteChangeReport pullRemoteChange(TimestampRecorder timestampRecorder, ModelObjectDataConsumer modelObjectDataConsumer, ModelObjectDeleter modelObjectDeleter, String accountId, String id, TimestampRecordEntry remoteChange) throws Exception {
 		ChangeType changeType = ChangeType.values()[remoteChange.action];
 		switch (changeType) {
-			case MODIFY:
+			case MODIFY: {
 				long localTimestamp = timestampRecorder.getTimestamp(id);
 
 				// early exit if remote timestamp is not newer than ours
 				if (remoteChange.timestampSeconds <= localTimestamp) {
-					return false;
+					return null;
 				}
 
+				// get the blob data
 				Response<ResponseBody> blobResponse = syncService.getBlob(accountId, remoteChange.documentId).execute();
 				if (!blobResponse.isSuccessful()) {
 					throw new SyncException("Unable to download blob data for id: " + remoteChange.documentId, blobResponse);
 				}
 
+				// create/update a document using the data
 				byte[] blobBytes = blobResponse.body().bytes();
-				modelObjectDataConsumer.setModelObjectData(remoteChange.documentId, remoteChange.documentType, blobBytes);
+				ModelObjectDataConsumer.Action action = modelObjectDataConsumer.setModelObjectData(remoteChange.documentId, remoteChange.documentType, blobBytes);
 				timestampRecorder.setTimestamp(id, remoteChange.timestampSeconds);
-				break;
 
-			case DELETE:
-				modelObjectDeleter.deleteModelObject(remoteChange.documentId, remoteChange.documentType);
-				timestampRecorder.clearTimestamp(id);
+				// now record a change report
+				switch (action) {
+					case CREATE:
+						return new RemoteChangeReport(id, RemoteChangeReport.Action.CREATE);
+					case UPDATE:
+						return new RemoteChangeReport(id, RemoteChangeReport.Action.UPDATE);
+				}
+
 				break;
+			}
+
+			case DELETE: {
+				// simply delete the model and make a change report
+				boolean successful = modelObjectDeleter.deleteModelObject(remoteChange.documentId, remoteChange.documentType);
+				timestampRecorder.clearTimestamp(id);
+				return successful ? new RemoteChangeReport(id, RemoteChangeReport.Action.DELETE) : null;
+			}
 		}
 
-		return true;
+		return null;
 	}
 
 	private Map<String, TimestampRecordEntry> getRemoteChanges(SyncState syncState, String accountId) throws IOException, SyncException {

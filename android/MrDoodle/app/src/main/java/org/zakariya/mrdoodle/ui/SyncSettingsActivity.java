@@ -28,6 +28,7 @@ import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.api.SyncService;
+import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.net.transport.Status;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.SignInTechnique;
@@ -263,7 +264,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		syncSubscription = syncManager.sync()
 				.subscribeOn(Schedulers.io())
 				.observeOn(AndroidSchedulers.mainThread())
-				.subscribe(new Observer<Status>() {
+				.subscribe(new Observer<SyncReport>() {
 					@Override
 					public void onCompleted() {
 					}
@@ -274,8 +275,8 @@ public class SyncSettingsActivity extends BaseActivity {
 					}
 
 					@Override
-					public void onNext(Status status) {
-						Log.i(TAG, "sync - onNext: SUCCESS, I GUESS. Status: " + status);
+					public void onNext(SyncReport syncReport) {
+						Log.i(TAG, "sync - onNext: SUCCESS, I GUESS. syncReport: " + syncReport);
 					}
 				});
 	}
@@ -301,7 +302,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		syncSubscription = syncManager.resetAndSync(deleter)
 				.subscribeOn(Schedulers.io())
 				.observeOn(AndroidSchedulers.mainThread())
-				.subscribe(new Observer<Status>() {
+				.subscribe(new Observer<SyncReport>() {
 					@Override
 					public void onCompleted() {
 					}
@@ -312,8 +313,8 @@ public class SyncSettingsActivity extends BaseActivity {
 					}
 
 					@Override
-					public void onNext(Status status) {
-						Log.i(TAG, "resetAndSync - onNext: SUCCESS, I GUESS. Status: " + status);
+					public void onNext(SyncReport syncReport) {
+						Log.i(TAG, "resetAndSync - onNext: SUCCESS, I GUESS. syncReport: " + syncReport);
 					}
 				});
 	}

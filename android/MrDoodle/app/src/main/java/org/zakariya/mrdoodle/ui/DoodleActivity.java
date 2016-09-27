@@ -33,7 +33,9 @@ import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.doodle.view.DoodleView;
 import org.zakariya.flyoutmenu.FlyoutMenuView;
 import org.zakariya.mrdoodle.R;
+import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
+import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -363,14 +365,19 @@ public class DoodleActivity extends BaseActivity {
 			doodle.setDirty(false);
 
 			// mark that the document was modified
-			realm.beginTransaction();
-			document.markModified();
-			realm.commitTransaction();
+			markDocumentModified();
 
 			return true;
 		} else {
 			return false;
 		}
+	}
+
+	private void markDocumentModified() {
+		realm.beginTransaction();
+		document.markModified();
+		BusProvider.getBus().post(new DoodleDocumentEditedEvent(document.getUuid()));
+		realm.commitTransaction();
 	}
 
 	private void saveAndSetActivityResult() {
@@ -392,8 +399,8 @@ public class DoodleActivity extends BaseActivity {
 		if (!documentName.equals(document.getName())) {
 			realm.beginTransaction();
 			document.setName(documentName);
-			document.markModified();
 			realm.commitTransaction();
+			markDocumentModified();
 		}
 	}
 

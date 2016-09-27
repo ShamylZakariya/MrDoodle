@@ -9,10 +9,6 @@ import com.esotericsoftware.kryo.io.Output;
 
 import org.zakariya.doodle.model.Doodle;
 import org.zakariya.doodle.model.StrokeDoodle;
-import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
-import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
-import org.zakariya.mrdoodle.events.DoodleDocumentWillBeDeletedEvent;
-import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -60,7 +56,7 @@ public class DoodleDocument extends RealmObject {
 	 * Create a new DoodleDocument with UUID, name and creationDate set.
 	 *
 	 * @param realm the realm into which to assign the new document
-	 * @param name  the name of the document, e.g., "Untitle Document"
+	 * @param name  the name of the document, e.g., "Untitled Document"
 	 * @return a new DoodleDocument with unique UUID, in the realm and ready to use
 	 */
 	public static DoodleDocument create(Realm realm, String name) {
@@ -73,8 +69,6 @@ public class DoodleDocument extends RealmObject {
 		doc.setName(name);
 		realm.commitTransaction();
 
-		BusProvider.postOnMainThread(new DoodleDocumentCreatedEvent(doc.getUuid()));
-
 		return doc;
 	}
 
@@ -86,11 +80,6 @@ public class DoodleDocument extends RealmObject {
 	 * @param doc     the doodle document
 	 */
 	public static void delete(Context context, Realm realm, DoodleDocument doc) {
-
-		// notify that the document is about to be deleted
-		String uuid = doc.getUuid();
-		BusProvider.postOnMainThread(new DoodleDocumentWillBeDeletedEvent(uuid));
-
 		doc.deleteSaveFile(context);
 
 		realm.beginTransaction();
@@ -126,7 +115,7 @@ public class DoodleDocument extends RealmObject {
 	 *
 	 * @param context the context
 	 */
-	void deleteSaveFile(Context context) {
+	private void deleteSaveFile(Context context) {
 		File file = getSaveFile(context);
 		if (file.exists()) {
 			//noinspection ResultOfMethodCallIgnored
@@ -158,7 +147,16 @@ public class DoodleDocument extends RealmObject {
 		return stream.toByteArray();
 	}
 
-	public static void createOrUpdate(Context context, Realm realm, byte[] serializedBytes) throws Exception {
+	/**
+	 * given serialized DoodleDocument data, create a new document or update an existing one in the realm
+	 *
+	 * @param context         an android context
+	 * @param realm           a realm where doodle documents should live
+	 * @param serializedBytes the serialized form of a doodle document
+	 * @return true iff an existing document was modified, false if a new document was created
+	 * @throws Exception
+	 */
+	public static boolean createOrUpdate(Context context, Realm realm, byte[] serializedBytes) throws Exception {
 		ByteArrayInputStream inputStream = new ByteArrayInputStream(serializedBytes);
 		Input input = new Input(inputStream);
 		Kryo kryo = new Kryo();
@@ -199,12 +197,7 @@ public class DoodleDocument extends RealmObject {
 			// doodle has to be saved separately
 			document.saveDoodle(context, doodle);
 
-			if (wasModified) {
-				BusProvider.postOnMainThread(new DoodleDocumentEditedEvent(document.getUuid()));
-			} else {
-				BusProvider.postOnMainThread(new DoodleDocumentCreatedEvent(document.getUuid()));
-			}
-
+			return wasModified;
 		} else {
 			throw new InvalidObjectException("Missing COOKIE header (0x" + Integer.toString(COOKIE, 16) + ")");
 		}
@@ -255,7 +248,6 @@ public class DoodleDocument extends RealmObject {
 	 */
 	public void markModified() {
 		setModificationDate(new Date());
-		BusProvider.postOnMainThread(new DoodleDocumentEditedEvent(getUuid()));
 	}
 
 	public String getUuid() {

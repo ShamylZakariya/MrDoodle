@@ -8,6 +8,7 @@ import com.squareup.otto.Subscribe;
 
 import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
+import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.net.transport.Status;
 import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
 import org.zakariya.mrdoodle.signin.SignInManager;
@@ -17,7 +18,10 @@ import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.model.SyncState;
 import org.zakariya.mrdoodle.util.BusProvider;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 import io.realm.Realm;
@@ -32,6 +36,14 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	public interface ModelDataAdapter extends SyncEngine.ModelObjectDataConsumer, SyncEngine.ModelObjectDataProvider, SyncEngine.ModelObjectDeleter {
 	}
 
+	public interface SyncStateListener {
+		void didBeginSync();
+
+		void didCompleteSync(SyncReport report);
+
+		void didFailSync(Throwable failure);
+	}
+
 	private static final String CHANGE_JOURNAL_PERSIST_PREFIX = "SyncChangeJournal";
 	private static final String TAG = SyncManager.class.getSimpleName();
 
@@ -44,6 +56,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private TimestampRecorder timestampRecorder;
 	private SyncEngine syncEngine;
 	private ModelDataAdapter modelDataAdapter;
+	private List<WeakReference<SyncStateListener>> syncStateListeners = new ArrayList<>();
 
 	public static void init(Context context, SyncConfiguration syncConfiguration, ModelDataAdapter modelDataAdapter) {
 		if (instance == null) {
@@ -105,6 +118,26 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	///////////////////////////////////////////////////////////////////
 
+	public void addSyncStateListener(SyncStateListener listener) {
+		syncStateListeners.add(new WeakReference<>(listener));
+	}
+
+	public void removeSyncStateListener(SyncStateListener listener) {
+		int index = -1;
+		for (int i = 0, n = syncStateListeners.size(); i < n; i++) {
+			WeakReference<SyncStateListener> listenerWeakReference = syncStateListeners.get(i);
+			SyncStateListener l = listenerWeakReference.get();
+			if (l == listener) {
+				index = i;
+				break;
+			}
+		}
+
+		if (index >= 0) {
+			syncStateListeners.remove(index);
+		}
+	}
+
 	public boolean isSyncing() {
 		return syncEngine.isSyncing();
 	}
@@ -114,10 +147,10 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 *
 	 * @return an observable bearing Status
 	 */
-	public Observable<Status> sync() {
-		return Observable.fromCallable(new Callable<Status>() {
+	public Observable<SyncReport> sync() {
+		return Observable.fromCallable(new Callable<SyncReport>() {
 			@Override
-			public Status call() throws Exception {
+			public SyncReport call() throws Exception {
 				return performSync();
 			}
 		});
@@ -128,10 +161,10 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 *
 	 * @return an observable bearing Status
 	 */
-	public Observable<Status> resetAndSync(final LocalStoreDeleter deleter) {
-		return Observable.fromCallable(new Callable<Status>() {
+	public Observable<SyncReport> resetAndSync(final LocalStoreDeleter deleter) {
+		return Observable.fromCallable(new Callable<SyncReport>() {
 			@Override
-			public Status call() throws Exception {
+			public SyncReport call() throws Exception {
 				return resetAndPerformSync(deleter);
 			}
 		});
@@ -142,7 +175,15 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 * When sync is complete without an exception, all local changes will have been pushed to
 	 * the server, and remote changes will have been pulled from the server.
 	 */
-	Status performSync() throws Exception {
+	private SyncReport performSync() throws Exception {
+
+		// notify listeners that sync is starting
+		for (WeakReference<SyncStateListener> listenerWeakReference : syncStateListeners) {
+			SyncStateListener listener = listenerWeakReference.get();
+			if (listener != null) {
+				listener.didBeginSync();
+			}
+		}
 
 		SyncState syncState = getSyncState();
 
@@ -157,7 +198,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		changeJournal.clear(false);
 
 		try {
-			Status status = syncEngine.sync(userAccount,
+			SyncReport syncReport = syncEngine.sync(userAccount,
 					syncState,
 					syncChangeJournal,
 					timestampRecorder,
@@ -165,9 +206,29 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 					modelDataAdapter,
 					modelDataAdapter);
 
+			// save the new syncState
 			persistSyncState(syncState);
 
-			return status;
+			// notify listeners of completion
+			for (WeakReference<SyncStateListener> listenerWeakReference : syncStateListeners) {
+				SyncStateListener listener = listenerWeakReference.get();
+				if (listener != null) {
+					listener.didCompleteSync(syncReport);
+				}
+			}
+
+			return syncReport;
+		} catch (Exception e) {
+
+			// notify listeners of error
+			for (WeakReference<SyncStateListener> listenerWeakReference : syncStateListeners) {
+				SyncStateListener listener = listenerWeakReference.get();
+				if (listener != null) {
+					listener.didFailSync(e);
+				}
+			}
+
+			throw e;
 		} finally {
 			// merge - sync may have failed leaving some items un-synced, put those back in the persisting change journal
 			// to be pushed upstream next time
@@ -185,17 +246,17 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 * any local changes and simply download remote state.
 	 *
 	 * @param deleter the deleter is responsible for deleting local
-	 *                state, e.g., clearing out your realm instance
+	 *                state, e.g., clearing documents from your realm instance
 	 */
-	Status resetAndPerformSync(LocalStoreDeleter deleter) throws Exception {
+	private SyncReport resetAndPerformSync(LocalStoreDeleter deleter) throws Exception {
 
-		// TODO We have a race condition here. When deleting items from local store, events are emitted ON MAIN THREAD which means they go through a Handler, and have a delay. Even though we clear the changeJournal here, it will then receive delete events LATER. Ugh.
-
+		// delete/clear all the things
 		deleter.deleteLocalStore();
 		persistSyncState(new SyncState());
 		timestampRecorder.clear();
 		changeJournal.clear(false);
 
+		// this will now pull the "truth" from the server since we have no local state
 		return performSync();
 	}
 
@@ -214,7 +275,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	///////////////////////////////////////////////////////////////////
 
-	void connect() {
+	private void connect() {
 		if (!running) {
 			running = true;
 			Log.d(TAG, "connect:");
@@ -222,7 +283,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		}
 	}
 
-	void disconnect() {
+	private void disconnect() {
 		if (running) {
 			Log.d(TAG, "disconnect:");
 			syncServerConnection.disconnect();
@@ -232,7 +293,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	///////////////////////////////////////////////////////////////////
 
-	void startOrStopSyncServices() {
+	private void startOrStopSyncServices() {
 		if (applicationIsActive && userAccount != null) {
 			connect();
 		} else {
@@ -240,7 +301,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		}
 	}
 
-	void updateAuthorizationToken() {
+	private void updateAuthorizationToken() {
 		if (userAccount != null) {
 			userAccount.getAuthenticationToken(new AuthenticationTokenReceiver() {
 				@Override
@@ -259,7 +320,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	/**
 	 * @return Load the persisted SyncState. Changes made won't be persisted until you call persistSyncState()
 	 */
-	SyncState getSyncState() {
+	private SyncState getSyncState() {
 
 		Realm realm = Realm.getDefaultInstance();
 		try {
@@ -287,7 +348,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 *
 	 * @param syncState the instance to persist
 	 */
-	void persistSyncState(SyncState syncState) {
+	private void persistSyncState(SyncState syncState) {
 		Realm realm = Realm.getDefaultInstance();
 		try {
 
