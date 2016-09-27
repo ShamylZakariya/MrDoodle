@@ -3,67 +3,78 @@
 	package="org.zakariya.mrdoodle"
 	xmlns:android="http://schemas.android.com/apk/res/android">
 
-	<uses-permission android:name="android.permission.INTERNET" />
-	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+	<uses-permission android:name="android.permission.INTERNET"/>
+	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
 	<application
 		android:name=".MrDoodleApplication"
 		android:allowBackup="true"
-		android:largeHeap="true"
 		android:icon="@mipmap/ic_launcher"
 		android:label="@string/app_name"
+		android:largeHeap="true"
 		android:theme="@style/MrDoodle">
+
+		<!-- file provider for sharing doodle renderings -->
+		<provider
+			android:name="android.support.v4.content.FileProvider"
+			android:authorities="@string/file_provider_name"
+			android:exported="false"
+			android:grantUriPermissions="true">
+			<meta-data
+				android:name="android.support.FILE_PROVIDER_PATHS"
+				android:resource="@xml/filepaths"/>
+		</provider>
 
 		<activity
 			android:name="org.zakariya.mrdoodle.ui.MainActivity"
 			android:label="@string/app_name"
-			android:theme="@style/MrDoodle.Home"
-			android:launchMode="singleTop">
+			android:launchMode="singleTop"
+			android:theme="@style/MrDoodle.Home">
 
 			<intent-filter>
-				<action android:name="android.intent.action.MAIN" />
-				<category android:name="android.intent.category.LAUNCHER" />
+				<action android:name="android.intent.action.MAIN"/>
+				<category android:name="android.intent.category.LAUNCHER"/>
 			</intent-filter>
 
 		</activity>
 
 		<activity
 			android:name="org.zakariya.mrdoodle.ui.DoodleActivity"
+			android:exported="true"
 			android:label="@string/app_name"
 			android:launchMode="singleTop"
-			android:exported="true"
-			android:theme="@style/MrDoodle.DoodleActivity"
-			android:parentActivityName="org.zakariya.mrdoodle.ui.MainActivity">
+			android:parentActivityName="org.zakariya.mrdoodle.ui.MainActivity"
+			android:theme="@style/MrDoodle.DoodleActivity">
 		</activity>
 
 		<activity
 			android:name="org.zakariya.mrdoodle.ui.AboutActivity"
+			android:exported="true"
 			android:label="@string/activity_title_about"
 			android:launchMode="singleTop"
-			android:exported="true"
 			android:parentActivityName="org.zakariya.mrdoodle.ui.MainActivity">
 		</activity>
 
 		<activity
 			android:name="org.zakariya.mrdoodle.ui.SyncSettingsActivity"
+			android:exported="true"
 			android:label="@string/activity_title_sync"
 			android:launchMode="singleTop"
-			android:exported="true"
 			android:parentActivityName="org.zakariya.mrdoodle.ui.MainActivity">
 		</activity>
 
 		<activity
 			android:name="org.zakariya.mrdoodle.ui.ModelOverviewActivity"
+			android:exported="true"
 			android:label="@string/activity_title_model_overview"
-			android:launchMode="singleTop"
-			android:exported="true">
+			android:launchMode="singleTop">
 		</activity>
 
 		<activity
 			android:name="org.zakariya.mrdoodle.ui.SyncLogEntryDetailActivity"
+			android:exported="true"
 			android:label="@string/activity_title_sync_log_entry_detail"
-			android:launchMode="singleTop"
-			android:exported="true">
+			android:launchMode="singleTop">
 		</activity>
 
 	</application>

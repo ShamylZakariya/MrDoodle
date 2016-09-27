@@ -1,5 +1,8 @@
 <resources>
 	<string name="app_name">MrDoodle</string>
+	<string name="file_provider_name">org.zakariya.mrdoodle.fileprovider</string>
+
+	<string name="doodle_share_chooser_title">Choose an app</string>
 
 	<string name="menu_item_sync">Sync Settings</string>
 	<string name="menu_item_about">About</string>

@@ -40,6 +40,7 @@ import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.util.BusProvider;
+import org.zakariya.mrdoodle.util.DoodleShareHelper;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
 
 import butterknife.Bind;
@@ -129,6 +130,9 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Override
 	public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
 		super.onViewStateRestored(savedInstanceState);
+
+		// we get the appBarLayout from our activity, so we delay the load until now
+		appBarLayout = (AppBarLayout)getActivity().findViewById(R.id.appbar);
 
 		// if user was viewing action sheet for a document when state was destroyed, show action sheet again
 		if (!TextUtils.isEmpty(selectedDocumentUuid)) {
@@ -232,12 +236,6 @@ public class DoodleDocumentGridFragment extends Fragment
 			bottomSheetDialog.dismiss();
 		}
 
-		if (appBarLayout == null) {
-			appBarLayout = (AppBarLayout)getActivity().findViewById(R.id.appbar);
-		}
-
-		// TODO: Save state about what document is in question, and whether the dialog is showing
-
 		selectedDocumentUuid = document.getUuid();
 		bottomSheetDialog = new BottomSheetBuilder(getActivity())
 				.setMode(BottomSheetBuilder.MODE_LIST)
@@ -274,8 +272,7 @@ public class DoodleDocumentGridFragment extends Fragment
 	}
 
 	void shareDoodleDocument(DoodleDocument doc) {
-		// TODO: Implement me! Presumably, render a high-quality image and share it
-		Log.i(TAG, "shareDoodleDocument: will share: " + doc);
+		DoodleShareHelper.share(getActivity(), doc);
 	}
 
 	void deleteDoodleDocument(DoodleDocument doc) {
