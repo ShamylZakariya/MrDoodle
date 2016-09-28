@@ -116,10 +116,10 @@ public class DoodleDocumentGridFragment extends Fragment
 	}
 
 	@Override
-	public void onStop() {
-		Log.i(TAG, "onStop: ");
+	public void onPause() {
+		Log.i(TAG, "onPause: ");
 		BusProvider.getMainThreadBus().unregister(this);
-		super.onStop();
+		super.onPause();
 	}
 
 	@Override
