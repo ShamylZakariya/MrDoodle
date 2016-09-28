@@ -14,6 +14,7 @@ import android.util.LruCache;
 import android.util.Pair;
 
 import org.zakariya.doodle.model.StrokeDoodle;
+import org.zakariya.mrdoodle.MrDoodleApplication;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 
 import java.util.HashMap;
@@ -39,12 +40,12 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 		private Future future;
 		private boolean canceled;
 
-		public RenderTask() {
+		RenderTask() {
 			future = null;
 			canceled = false;
 		}
 
-		synchronized public void setFuture(Future future) {
+		synchronized void setFuture(Future future) {
 			this.future = future;
 		}
 
@@ -62,8 +63,7 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 
 	private static DoodleThumbnailRenderer instance;
 
-	private Context context;
-	private Handler handler;
+	private Handler handler = new Handler(Looper.getMainLooper());
 	private ExecutorService executor;
 	private Map<String, RenderTask> tasks;
 	private Cache cache;
@@ -77,7 +77,6 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 	}
 
 	private DoodleThumbnailRenderer(Context context) {
-		this.context = context;
 		executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 		tasks = new HashMap<>();
 
@@ -115,8 +114,8 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 	 */
 	public static String getThumbnailId(DoodleDocument document, int width, int height) {
 		final String documentUuid = document.getUuid();
-		final long modificationTimestampSeconds = document.getModificationDate().getTime() / 1000;
-		return generateRenderTaskKey(documentUuid, modificationTimestampSeconds, width, height);
+		final long modificationTimestampMillis = document.getModificationDate().getTime();
+		return generateRenderTaskKey(documentUuid, modificationTimestampMillis, width, height);
 	}
 
 	/**
@@ -140,6 +139,7 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 	 * @param padding  the padding around the thumbnail in pixels
 	 * @return a bitmap containing the document's rendering, at the provided width/height
 	 */
+	@SuppressWarnings("unused")
 	public Pair<Bitmap, String> renderThumbnail(Context context, DoodleDocument document, int width, int height, float padding) {
 
 		String thumbnailId = getThumbnailId(document, width, height);
@@ -178,10 +178,6 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 	@Nullable
 	public RenderTask renderThumbnail(final DoodleDocument document, final int width, final int height, final float padding, final Callbacks callbacks) {
 
-		if (handler == null) {
-			handler = new Handler(Looper.getMainLooper());
-		}
-
 		final String documentUuid = document.getUuid();
 		final String taskId = getThumbnailId(document, width, height);
 
@@ -203,8 +199,8 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 		}
 	}
 
-	private static String generateRenderTaskKey(String documentUuid, long timestampSeconds, int width, int height) {
-		return documentUuid + "-mod:" + timestampSeconds + "-(w:" + width + "-h:" + height + ")";
+	private static String generateRenderTaskKey(String documentUuid, long timestampMillis, int width, int height) {
+		return documentUuid + "-mod:" + timestampMillis + "-(w:" + width + "-h:" + height + ")";
 	}
 
 	@Nullable
@@ -228,7 +224,9 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 			Canvas bitmapCanvas = new Canvas(bitmap);
 
 			Realm realm = Realm.getDefaultInstance();
+			Context context = MrDoodleApplication.getInstance().getApplicationContext();
 			DoodleDocument document = DoodleDocument.byUUID(realm, documentUuid);
+
 			if (document != null) {
 				StrokeDoodle doodle = document.loadDoodle(context);
 				doodle.draw(bitmapCanvas, width, height, true, padding);
@@ -258,7 +256,7 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 	}
 
 	private class Cache extends LruCache<String, Bitmap> {
-		public Cache(int maxSize) {
+		Cache(int maxSize) {
 			super(maxSize);
 		}
 
