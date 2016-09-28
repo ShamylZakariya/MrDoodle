@@ -11,9 +11,9 @@ In an effort to get more experience with Android developent and Java server-side
 
 MrDoodle implements a simple drawing functionality. It smooths input strokes and attempts to create a fairly friendly, realistic stroke style. Since the drawings are vector based, the canvas can be panned and zoomed via two-finger gestures. Nothing fancy, but it works.
 
-![MrDoodle](readme-assets/mrdoodle-grid.png =360x640)
-![MrDoodle](readme-assets/mrdoodle-doodle.png =360x640)
-![MrDoodle](readme-assets/mrdoodle-doodle-zoomed.png =360x640)
+![MrDoodle](readme-assets/mrdoodle-grid.png)
+![MrDoodle](readme-assets/mrdoodle-doodle.png)
+![MrDoodle](readme-assets/mrdoodle-doodle-zoomed.png)
 
 I use my [FlyoutMenu](https://github.com/ShamylZakariya/FlyoutMenus) library for pen/eraser and color popups in the drawing UI.
 
