@@ -361,7 +361,9 @@ public class DoodleActivity extends BaseActivity {
 		}
 
 		if (doodle.isDirty()) {
+			realm.beginTransaction();
 			document.saveDoodle(this, doodle);
+			realm.commitTransaction();
 			doodle.setDirty(false);
 
 			// mark that the document was modified

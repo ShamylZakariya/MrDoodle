@@ -2,6 +2,7 @@ package org.zakariya.mrdoodle.model;
 
 import android.content.Context;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -11,7 +12,6 @@ import org.zakariya.doodle.model.Doodle;
 import org.zakariya.doodle.model.StrokeDoodle;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -36,6 +36,7 @@ public class DoodleDocument extends RealmObject {
 
 	private static final String TAG = DoodleDocument.class.getSimpleName();
 	private static final int COOKIE = 0xD0D1;
+	private static final int MAX_REALM_BYTE_ARRAY_SIZE = 1024 * 1024 * 8; // 8 megs. Realm can do 16 but let's be safe.
 
 	public static final String BLOB_TYPE = "DoodleDocument";
 
@@ -51,6 +52,8 @@ public class DoodleDocument extends RealmObject {
 
 	@Required
 	private Date modificationDate;
+
+	private byte[] doodleBytes;
 
 	/**
 	 * Create a new DoodleDocument with UUID, name and creationDate set.
@@ -170,9 +173,6 @@ public class DoodleDocument extends RealmObject {
 			Date modificationDate = kryo.readObject(input, Date.class);
 			byte[] doodleBytes = kryo.readObject(input, byte[].class);
 
-			// create the doodle
-			StrokeDoodle doodle = new StrokeDoodle(context, new ByteArrayInputStream(doodleBytes));
-
 			boolean wasModified = false;
 
 			// now if we already have a DoodleDocument with this documentId, update it. otherwise, make a new one
@@ -195,7 +195,9 @@ public class DoodleDocument extends RealmObject {
 			}
 
 			// doodle has to be saved separately
-			document.saveDoodle(context, doodle);
+			realm.beginTransaction();
+			document.saveDoodle(context, doodleBytes);
+			realm.commitTransaction();
 
 			return wasModified;
 		} else {
@@ -210,34 +212,65 @@ public class DoodleDocument extends RealmObject {
 	 * @param context the context
 	 * @return a File object referring to the document's doodle's save data. May not exist if nothing has been saved
 	 */
-	public File getSaveFile(Context context) {
+	private File getSaveFile(Context context) {
 		return new File(context.getFilesDir(), getUuid() + ".doodle");
 	}
 
-	public void saveDoodle(Context context, StrokeDoodle doodle) {
-		File outputFile = getSaveFile(context);
-		try {
-			FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
-			BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
-			doodle.serialize(bufferedOutputStream);
-		} catch (IOException e) {
-			e.printStackTrace();
+	private void saveDoodle(Context context, byte[] doodleBytes) {
+		// if byte stream isn't too big, save directly to realm. Otherwise, save to a file
+		if (doodleBytes.length < MAX_REALM_BYTE_ARRAY_SIZE) {
+			setDoodleBytes(doodleBytes);
+		} else {
+			try {
+				File outputFile = getSaveFile(context);
+				ByteArrayOutputStream byteStream = new ByteArrayOutputStream(doodleBytes.length);
+				byteStream.write(doodleBytes);
+				FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
+				byteStream.writeTo(fileOutputStream);
+				fileOutputStream.close();
+			} catch (IOException e) {
+				Log.e(TAG, "saveDoodle: unable to save doodle byte[] to file", e);
+			}
 		}
+	}
+
+	public void saveDoodle(Context context, StrokeDoodle doodle) {
+		// serialize doodle to byte stream and hand off byte[]
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+		doodle.serialize(byteStream);
+		saveDoodle(context, byteStream.toByteArray());
 	}
 
 	public StrokeDoodle loadDoodle(Context context) {
 		StrokeDoodle doodle = new StrokeDoodle(context);
-		File inputFile = getSaveFile(context);
-		if (inputFile.exists()) {
+
+		byte[] doodleBytes = getDoodleBytes();
+		if (doodleBytes != null && doodleBytes.length > 0) {
+			ByteArrayInputStream inputStream = new ByteArrayInputStream(doodleBytes);
+
 			try {
-				FileInputStream inputStream = new FileInputStream(inputFile);
-				BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
-				doodle.inflate(bufferedInputStream);
+				doodle.inflate(inputStream);
 				inputStream.close();
 			} catch (IOException e) {
+				Log.e(TAG, "loadDoodle: unable to inflate doodle from Realm doodleBytes[]", e);
 				e.printStackTrace();
 			}
+		} else {
+			// this doodle may have been too big to save to Realm, so try to load a file
+			File inputFile = getSaveFile(context);
+			if (inputFile.exists()) {
+				try {
+					FileInputStream inputStream = new FileInputStream(inputFile);
+					BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
+					doodle.inflate(bufferedInputStream);
+					inputStream.close();
+				} catch (IOException e) {
+					Log.e(TAG, "loadDoodle: unable to inflate doodle from file: " + inputFile, e);
+					e.printStackTrace();
+				}
+			}
 		}
+
 
 		return doodle;
 	}
@@ -280,5 +313,13 @@ public class DoodleDocument extends RealmObject {
 
 	public void setModificationDate(Date modificationDate) {
 		this.modificationDate = modificationDate;
+	}
+
+	public byte[] getDoodleBytes() {
+		return doodleBytes;
+	}
+
+	public void setDoodleBytes(byte[] doodleBytes) {
+		this.doodleBytes = doodleBytes;
 	}
 }
