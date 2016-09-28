@@ -92,7 +92,6 @@ public class DoodleDocumentGridFragment extends Fragment
 		super.onCreate(savedInstanceState);
 		realm = Realm.getDefaultInstance();
 		Icepick.restoreInstanceState(this, savedInstanceState);
-		BusProvider.getBus().register(this);
 	}
 
 	@Override
@@ -103,7 +102,6 @@ public class DoodleDocumentGridFragment extends Fragment
 			bottomSheetDialog.dismiss();
 		}
 
-		BusProvider.getBus().unregister(this);
 		adapter.onDestroy();
 		realm.close();
 		super.onDestroy();
@@ -113,11 +111,14 @@ public class DoodleDocumentGridFragment extends Fragment
 	public void onResume() {
 		Log.i(TAG, "onResume: ");
 		super.onResume();
+		BusProvider.getMainThreadBus().register(this);
+		adapter.updateItems();
 	}
 
 	@Override
 	public void onStop() {
 		Log.i(TAG, "onStop: ");
+		BusProvider.getMainThreadBus().unregister(this);
 		super.onStop();
 	}
 
@@ -211,7 +212,7 @@ public class DoodleDocumentGridFragment extends Fragment
 	public void createNewPhotoDoodle() {
 		DoodleDocument document = DoodleDocument.create(realm, getString(R.string.untitled_document));
 
-		BusProvider.getBus().post(new DoodleDocumentCreatedEvent(document.getUuid()));
+		BusProvider.getMainThreadBus().post(new DoodleDocumentCreatedEvent(document.getUuid()));
 		recyclerView.smoothScrollToPosition(0);
 
 		editDoodleDocument(document);
@@ -282,7 +283,7 @@ public class DoodleDocumentGridFragment extends Fragment
 			throw new IllegalStateException("Called on unattached fragment");
 		}
 
-		// hide document from adapter
+		// hide document from adapter. after snackbar times out we'll delete it, or if canceled, unhide it
 		adapter.setDocumentHidden(doc, true);
 
 		Snackbar snackbar = Snackbar.make(rootView, R.string.snackbar_document_deleted, Snackbar.LENGTH_LONG);
@@ -301,7 +302,7 @@ public class DoodleDocumentGridFragment extends Fragment
 				DoodleDocument doc = DoodleDocument.byUUID(realm, docUuid);
 				if (doc != null && adapter.isDocumentHidden(doc)) {
 					DoodleDocument.delete(getContext(), realm, doc);
-					BusProvider.getBus().post(new DoodleDocumentWasDeletedEvent(docUuid));
+					BusProvider.getMainThreadBus().post(new DoodleDocumentWasDeletedEvent(docUuid));
 				}
 			}
 		});

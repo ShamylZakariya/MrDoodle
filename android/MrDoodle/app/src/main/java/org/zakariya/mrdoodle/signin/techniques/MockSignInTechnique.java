@@ -43,7 +43,7 @@ public class MockSignInTechnique implements SignInTechnique {
 	public void connect() {
 		if (signedIn && !isConnected()) {
 			connected = true;
-			BusProvider.postOnMainThread(BusProvider.getBus(), new SignInEvent(getAccount()));
+			BusProvider.postOnMainThread(new SignInEvent(getAccount()));
 		}
 	}
 
@@ -51,7 +51,7 @@ public class MockSignInTechnique implements SignInTechnique {
 	public void disconnect() {
 		if (isConnected()) {
 			connected = false;
-			BusProvider.postOnMainThread(BusProvider.getBus(), new SignOutEvent());
+			BusProvider.postOnMainThread(new SignOutEvent());
 		}
 	}
 

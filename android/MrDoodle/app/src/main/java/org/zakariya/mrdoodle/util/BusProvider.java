@@ -4,22 +4,28 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.squareup.otto.Bus;
+import com.squareup.otto.ThreadEnforcer;
 
 /**
  * Created by shamyl on 1/2/16.
  */
 public class BusProvider {
-	private static final Bus UI_BUS = new Bus();
+	private static final Bus MAIN_THREAD_BUS = new Bus(ThreadEnforcer.MAIN);
+	private static final Bus ANY_THREAD_BUS = new Bus(ThreadEnforcer.ANY);
 	private static Handler mainThreadHandler;
 
 	private BusProvider() {
 	}
 
-	public static Bus getBus() {
-		return UI_BUS;
+	public static Bus getMainThreadBus() {
+		return MAIN_THREAD_BUS;
 	}
 
-	public static void postOnMainThread(final Bus bus, final Object event) {
+	public static Bus getAnyThreadBus() {
+		return ANY_THREAD_BUS;
+	}
+
+	public static void postOnMainThread(final Object event) {
 		if (mainThreadHandler == null) {
 			mainThreadHandler = new Handler(Looper.getMainLooper());
 		}
@@ -27,12 +33,8 @@ public class BusProvider {
 		mainThreadHandler.post(new Runnable() {
 			@Override
 			public void run() {
-				bus.post(event);
+				MAIN_THREAD_BUS.post(event);
 			}
 		});
-	}
-
-	public static void postOnMainThread(final Object event) {
-		postOnMainThread(getBus(), event);
 	}
 }

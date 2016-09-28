@@ -186,9 +186,9 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 		// post no notifications if we're renewing out connection status (to get an updated IdToken)
 		if (!isRenewingConnection) {
 			if (googleSignInAccount != null) {
-				BusProvider.postOnMainThread(BusProvider.getBus(), new SignInEvent(getAccount()));
+				BusProvider.postOnMainThread(new SignInEvent(getAccount()));
 			} else {
-				BusProvider.postOnMainThread(BusProvider.getBus(), new SignOutEvent());
+				BusProvider.postOnMainThread(new SignOutEvent());
 			}
 		}
 
@@ -204,7 +204,7 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 		}
 	}
 
-	void attemptSilentSignIn() {
+	private void attemptSilentSignIn() {
 		OptionalPendingResult<GoogleSignInResult> pendingResult = Auth.GoogleSignInApi.silentSignIn(googleApiClient);
 
 		if (pendingResult.isDone()) {

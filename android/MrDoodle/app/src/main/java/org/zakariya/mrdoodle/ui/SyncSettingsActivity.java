@@ -103,7 +103,7 @@ public class SyncSettingsActivity extends BaseActivity {
 
 		setContentView(R.layout.activity_sync_settings);
 		ButterKnife.bind(this);
-		BusProvider.getBus().register(this);
+		BusProvider.getMainThreadBus().register(this);
 
 		setSupportActionBar(toolbar);
 		syncToCurrentSignedInState();
@@ -137,7 +137,7 @@ public class SyncSettingsActivity extends BaseActivity {
 			syncSubscription.unsubscribe();
 		}
 
-		BusProvider.getBus().unregister(this);
+		BusProvider.getMainThreadBus().unregister(this);
 		syncLogAdapter.onDestroy();
 		realm.close();
 		super.onDestroy();

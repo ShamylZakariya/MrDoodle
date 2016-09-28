@@ -69,7 +69,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	private SyncManager(Context context, SyncConfiguration syncConfiguration, ModelDataAdapter modelDataAdapter) {
-		BusProvider.getBus().register(this);
+		BusProvider.getMainThreadBus().register(this);
 
 		this.syncConfiguration = syncConfiguration;
 		this.modelDataAdapter = modelDataAdapter;

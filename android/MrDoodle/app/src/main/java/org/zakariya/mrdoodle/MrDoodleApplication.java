@@ -151,7 +151,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 				// be certain these events won't be consumed
 				changeJournalNotifier.setActive(false);
-				Bus bus = BusProvider.getBus();
+				Bus bus = BusProvider.getMainThreadBus();
 				if (changes != null) {
 					for (RemoteChangeReport report : changes) {
 						switch(report.getAction()) {
@@ -253,7 +253,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 		ChangeJournalNotifier(SyncManager syncManager) {
 			this.syncManager = syncManager;
-			BusProvider.getBus().register(this);
+			BusProvider.getMainThreadBus().register(this);
 		}
 
 		boolean isActive() {
@@ -313,7 +313,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 					if (noisy) {
 						Log.i(TAG, "onActivityPaused - firing ApplicationDidBackgroundEvent");
 					}
-					BusProvider.getBus().post(new ApplicationDidBackgroundEvent());
+					BusProvider.getMainThreadBus().post(new ApplicationDidBackgroundEvent());
 					application.onApplicationBackgrounded();
 					didFireBackgroundEvent = true;
 				}
@@ -339,7 +339,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 				}
 
 				MrDoodleApplication.getInstance().onApplicationResumed();
-				BusProvider.getBus().post(new ApplicationDidResumeEvent());
+				BusProvider.getMainThreadBus().post(new ApplicationDidResumeEvent());
 			}
 		}
 

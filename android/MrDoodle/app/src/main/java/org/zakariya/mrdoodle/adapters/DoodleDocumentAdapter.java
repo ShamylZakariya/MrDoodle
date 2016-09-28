@@ -321,7 +321,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		return items.size();
 	}
 
-	void updateItems() {
+	public void updateItems() {
 		this.items.clear();
 		for (DoodleDocument doc : DoodleDocument.all(realm)) {
 			this.items.add(new Item(doc));
@@ -332,11 +332,11 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		notifyDataSetChanged();
 	}
 
-	void sortDocuments() {
+	private void sortDocuments() {
 		Collections.sort(items, sortComparator);
 	}
 
-	void updateEmptyView() {
+	private void updateEmptyView() {
 		emptyView.setVisibility(items.isEmpty() ? View.VISIBLE : View.GONE);
 	}
 
