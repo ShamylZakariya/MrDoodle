@@ -29,7 +29,7 @@ import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.api.SyncService;
 import org.zakariya.mrdoodle.net.model.SyncReport;
-import org.zakariya.mrdoodle.net.transport.Status;
+import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.SignInTechnique;
 import org.zakariya.mrdoodle.signin.events.SignInEvent;
@@ -204,8 +204,8 @@ public class SyncSettingsActivity extends BaseActivity {
 	}
 
 	@OnClick(R.id.statusButton)
-	void status() {
-		Log.i(TAG, "status: getting status from sync server");
+	void remoteStatus() {
+		Log.i(TAG, "remoteStatus: getting remoteStatus from sync server");
 
 		SyncManager syncManager = SyncManager.getInstance();
 		SyncEngine syncEngine = syncManager.getSyncEngine();
@@ -213,17 +213,17 @@ public class SyncSettingsActivity extends BaseActivity {
 		final SignInAccount account = SignInManager.getInstance().getAccount();
 
 		if (account != null) {
-			Callable<Response<Status>> statusCall = new Callable<Response<Status>>() {
+			Callable<Response<RemoteStatus>> statusCall = new Callable<Response<RemoteStatus>>() {
 				@Override
-				public Response<Status> call() throws Exception {
-					return service.getStatus(account.getId()).execute();
+				public Response<RemoteStatus> call() throws Exception {
+					return service.getRemoteStatus(account.getId()).execute();
 				}
 			};
 
 			syncSubscription = Observable.fromCallable(statusCall)
 					.subscribeOn(Schedulers.io())
 					.observeOn(AndroidSchedulers.mainThread())
-					.subscribe(new Observer<Response<Status>>() {
+					.subscribe(new Observer<Response<RemoteStatus>>() {
 						@Override
 						public void onCompleted() {
 							Log.i(TAG, "onCompleted: ");
@@ -231,15 +231,15 @@ public class SyncSettingsActivity extends BaseActivity {
 
 						@Override
 						public void onError(Throwable e) {
-							Log.e(TAG, "status error: ", e);
+							Log.e(TAG, "remoteStatus error: ", e);
 						}
 
 						@Override
-						public void onNext(Response<Status> statusResponse) {
+						public void onNext(Response<RemoteStatus> statusResponse) {
 							if (statusResponse.isSuccessful()) {
-								Log.i(TAG, "status() - status: " + statusResponse.body());
+								Log.i(TAG, "remoteStatus() - remoteStatus: " + statusResponse.body());
 							} else {
-								Log.e(TAG, "status() - failed, code; " + statusResponse.code() + " message: " + statusResponse.message());
+								Log.e(TAG, "remoteStatus() - failed, code; " + statusResponse.code() + " message: " + statusResponse.message());
 							}
 						}
 					});
@@ -423,13 +423,17 @@ public class SyncSettingsActivity extends BaseActivity {
 		startActivity(SyncLogEntryDetailActivity.getIntent(this, entry.getUuid()));
 	}
 
+
+	///////////////////////////////////////////////////////////////////
+
+
 	static class SyncLogAdapter extends RecyclerView.Adapter<SyncLogAdapter.ViewHolder> implements RealmChangeListener<Realm> {
 
 		Realm realm;
 		RealmResults<SyncLogEntry> syncLogEntries;
 		DateFormat dateFormatter;
 
-		public static class ViewHolder extends RecyclerView.ViewHolder {
+		static class ViewHolder extends RecyclerView.ViewHolder {
 			@Bind(R.id.syncDateTextView)
 			TextView syncDateTextView;
 
@@ -439,13 +443,13 @@ public class SyncSettingsActivity extends BaseActivity {
 			@Bind(R.id.syncSuccessIndicatorImageView)
 			ImageView syncSuccessIndicatorImageView;
 
-			public ViewHolder(View itemView) {
+			ViewHolder(View itemView) {
 				super(itemView);
 				ButterKnife.bind(this, itemView);
 			}
 		}
 
-		public SyncLogAdapter(Realm realm) {
+		SyncLogAdapter(Realm realm) {
 			this.realm = realm;
 			syncLogEntries = SyncLogEntry.all(realm);
 			dateFormatter = DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG);

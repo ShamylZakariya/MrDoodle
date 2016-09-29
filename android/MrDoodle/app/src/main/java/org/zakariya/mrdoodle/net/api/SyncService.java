@@ -1,6 +1,6 @@
 package org.zakariya.mrdoodle.net.api;
 
-import org.zakariya.mrdoodle.net.transport.Status;
+import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.net.transport.TimestampRecordEntry;
 
 import java.util.Map;
@@ -31,13 +31,13 @@ public interface SyncService {
 
 
 	/**
-	 * Get the status for this account.
+	 * Get the server "remote" status for this account.
 	 *
 	 * @param accountId the account id of the signed in user
 	 * @return status, which describes current timestampHeadSeconds, and document locks
 	 */
 	@GET("sync/{accountId}/status")
-	Call<Status> getStatus(@Path("accountId") String accountId);
+	Call<RemoteStatus> getRemoteStatus(@Path("accountId") String accountId);
 
 	/**
 	 * Get the change set for this account, describing the changes in the remote store since a given timestamp in seconds
@@ -70,7 +70,7 @@ public interface SyncService {
 	 * @return status, which describes current timestampHeadSeconds, and document locks
 	 */
 	@DELETE("sync/{accountId}/writeSession/sessions/{writeToken}")
-	Call<Status> commitWriteSession(@Path("accountId") String accountId, @Path("writeToken") String writeToken);
+	Call<RemoteStatus> commitWriteSession(@Path("accountId") String accountId, @Path("writeToken") String writeToken);
 
 
 	/**

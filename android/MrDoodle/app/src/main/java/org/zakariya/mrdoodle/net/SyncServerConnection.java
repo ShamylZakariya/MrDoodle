@@ -10,7 +10,7 @@ import com.google.gson.JsonSyntaxException;
 import com.neovisionaries.ws.client.WebSocket;
 
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
-import org.zakariya.mrdoodle.net.transport.Status;
+import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
@@ -28,7 +28,7 @@ import java.util.Map;
 public class SyncServerConnection extends WebSocketConnection {
 
 	public interface NotificationListener {
-		void onStatusReceived(Status status);
+		void onStatusReceived(RemoteStatus remoteStatus);
 	}
 
 	private static final String TAG = SyncServerConnection.class.getSimpleName();
@@ -136,10 +136,10 @@ public class SyncServerConnection extends WebSocketConnection {
 			// right now, the only message ever sent by the server to the client over websocket
 			// is the net.transport.Status message
 			try {
-				Status status = gson.fromJson(text, Status.class);
-				if (status != null) {
+				RemoteStatus remoteStatus = gson.fromJson(text, RemoteStatus.class);
+				if (remoteStatus != null) {
 					for (NotificationListener listener : notificationListeners) {
-						listener.onStatusReceived(status);
+						listener.onStatusReceived(remoteStatus);
 					}
 				}
 			} catch (JsonSyntaxException e) {
@@ -168,10 +168,10 @@ public class SyncServerConnection extends WebSocketConnection {
 		}
 	}
 
-	static final class AuthorizationPayload {
-		public String auth;
+	private static final class AuthorizationPayload {
+		String auth;
 
-		public AuthorizationPayload(String auth) {
+		AuthorizationPayload(String auth) {
 			this.auth = auth;
 		}
 	}

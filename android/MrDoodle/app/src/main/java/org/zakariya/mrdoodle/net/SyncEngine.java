@@ -7,7 +7,7 @@ import android.util.Log;
 import org.zakariya.mrdoodle.net.api.SyncService;
 import org.zakariya.mrdoodle.net.model.RemoteChangeReport;
 import org.zakariya.mrdoodle.net.model.SyncReport;
-import org.zakariya.mrdoodle.net.transport.Status;
+import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.net.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.ChangeJournal;
@@ -224,9 +224,9 @@ public class SyncEngine {
 
 		try {
 
-			log(log, "Starting sync with current timestampHeadSeconds: " + syncState.getTimestampHead());
+			log(log, "Starting sync with current timestampHeadSeconds: " + syncState.getTimestampHeadSeconds());
 
-			Status status = pushLocalChanges(
+			RemoteStatus remoteStatus = pushLocalChanges(
 					log,
 					account,
 					changeJournal,
@@ -235,7 +235,7 @@ public class SyncEngine {
 
 			SyncReport syncReport = pullRemoteChanges(
 					log,
-					status,
+					remoteStatus,
 					account,
 					syncState,
 					timestampRecorder,
@@ -243,7 +243,7 @@ public class SyncEngine {
 					modelObjectDeleter);
 
 			log(log, "Sync complete, updating local timestamp head to: " + syncReport.getTimestampHeadSeconds());
-			syncState.setTimestampHead(syncReport.getTimestampHeadSeconds());
+			syncState.setTimestampHeadSeconds(syncReport.getTimestampHeadSeconds());
 			syncState.setLastSyncDate(new Date());
 
 			return syncReport;
@@ -264,7 +264,7 @@ public class SyncEngine {
 	///////////////////////////////////////////////////////////////////
 
 	@Nullable
-	private Status pushLocalChanges(
+	private RemoteStatus pushLocalChanges(
 			SyncLogEntry log,
 			SignInAccount account,
 			ChangeJournal changeJournal,
@@ -303,13 +303,13 @@ public class SyncEngine {
 			// successfully, and we return it for the push phase to consume
 
 			if (writeSessionToken != null) {
-				Status status = commitWriteSession(accountId, writeSessionToken);
-				if (status != null) {
+				RemoteStatus remoteStatus = commitWriteSession(accountId, writeSessionToken);
+				if (remoteStatus != null) {
 					writeSessionToken = null; // mark null so finally{} block doesn't try again
 					log(log, "Closed write session, push phase of sync complete");
 				}
 
-				return status;
+				return remoteStatus;
 			}
 
 		} catch (Throwable t) {
@@ -346,8 +346,8 @@ public class SyncEngine {
 		return writeTokenResponse.body();
 	}
 
-	private Status commitWriteSession(String accountId, String writeToken) throws IOException, SyncException {
-		Response<Status> remoteStatusResponse = syncService.commitWriteSession(accountId, writeToken).execute();
+	private RemoteStatus commitWriteSession(String accountId, String writeToken) throws IOException, SyncException {
+		Response<RemoteStatus> remoteStatusResponse = syncService.commitWriteSession(accountId, writeToken).execute();
 		if (!remoteStatusResponse.isSuccessful()) {
 			throw new SyncException("Unable to commit write session", remoteStatusResponse);
 		} else {
@@ -393,7 +393,7 @@ public class SyncEngine {
 						writeToken).execute();
 
 				// a 404 is OK, because we might be pushing a deletion of something
-				// which hasn't yet been pushed to the server. 
+				// which hasn't yet been pushed to the server.
 				if (!timestampResponse.isSuccessful() && timestampResponse.code() != 404) {
 					throw new SyncException("Unable to delete remote object[id: " + id + " documentType: " + modelClass + "] blob data", timestampResponse);
 				}
@@ -426,7 +426,7 @@ public class SyncEngine {
 
 	private SyncReport pullRemoteChanges(
 			SyncLogEntry log,
-			@Nullable Status status,
+			@Nullable RemoteStatus remoteStatus,
 			SignInAccount account,
 			SyncState syncState,
 			TimestampRecorder timestampRecorder,
@@ -437,16 +437,16 @@ public class SyncEngine {
 		String accountId = account.getId();
 		List<RemoteChangeReport> remoteChangeReports = new ArrayList<>();
 
-		if (status == null) {
-			status = getStatus(accountId);
+		if (remoteStatus == null) {
+			remoteStatus = getStatus(accountId);
 		}
 
-		log(log, "Starting pull phase of sync. Remote timestampHeadSeconds: " + status.timestampHeadSeconds);
+		log(log, "Starting pull phase of sync. Remote timestampHeadSeconds: " + remoteStatus.timestampHeadSeconds);
 
 		// early exit if we're up to date
-		if (status.timestampHeadSeconds <= syncState.getTimestampHead()) {
+		if (remoteStatus.timestampHeadSeconds <= syncState.getTimestampHeadSeconds()) {
 			log(log, "We're up to date, finishing.");
-			return new SyncReport(status.timestampHeadSeconds);
+			return new SyncReport(remoteStatus.timestampHeadSeconds);
 		}
 
 		// get list of changes since local timestamp head
@@ -467,7 +467,7 @@ public class SyncEngine {
 		}
 
 		// we're done
-		return new SyncReport(remoteChangeReports, status.timestampHeadSeconds);
+		return new SyncReport(remoteChangeReports, remoteStatus.timestampHeadSeconds);
 	}
 
 	@Nullable
@@ -516,7 +516,7 @@ public class SyncEngine {
 	}
 
 	private Map<String, TimestampRecordEntry> getRemoteChanges(SyncState syncState, String accountId) throws IOException, SyncException {
-		Response<Map<String, TimestampRecordEntry>> remoteChanges = syncService.getChanges(accountId, syncState.getTimestampHead()).execute();
+		Response<Map<String, TimestampRecordEntry>> remoteChanges = syncService.getChanges(accountId, syncState.getTimestampHeadSeconds()).execute();
 
 		if (!remoteChanges.isSuccessful()) {
 			throw new SyncException("Unable to get remote change set", remoteChanges);
@@ -525,8 +525,8 @@ public class SyncEngine {
 		return remoteChanges.body();
 	}
 
-	private Status getStatus(String accountId) throws IOException, SyncException {
-		Response<Status> statusResponse = syncService.getStatus(accountId).execute();
+	private RemoteStatus getStatus(String accountId) throws IOException, SyncException {
+		Response<RemoteStatus> statusResponse = syncService.getRemoteStatus(accountId).execute();
 		if (!statusResponse.isSuccessful()) {
 			throw new SyncException("Unable to get remote status", statusResponse);
 		} else {

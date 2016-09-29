@@ -8,15 +8,15 @@ import io.realm.RealmObject;
  * SyncState is persistent state for SyncManager
  */
 public class SyncState extends RealmObject {
-	private long timestampHead;
+	private long timestampHeadSeconds;
 	private Date lastSyncDate;
 
-	public long getTimestampHead() {
-		return timestampHead;
+	public long getTimestampHeadSeconds() {
+		return timestampHeadSeconds;
 	}
 
-	public void setTimestampHead(long timestampHead) {
-		this.timestampHead = timestampHead;
+	public void setTimestampHeadSeconds(long timestampHeadSeconds) {
+		this.timestampHeadSeconds = timestampHeadSeconds;
 	}
 
 	public Date getLastSyncDate() {

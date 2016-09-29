@@ -9,7 +9,7 @@ import com.squareup.otto.Subscribe;
 import org.zakariya.mrdoodle.net.SyncEngine;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.model.SyncReport;
-import org.zakariya.mrdoodle.net.transport.Status;
+import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.events.SignInEvent;
@@ -17,6 +17,7 @@ import org.zakariya.mrdoodle.signin.events.SignOutEvent;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.model.SyncState;
 import org.zakariya.mrdoodle.util.BusProvider;
+import org.zakariya.mrdoodle.util.Debouncer;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -26,12 +27,17 @@ import java.util.concurrent.Callable;
 
 import io.realm.Realm;
 import rx.Observable;
+import rx.Observer;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 /**
  * Top level access point for sync services
  */
 @SuppressWarnings("TryFinallyCanBeTryWithResources")
 public class SyncManager implements SyncServerConnection.NotificationListener {
+
+	private static final int SYNC_TRIGGER_DEBOUNCE_MILLIS = 500;
 
 	public interface ModelDataAdapter extends SyncEngine.ModelObjectDataConsumer, SyncEngine.ModelObjectDataProvider, SyncEngine.ModelObjectDeleter {
 	}
@@ -57,6 +63,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private SyncEngine syncEngine;
 	private ModelDataAdapter modelDataAdapter;
 	private List<WeakReference<SyncStateListener>> syncStateListeners = new ArrayList<>();
+	private Debouncer syncTriggerDebouncer;
 
 	public static void init(Context context, SyncConfiguration syncConfiguration, ModelDataAdapter modelDataAdapter) {
 		if (instance == null) {
@@ -84,6 +91,13 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		changeJournal = new ChangeJournal(CHANGE_JOURNAL_PERSIST_PREFIX, true);
 		timestampRecorder = new TimestampRecorder();
 		syncEngine = new SyncEngine(context, syncConfiguration);
+
+		syncTriggerDebouncer = new Debouncer(SYNC_TRIGGER_DEBOUNCE_MILLIS, new Debouncer.Listener() {
+			@Override
+			public void call(Object o) {
+				triggerSyncIfNeeded((RemoteStatus) o);
+			}
+		});
 
 		updateAuthorizationToken();
 		startOrStopSyncServices();
@@ -293,6 +307,35 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	///////////////////////////////////////////////////////////////////
 
+	private void triggerSyncIfNeeded(RemoteStatus remoteStatus) {
+		SyncState currentLocalSyncState = getSyncState();
+
+		// remote timestamp head is newer than ours - looks like we need to sync
+		if (!isSyncing() && remoteStatus.timestampHeadSeconds > currentLocalSyncState.getTimestampHeadSeconds()) {
+
+			Log.i(TAG, "triggerSyncIfNeeded: remote timestampHeadSeconds (" + remoteStatus.timestampHeadSeconds + ") is newer than ours (" + currentLocalSyncState.getTimestampHeadSeconds() + ") - starting sync.");
+
+			sync().subscribeOn(Schedulers.io())
+				.observeOn(AndroidSchedulers.mainThread())
+				.subscribe(new Observer<SyncReport>() {
+					@Override
+					public void onCompleted() {
+					}
+
+					@Override
+					public void onError(Throwable e) {
+						// TODO: Show some kind of unobtrusive error message?
+						Log.e(TAG, "triggerSyncIfNeeded - onError: ", e);
+					}
+
+					@Override
+					public void onNext(SyncReport syncReport) {
+						Log.i(TAG, "triggerSyncIfNeeded - onNext: Sync completed successfully: " + syncReport);
+					}
+				});
+		}
+	}
+
 	private void startOrStopSyncServices() {
 		if (applicationIsActive && userAccount != null) {
 			connect();
@@ -331,7 +374,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 				realm.beginTransaction();
 
 				syncState = realm.createObject(SyncState.class);
-				syncState.setTimestampHead(0);
+				syncState.setTimestampHeadSeconds(0);
 				syncState.setLastSyncDate(new Date(0));
 
 				realm.commitTransaction();
@@ -356,12 +399,12 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 			if (ss == null) {
 				realm.beginTransaction();
 				ss = realm.createObject(SyncState.class);
-				ss.setTimestampHead(syncState.getTimestampHead());
+				ss.setTimestampHeadSeconds(syncState.getTimestampHeadSeconds());
 				ss.setLastSyncDate(syncState.getLastSyncDate());
 				realm.commitTransaction();
 			} else {
 				realm.beginTransaction();
-				ss.setTimestampHead(syncState.getTimestampHead());
+				ss.setTimestampHeadSeconds(syncState.getTimestampHeadSeconds());
 				ss.setLastSyncDate(syncState.getLastSyncDate());
 				realm.commitTransaction();
 			}
@@ -374,8 +417,9 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	///////////////////////////////////////////////////////////////////
 
 	@Override
-	public void onStatusReceived(Status status) {
-		Log.i(TAG, "onStatusReceived: received Status notification from web socket connection: " + status.toString());
+	public void onStatusReceived(RemoteStatus remoteStatus) {
+		Log.i(TAG, "onStatusReceived: received Status notification from web socket connection: " + remoteStatus.toString());
+		syncTriggerDebouncer.send(remoteStatus);
 	}
 
 	///////////////////////////////////////////////////////////////////
