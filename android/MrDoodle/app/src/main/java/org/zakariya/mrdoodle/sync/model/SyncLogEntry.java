@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 import io.realm.Realm;
+import io.realm.RealmList;
 import io.realm.RealmObject;
 import io.realm.RealmResults;
 import io.realm.Sort;
@@ -20,27 +21,27 @@ import io.realm.Sort;
  */
 public class SyncLogEntry extends RealmObject {
 
+	public static enum Phase {
+		START,
+		PUSH_START,
+		PUSH_ITEM,
+		PUSH_COMPLETE,
+		PULL_START,
+		PULL_ITEM,
+		PULL_COMPLETE,
+		COMPLETE
+	}
+
 	private String uuid;
-	private String log;
 	private Date date;
+	private RealmList<SyncLogEntryLineItem> lineItems;
 	private String failure;
 
 	public SyncLogEntry() {
 		this.uuid = UUID.randomUUID().toString();
 		this.date = new Date();
-	}
-
-	/**
-	 * Create a new SyncLogEntry representing a sync transcript for a given account
-	 *
-	 * @param realm the realm to contain the SyncLogEntry
-	 * @return a new SyncLogEntry, in the realm
-	 */
-	public static SyncLogEntry create(Realm realm) {
-		SyncLogEntry item = realm.createObject(SyncLogEntry.class);
-		item.setUuid(UUID.randomUUID().toString());
-		item.setDate(new Date());
-		return item;
+		this.lineItems = new RealmList<>();
+		this.failure = null;
 	}
 
 	/**
@@ -81,22 +82,22 @@ public class SyncLogEntry extends RealmObject {
 		}
 	}
 
-	public void appendLog(String message) {
-		if (log != null) {
-			log += message + "\n";
-		} else {
-			log = message + "\n";
-		}
+	public void appendLog(Phase phase, String message) {
+		lineItems.add(new SyncLogEntryLineItem(phase.ordinal(), new Date(), message));
 	}
 
-	public void appendError(String message, Throwable t) {
+	public void appendError(Phase phase, String message, Throwable t) {
 		failure = t.getMessage();
-		message = "ERROR:\t" + message + "\n" + failure + "\n" + throwableStacktraceToString(t) + "\n";
-		if (log != null) {
-			log += message;
-		} else {
-			log = message;
+		lineItems.add(new SyncLogEntryLineItem(phase.ordinal(), new Date(), message, failure));
+	}
+
+	public String getLog() {
+		StringBuilder builder = new StringBuilder();
+		for (SyncLogEntryLineItem item : lineItems) {
+			builder.append(item.toString());
+			builder.append("\n");
 		}
+		return builder.toString();
 	}
 
 	public String getUuid() {
@@ -105,14 +106,6 @@ public class SyncLogEntry extends RealmObject {
 
 	public void setUuid(String uuid) {
 		this.uuid = uuid;
-	}
-
-	public String getLog() {
-		return log;
-	}
-
-	public void setLog(String log) {
-		this.log = log;
 	}
 
 	public Date getDate() {
@@ -129,6 +122,14 @@ public class SyncLogEntry extends RealmObject {
 
 	public void setFailure(String failure) {
 		this.failure = failure;
+	}
+
+	public RealmList<SyncLogEntryLineItem> getLineItems() {
+		return lineItems;
+	}
+
+	public void setLineItems(RealmList<SyncLogEntryLineItem> lineItems) {
+		this.lineItems = lineItems;
 	}
 
 	private static String throwableStacktraceToString(Throwable t) {

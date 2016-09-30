@@ -38,6 +38,15 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.converter.scalars.ScalarsConverterFactory;
 
+import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.COMPLETE;
+import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PULL_COMPLETE;
+import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PULL_ITEM;
+import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PULL_START;
+import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PUSH_COMPLETE;
+import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PUSH_ITEM;
+import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PUSH_START;
+import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.START;
+
 /**
  *
  */
@@ -224,7 +233,7 @@ public class SyncEngine {
 
 		try {
 
-			log(log, "Starting sync with current timestampHeadSeconds: " + syncState.getTimestampHeadSeconds());
+			log(log, START, "Starting sync with current timestampHeadSeconds: " + syncState.getTimestampHeadSeconds());
 
 			RemoteStatus remoteStatus = pushLocalChanges(
 					log,
@@ -242,14 +251,14 @@ public class SyncEngine {
 					modelObjectDataConsumer,
 					modelObjectDeleter);
 
-			log(log, "Sync complete, updating local timestamp head to: " + syncReport.getTimestampHeadSeconds());
+			log(log, COMPLETE, "Sync complete, updating local timestamp head to: " + syncReport.getTimestampHeadSeconds());
 			syncState.setTimestampHeadSeconds(syncReport.getTimestampHeadSeconds());
 			syncState.setLastSyncDate(new Date());
 
 			return syncReport;
 
 		} finally {
-			log(log, "DONE");
+			log(log, COMPLETE, "DONE");
 
 			Realm realm = Realm.getDefaultInstance();
 			realm.beginTransaction();
@@ -276,7 +285,7 @@ public class SyncEngine {
 
 		// nothing to do
 		if (localChanges.isEmpty()) {
-			log(log, "No local changes to push upstream");
+			log(log, PUSH_COMPLETE, "No local changes to push upstream");
 			return null;
 		}
 
@@ -284,7 +293,7 @@ public class SyncEngine {
 
 		// 1) get a write session token
 		String writeSessionToken = startWriteSession(accountId);
-		log(log, "Got write session token: \"" + writeSessionToken + "\" - starting push phase of sync");
+		log(log, PUSH_START, "Got write session token: \"" + writeSessionToken + "\" - starting push phase of sync");
 
 		try {
 
@@ -295,7 +304,7 @@ public class SyncEngine {
 
 				// push the change and mark that the change has been pushed
 				pushLocalChange(timestampRecorder, modelObjectDataProvider, accountId, writeSessionToken, change);
-				log(log, "Pushed item: \"" + change.getModelObjectId() + " upstream");
+				log(log, PUSH_ITEM, "Pushed item: \"" + change.getModelObjectId() + " upstream");
 				changeJournal.clear(change.getModelObjectId());
 			}
 
@@ -306,7 +315,7 @@ public class SyncEngine {
 				RemoteStatus remoteStatus = commitWriteSession(accountId, writeSessionToken);
 				if (remoteStatus != null) {
 					writeSessionToken = null; // mark null so finally{} block doesn't try again
-					log(log, "Closed write session, push phase of sync complete");
+					log(log, PUSH_COMPLETE, "Closed write session, push phase of sync complete");
 				}
 
 				return remoteStatus;
@@ -314,7 +323,7 @@ public class SyncEngine {
 
 		} catch (Throwable t) {
 			// log and rethrow
-			log(log, "Sync failed", t);
+			log(log, PUSH_COMPLETE, "Sync failed", t);
 			throw t;
 		} finally {
 
@@ -324,12 +333,12 @@ public class SyncEngine {
 			// and that exception will already be in-flight
 
 			if (writeSessionToken != null) {
-				log(log, "After failed sync, attempting to close write session: \"" + writeSessionToken + "\"");
+				log(log, PUSH_COMPLETE, "After failed sync, attempting to close write session: \"" + writeSessionToken + "\"");
 				try {
 					syncService.commitWriteSession(accountId, writeSessionToken).execute();
-					log(log, "Write session closed.");
+					log(log, PUSH_COMPLETE, "Write session closed.");
 				} catch (Exception e) {
-					log(log, "Unable to close write session", e);
+					log(log, PUSH_COMPLETE, "Unable to close write session", e);
 				}
 			}
 		}
@@ -441,11 +450,11 @@ public class SyncEngine {
 			remoteStatus = getStatus(accountId);
 		}
 
-		log(log, "Starting pull phase of sync. Remote timestampHeadSeconds: " + remoteStatus.timestampHeadSeconds);
+		log(log, PULL_START, "Starting pull phase of sync. Remote timestampHeadSeconds: " + remoteStatus.timestampHeadSeconds);
 
 		// early exit if we're up to date
 		if (remoteStatus.timestampHeadSeconds <= syncState.getTimestampHeadSeconds()) {
-			log(log, "We're up to date, finishing.");
+			log(log, PULL_COMPLETE, "We're up to date, finishing.");
 			return new SyncReport(remoteStatus.timestampHeadSeconds);
 		}
 
@@ -459,9 +468,9 @@ public class SyncEngine {
 
 			if (report != null) {
 				remoteChangeReports.add(report);
-				log(log, "Pulled remote change to object: " + id + " to local");
+				log(log, PULL_ITEM, "Pulled remote change to object: " + id + " to local");
 			} else {
-				log(log, "Skipped remote change to object: " + id + " as we're up to date on this object");
+				log(log, PULL_ITEM, "Skipped remote change to object: " + id + " as we're up to date on this object");
 			}
 
 		}
@@ -534,14 +543,14 @@ public class SyncEngine {
 		}
 	}
 
-	private void log(SyncLogEntry log, String message) {
+	private void log(SyncLogEntry log, SyncLogEntry.Phase phase, String message) {
 		Log.i(TAG, message);
-		log.appendLog(message); // note the log is NOT in the realm until sync completes
+		log.appendLog(phase, message); // note the log is NOT in the realm until sync completes
 	}
 
-	private void log(SyncLogEntry log, String message, Throwable t) {
+	private void log(SyncLogEntry log, SyncLogEntry.Phase phase, String message, Throwable t) {
 		Log.e(TAG, message, t);
-		log.appendError(message, t);
+		log.appendError(phase, message, t);
 	}
 
 }
