@@ -6,6 +6,7 @@
 	<color name="accent">#00E6FF</color>
 	<color name="accentLight">#9DF5FF</color>
 	<color name="windowBackground">#F0F0F0</color>
+	<color name="rule">#cccccc</color>
 	<color name="immersiveStatusBar">#997D3D8C</color>
 	<color name="actionBarText">#ffffffff</color>
 	<color name="actionBarIcon">#ffffffff</color>
@@ -24,5 +25,7 @@
 	<color name="actionbarEditText_colorControlHighlight">#9DF5FF</color>
 
 	<color name="doodleBackground">#FFFFFFFF</color>
+
+	<color name="trouble">#e24e2a</color>
 
 </resources>

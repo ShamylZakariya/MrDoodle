@@ -4,28 +4,36 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.SparseArray;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.model.SyncLogEntry;
+import org.zakariya.mrdoodle.sync.model.SyncLogEntryLineItem;
+import org.zakariya.stickyheaders.SectioningAdapter;
+import org.zakariya.stickyheaders.StickyHeaderLayoutManager;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 import butterknife.Bind;
@@ -55,8 +63,8 @@ public class SyncLogEntryDetailActivity extends AppCompatActivity {
 	@Bind(R.id.failureTextView)
 	TextView failureTextView;
 
-	@Bind(R.id.logTextView)
-	TextView logTextView;
+	@Bind(R.id.logItemRecyclerView)
+	RecyclerView logItemRecyclerView;
 
 	@State
 	String syncLogEntryId;
@@ -115,8 +123,8 @@ public class SyncLogEntryDetailActivity extends AppCompatActivity {
 					failureTextView.setVisibility(View.VISIBLE);
 				}
 
-				logTextView.setTypeface(Typeface.MONOSPACE);
-				logTextView.setText(syncLogEntry.getLog());
+				logItemRecyclerView.setLayoutManager(new StickyHeaderLayoutManager());
+				logItemRecyclerView.setAdapter(new SyncLogEntryLineItemAdapter(syncLogEntry.getLineItems()));
 
 			} else {
 				throw new IllegalArgumentException("EXTRA_SYNC_LOG_ID must refer to a valid SyncLogEntry");
@@ -138,9 +146,9 @@ public class SyncLogEntryDetailActivity extends AppCompatActivity {
 		getMenuInflater().inflate(R.menu.menu_sync_log_entry_detail, menu);
 		MenuItem sendItem = menu.findItem(R.id.action_send);
 
-//		if (TextUtils.isEmpty(syncLogEntry.getFailure())) {
-//			sendItem.setVisible(false);
-//		}
+		if (TextUtils.isEmpty(syncLogEntry.getFailure())) {
+			sendItem.setVisible(false);
+		}
 
 		return true;
 	}
@@ -206,5 +214,118 @@ public class SyncLogEntryDetailActivity extends AppCompatActivity {
 
 			builder.show();
 		}
+	}
+
+	static final class SyncLogEntryLineItemAdapter extends SectioningAdapter {
+
+		private class Section {
+			int phase;
+			String title;
+			List<SyncLogEntryLineItem> items = new ArrayList<>();
+		}
+
+		private class ItemViewHolder extends SectioningAdapter.ItemViewHolder {
+			TextView dateTextView;
+			TextView lineItemTextView;
+			TextView failureTextView;
+
+			ItemViewHolder(View itemView) {
+				super(itemView);
+				dateTextView = (TextView) itemView.findViewById(R.id.dateTextView);
+				lineItemTextView = (TextView) itemView.findViewById(R.id.lineItemTextView);
+				failureTextView = (TextView) itemView.findViewById(R.id.failureTextView);
+			}
+		}
+
+		private class PhaseHeaderViewHolder extends SectioningAdapter.HeaderViewHolder {
+			TextView titleTextView;
+
+			PhaseHeaderViewHolder(View itemView) {
+				super(itemView);
+				titleTextView = (TextView) itemView.findViewById(R.id.titleTextView);
+			}
+		}
+
+		ArrayList<Section> sections = new ArrayList<>();
+		DateFormat dateFormatter;
+
+		SyncLogEntryLineItemAdapter(List<SyncLogEntryLineItem> items) {
+
+			dateFormatter = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.LONG);
+			SparseArray<Section> sectionsByPhase = new SparseArray<>();
+			for (SyncLogEntryLineItem item : items) {
+
+				int phase = item.getPhase();
+				Section section = sectionsByPhase.get(phase);
+				if (section == null) {
+					section = new Section();
+					section.phase = phase;
+					section.title = SyncLogEntry.Phase.values()[phase].toString();
+					sectionsByPhase.put(phase, section);
+					sections.add(section);
+				}
+
+				section.items.add(item);
+			}
+		}
+
+		@Override
+		public int getNumberOfSections() {
+			return sections.size();
+		}
+
+		@Override
+		public int getNumberOfItemsInSection(int sectionIndex) {
+			return sections.get(sectionIndex).items.size();
+		}
+
+		@Override
+		public boolean doesSectionHaveHeader(int sectionIndex) {
+			return true;
+		}
+
+		@Override
+		public boolean doesSectionHaveFooter(int sectionIndex) {
+			return false;
+		}
+
+		@Override
+		public ItemViewHolder onCreateItemViewHolder(ViewGroup parent, int itemType) {
+			LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+			View v = inflater.inflate(R.layout.list_item_sync_log_entry_line_item, parent, false);
+			return new ItemViewHolder(v);
+		}
+
+		@Override
+		public HeaderViewHolder onCreateHeaderViewHolder(ViewGroup parent, int headerType) {
+			LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+			View v = inflater.inflate(R.layout.list_item_sync_log_entry_line_item_phase, parent, false);
+			return new PhaseHeaderViewHolder(v);
+		}
+
+		@Override
+		public void onBindItemViewHolder(SectioningAdapter.ItemViewHolder viewHolder, int sectionIndex, int itemIndex, int itemType) {
+			Section s = sections.get(sectionIndex);
+			SyncLogEntryLineItem item = s.items.get(itemIndex);
+
+			ItemViewHolder ivh = (ItemViewHolder) viewHolder;
+			ivh.lineItemTextView.setText(item.getLineItem());
+			ivh.dateTextView.setText(dateFormatter.format(item.getTimestamp()));
+
+			if (item.hasFailure()) {
+				ivh.failureTextView.setVisibility(View.VISIBLE);
+				ivh.failureTextView.setText(item.getFailure());
+			} else {
+				ivh.failureTextView.setVisibility(View.GONE);
+			}
+		}
+
+		@Override
+		public void onBindHeaderViewHolder(SectioningAdapter.HeaderViewHolder viewHolder, int sectionIndex, int headerType) {
+			Section s = sections.get(sectionIndex);
+			PhaseHeaderViewHolder hvh = (PhaseHeaderViewHolder) viewHolder;
+			hvh.titleTextView.setText(s.title);
+		}
+
 	}
 }

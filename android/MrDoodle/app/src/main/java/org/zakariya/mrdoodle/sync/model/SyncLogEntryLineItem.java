@@ -31,6 +31,10 @@ public class SyncLogEntryLineItem extends RealmObject {
 		this.failure = failure;
 	}
 
+	public boolean hasFailure() {
+		return !TextUtils.isEmpty(failure);
+	}
+
 	public String getLineItem() {
 		return lineItem;
 	}

@@ -76,6 +76,9 @@ dependencies {
 	// https://github.com/ShamylZakariya/FlyoutMenus
 	compile 'org.zakariya.flyoutmenus:flyoutmenu:0.5.2'
 
+	// https://github.com/ShamylZakariya/StickyHeaders
+	compile 'org.zakariya.stickyheaders:stickyheaders:0.7.5'
+
 	// https://github.com/rubensousa/BottomSheetBuilder
 	compile 'com.github.rubensousa:BottomSheetBuilder:1.3'
 

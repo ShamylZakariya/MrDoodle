@@ -15,7 +15,7 @@
 	<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	              xmlns:tools="http://schemas.android.com/tools"
 	              android:layout_width="match_parent"
-	              android:layout_height="match_parent"
+	              android:layout_height="wrap_content"
 	              android:paddingLeft="@dimen/activity_horizontal_margin"
 	              android:paddingRight="@dimen/activity_horizontal_margin"
 	              android:paddingTop="@dimen/activity_vertical_margin"
@@ -46,34 +46,17 @@
 			tools:text="Unable to connect to server, code XXX"
 			android:layout_width="match_parent"
 			android:textAppearance="?android:attr/textAppearanceSmall"
+			android:textColor="@color/trouble"
 			android:layout_height="wrap_content"/>
 
-		<TextView
-			android:layout_width="match_parent"
-			android:layout_height="wrap_content"
-			android:text="@string/sync_log_entry_detail_transcript"
-			style="@style/Body2"
-			android:textAllCaps="true"
-			android:textColor="@color/primaryLight"
-		    android:paddingTop="16dp"
-			android:paddingBottom="16dp"
-			/>
-
-		<ScrollView
-			android:layout_width="match_parent"
-			android:layout_height="0dp"
-			android:layout_weight="1">
-
-			<TextView
-				android:id="@+id/logTextView"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:typeface="monospace"
-				android:textSize="12sp"/>
-
-		</ScrollView>
-
-
 	</LinearLayout>
+
+	<android.support.v7.widget.RecyclerView
+		android:id="@+id/logItemRecyclerView"
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		android:layout_weight="1"
+		android:scrollbars="vertical"
+		android:scrollbarStyle="insideOverlay"/>
 
 </LinearLayout>
