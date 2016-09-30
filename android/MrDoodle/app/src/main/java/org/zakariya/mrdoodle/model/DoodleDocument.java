@@ -38,7 +38,7 @@ public class DoodleDocument extends RealmObject {
 	private static final int COOKIE = 0xD0D1;
 	private static final int MAX_REALM_BYTE_ARRAY_SIZE = 1024 * 1024 * 8; // 8 megs. Realm can do 16 but let's be safe.
 
-	public static final String BLOB_TYPE = "DoodleDocument";
+	public static final String DOCUMENT_TYPE = "DoodleDocument";
 
 
 	@PrimaryKey

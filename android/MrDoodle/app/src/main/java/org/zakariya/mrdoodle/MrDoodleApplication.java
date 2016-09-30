@@ -41,7 +41,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 	private BackgroundWatcher backgroundWatcher;
 	private RealmConfiguration realmConfiguration;
-	private ChangeJournalNotifier changeJournalNotifier;
+	private LocalChangeListener localChangeListener;
 	private Handler handler;
 
 	@Override
@@ -110,8 +110,8 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		SyncManager.init(this, new SyncConfiguration(), new SyncModelAdapter());
 
 		// set up notifier to let change journal capture model events
-		changeJournalNotifier = new ChangeJournalNotifier(SyncManager.getInstance());
-		changeJournalNotifier.setActive(true);
+		localChangeListener = new LocalChangeListener(SyncManager.getInstance());
+		localChangeListener.setActive(true);
 
 		// we need to listen to sync start/stop events to turn on or off the change journal notifier
 		SyncManager.getInstance().addSyncStateListener(this);
@@ -135,14 +135,14 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	}
 
 	private void stopChangeNotifier() {
-		changeJournalNotifier.setActive(false);
+		localChangeListener.setActive(false);
 	}
 
 	private void startChangeNotifier(@Nullable final List<RemoteChangeReport> changes) {
 
 		// this may be called from a background thread. We need to prevent a race condition
 		// where using BusProvider.postOnMainThread will cause the events to be posted at a
-		// future date, and our changeJournalNotifier has been re-activated, so instead
+		// future date, and our localChangeListener has been re-activated, so instead
 		// we're just doing the whole thing on the main thread via a handler.
 
 		handler.post(new Runnable() {
@@ -150,7 +150,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 			public void run() {
 
 				// be certain these events won't be consumed
-				changeJournalNotifier.setActive(false);
+				localChangeListener.setActive(false);
 				Bus bus = BusProvider.getMainThreadBus();
 				if (changes != null) {
 					for (RemoteChangeReport report : changes) {
@@ -169,7 +169,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 					}
 				}
 
-				changeJournalNotifier.setActive(true);
+				localChangeListener.setActive(true);
 			}
 		});
 	}
@@ -183,7 +183,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		@Override
 		public Action setModelObjectData(String blobId, String blobType, byte[] blobData) throws Exception {
 			switch (blobType) {
-				case DoodleDocument.BLOB_TYPE: {
+				case DoodleDocument.DOCUMENT_TYPE: {
 
 					Realm realm = Realm.getDefaultInstance();
 					try {
@@ -207,7 +207,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		@Override
 		public byte[] getModelObjectData(String blobId, String blobType) throws Exception {
 			switch (blobType) {
-				case DoodleDocument.BLOB_TYPE: {
+				case DoodleDocument.DOCUMENT_TYPE: {
 
 					Realm realm = Realm.getDefaultInstance();
 					try {
@@ -228,7 +228,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		@Override
 		public boolean deleteModelObject(String modelId, String modelType) throws Exception {
 			switch (modelType) {
-				case DoodleDocument.BLOB_TYPE:
+				case DoodleDocument.DOCUMENT_TYPE:
 					Realm realm = Realm.getDefaultInstance();
 					try {
 						DoodleDocument doc = DoodleDocument.byUUID(realm, modelId);
@@ -243,15 +243,15 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	}
 
 	/**
-	 * ChangeJournalNotifier
-	 * Listens to model events (write/delete/etc) and forwards them to the change journal to record
+	 * LocalChangeListener
+	 * Listens to model events (write/delete/etc) and forwards them to the sync manager
 	 */
-	private static class ChangeJournalNotifier {
+	private static class LocalChangeListener {
 
 		private SyncManager syncManager;
 		private boolean active;
 
-		ChangeJournalNotifier(SyncManager syncManager) {
+		LocalChangeListener(SyncManager syncManager) {
 			this.syncManager = syncManager;
 			BusProvider.getMainThreadBus().register(this);
 		}
@@ -267,21 +267,21 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		@Subscribe
 		public void onDoodleDocumentCreated(DoodleDocumentCreatedEvent event) {
 			if (isActive()) {
-				syncManager.getChangeJournal().markModified(event.getUuid(), DoodleDocument.BLOB_TYPE);
+				syncManager.markLocalDocumentCreation(event.getUuid(), DoodleDocument.DOCUMENT_TYPE);
 			}
 		}
 
 		@Subscribe
 		public void onDoodleDocumentWasDeleted(DoodleDocumentWasDeletedEvent event) {
 			if (isActive()) {
-				syncManager.getChangeJournal().markDeleted(event.getUuid(), DoodleDocument.BLOB_TYPE);
+				syncManager.markLocalDocumentDeletion(event.getUuid(), DoodleDocument.DOCUMENT_TYPE);
 			}
 		}
 
 		@Subscribe
 		public void onDoodleDocumentModified(DoodleDocumentEditedEvent event) {
 			if (isActive()) {
-				syncManager.getChangeJournal().markModified(event.getUuid(), DoodleDocument.BLOB_TYPE);
+				syncManager.markLocalDocumentModification(event.getUuid(), DoodleDocument.DOCUMENT_TYPE);
 			}
 		}
 

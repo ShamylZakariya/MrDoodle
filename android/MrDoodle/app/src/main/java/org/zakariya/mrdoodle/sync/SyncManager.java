@@ -29,6 +29,7 @@ import io.realm.Realm;
 import rx.Observable;
 import rx.Observer;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
 /**
@@ -37,7 +38,8 @@ import rx.schedulers.Schedulers;
 @SuppressWarnings("TryFinallyCanBeTryWithResources")
 public class SyncManager implements SyncServerConnection.NotificationListener {
 
-	private static final int SYNC_TRIGGER_DEBOUNCE_MILLIS = 500;
+	private static final int REMOTE_STATUS_CHANGE_SYNC_TRIGGER_DEBOUNCE_MILLIS = 500;
+	private static final int LOCAL_UPDATE_SYNC_TRIGGER_DEBOUNCE_MILLIS = 1000;
 
 	public interface ModelDataAdapter extends SyncEngine.ModelObjectDataConsumer, SyncEngine.ModelObjectDataProvider, SyncEngine.ModelObjectDeleter {
 	}
@@ -63,7 +65,8 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private SyncEngine syncEngine;
 	private ModelDataAdapter modelDataAdapter;
 	private List<WeakReference<SyncStateListener>> syncStateListeners = new ArrayList<>();
-	private Debouncer syncTriggerDebouncer;
+	private Debouncer<RemoteStatus> remoteStatusSyncTriggerDebouncer;
+	private Debouncer<Void> localChangeSyncTriggerDebouncer;
 
 	public static void init(Context context, SyncConfiguration syncConfiguration, ModelDataAdapter modelDataAdapter) {
 		if (instance == null) {
@@ -92,15 +95,29 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		timestampRecorder = new TimestampRecorder();
 		syncEngine = new SyncEngine(context, syncConfiguration);
 
-		syncTriggerDebouncer = new Debouncer(SYNC_TRIGGER_DEBOUNCE_MILLIS, new Debouncer.Listener() {
+		remoteStatusSyncTriggerDebouncer = new Debouncer<>(REMOTE_STATUS_CHANGE_SYNC_TRIGGER_DEBOUNCE_MILLIS, new Action1<RemoteStatus>() {
 			@Override
-			public void call(Object o) {
-				triggerSyncIfNeeded((RemoteStatus) o);
+			public void call(RemoteStatus remoteStatus) {
+				triggerBackgroundSyncForRemoteStatusChange(remoteStatus);
+			}
+		});
+
+		localChangeSyncTriggerDebouncer = new Debouncer<Void>(LOCAL_UPDATE_SYNC_TRIGGER_DEBOUNCE_MILLIS, new Action1<Void>() {
+			@Override
+			public void call(Void aVoid) {
+				triggerBackgroundSyncForLocalStatusChange();
 			}
 		});
 
 		updateAuthorizationToken();
 		startOrStopSyncServices();
+	}
+
+	/**
+	 * @return true if SyncManager is connected to the sync server
+	 */
+	public boolean isConnected() {
+		return getSyncServerConnection().isConnected();
 	}
 
 	public SyncConfiguration getSyncConfiguration() {
@@ -121,13 +138,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	public SyncEngine getSyncEngine() {
 		return syncEngine;
-	}
-
-	/**
-	 * @return true iff connected to server and sync services are running
-	 */
-	public boolean isRunning() {
-		return running;
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -287,6 +297,35 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		startOrStopSyncServices();
 	}
 
+	/**
+	 * Record a local data store document creation event in the change journal, possibly kicking off a sync
+	 * @param id document id
+	 * @param type document type
+	 */
+	public void markLocalDocumentCreation(String id, String type) {
+		markLocalDocumentModification(id, type);
+	}
+
+	/**
+	 * Record a local data store document edit event in the change journal, possibly kicking off a sync
+	 * @param id document id
+	 * @param type document type
+	 */
+	public void markLocalDocumentModification(String id, String type) {
+		getChangeJournal().markModified(id, type);
+		localChangeSyncTriggerDebouncer.send(null);
+	}
+
+	/**
+	 * Record a local data store document deletion event in the change journal, possibly kicking off a sync
+	 * @param id document id
+	 * @param type document type
+	 */
+	public void markLocalDocumentDeletion(String id, String type) {
+		getChangeJournal().markDeleted(id, type);
+		localChangeSyncTriggerDebouncer.send(null);
+	}
+
 	///////////////////////////////////////////////////////////////////
 
 	private void connect() {
@@ -307,15 +346,14 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	///////////////////////////////////////////////////////////////////
 
-	private void triggerSyncIfNeeded(RemoteStatus remoteStatus) {
-		SyncState currentLocalSyncState = getSyncState();
+	private void performBackgroundSync() {
 
-		// remote timestamp head is newer than ours - looks like we need to sync
-		if (!isSyncing() && remoteStatus.timestampHeadSeconds > currentLocalSyncState.getTimestampHeadSeconds()) {
+		if (!isConnected()) {
+			return;
+		}
 
-			Log.i(TAG, "triggerSyncIfNeeded: remote timestampHeadSeconds (" + remoteStatus.timestampHeadSeconds + ") is newer than ours (" + currentLocalSyncState.getTimestampHeadSeconds() + ") - starting sync.");
-
-			sync().subscribeOn(Schedulers.io())
+		Log.i(TAG, "performBackgroundSync: kicking off background sync");
+		sync().subscribeOn(Schedulers.io())
 				.observeOn(AndroidSchedulers.mainThread())
 				.subscribe(new Observer<SyncReport>() {
 					@Override
@@ -325,14 +363,46 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 					@Override
 					public void onError(Throwable e) {
 						// TODO: Show some kind of unobtrusive error message?
-						Log.e(TAG, "triggerSyncIfNeeded - onError: ", e);
+						Log.e(TAG, "performBackgroundSync - onError: ", e);
 					}
 
 					@Override
 					public void onNext(SyncReport syncReport) {
-						Log.i(TAG, "triggerSyncIfNeeded - onNext: Sync completed successfully: " + syncReport);
+						Log.i(TAG, "performBackgroundSync - onNext: Sync completed successfully: " + syncReport);
 					}
 				});
+	}
+
+	private void triggerBackgroundSyncForLocalStatusChange() {
+		if (!isSyncing()) {
+			Log.i(TAG, "triggerBackgroundSyncForLocalStatusChange:");
+			performBackgroundSync();
+		} else {
+			// we're currently syncing - try again in the future. the debouncer will
+			// re-call this method in LOCAL_UPDATE_SYNC_TRIGGER_DEBOUNCE_MILLIS
+			Log.i(TAG, "triggerBackgroundSyncForLocalStatusChange: sync in progress, scheduling re-attempt...");
+			localChangeSyncTriggerDebouncer.send(null);
+		}
+	}
+
+	private void triggerBackgroundSyncForRemoteStatusChange(RemoteStatus remoteStatus) {
+		SyncState currentLocalSyncState = getSyncState();
+
+		// remote timestamp head is newer than ours - looks like we need to sync
+		if (remoteStatus.timestampHeadSeconds > currentLocalSyncState.getTimestampHeadSeconds()) {
+
+			if (!isSyncing()) {
+				Log.i(TAG, "triggerBackgroundSyncForRemoteStatusChange: remote timestampHeadSeconds (" + remoteStatus.timestampHeadSeconds + ") is newer than ours (" + currentLocalSyncState.getTimestampHeadSeconds() + ") - starting sync.");
+				performBackgroundSync();
+			} else {
+
+				// we're currently syncing - try again in the future. the debouncer will
+				// re-deliver remote status to us in REMOTE_STATUS_CHANGE_SYNC_TRIGGER_DEBOUNCE_MILLIS
+
+				Log.i(TAG, "triggerBackgroundSyncForRemoteStatusChange: sync in progress, scheduling re-attempt...");
+				remoteStatusSyncTriggerDebouncer.send(remoteStatus);
+			}
+
 		}
 	}
 
@@ -417,9 +487,9 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	///////////////////////////////////////////////////////////////////
 
 	@Override
-	public void onStatusReceived(RemoteStatus remoteStatus) {
-		Log.i(TAG, "onStatusReceived: received Status notification from web socket connection: " + remoteStatus.toString());
-		syncTriggerDebouncer.send(remoteStatus);
+	public void onRemoteStatusReceived(RemoteStatus remoteStatus) {
+		Log.i(TAG, "onRemoteStatusReceived: received Status notification from web socket connection: " + remoteStatus.toString());
+		remoteStatusSyncTriggerDebouncer.send(remoteStatus);
 	}
 
 	///////////////////////////////////////////////////////////////////

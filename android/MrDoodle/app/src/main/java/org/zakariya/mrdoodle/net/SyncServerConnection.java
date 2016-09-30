@@ -28,7 +28,7 @@ import java.util.Map;
 public class SyncServerConnection extends WebSocketConnection {
 
 	public interface NotificationListener {
-		void onStatusReceived(RemoteStatus remoteStatus);
+		void onRemoteStatusReceived(RemoteStatus remoteStatus);
 	}
 
 	private static final String TAG = SyncServerConnection.class.getSimpleName();
@@ -139,7 +139,7 @@ public class SyncServerConnection extends WebSocketConnection {
 				RemoteStatus remoteStatus = gson.fromJson(text, RemoteStatus.class);
 				if (remoteStatus != null) {
 					for (NotificationListener listener : notificationListeners) {
-						listener.onStatusReceived(remoteStatus);
+						listener.onRemoteStatusReceived(remoteStatus);
 					}
 				}
 			} catch (JsonSyntaxException e) {
