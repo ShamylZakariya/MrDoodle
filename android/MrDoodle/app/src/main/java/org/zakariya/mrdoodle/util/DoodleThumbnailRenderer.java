@@ -229,7 +229,10 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 
 			if (document != null) {
 				StrokeDoodle doodle = document.loadDoodle(context);
+				boolean clampingEnabled = doodle.isTransformRangeClampingEnabled();
+				doodle.setTransformRangeClampingEnabled(false);
 				doodle.draw(bitmapCanvas, width, height, true, padding);
+				doodle.setTransformRangeClampingEnabled(clampingEnabled);
 			}
 			realm.close();
 
