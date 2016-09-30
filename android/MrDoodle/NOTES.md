@@ -1,9 +1,10 @@
 #Sync
 
+Got an issue when deleting items. I get a JsonReader parse exception, replying that char 1, line 1 "$" is not acceptable, which it isn't. Why am I getting a "$" back?
+
+Think I need to log in a more finely grained manner
 
 #Currently
-
-- Doodle thumbnails simply NEVER have correct content cropping.
 
 - Divide brush radius by current zoom level. this will allow for delicate hairlines when zoomed in.
 

@@ -186,12 +186,14 @@ public class DoodleDocumentGridFragment extends Fragment
 		layoutManager = new GridLayoutManager(getContext(), columns);
 		recyclerView.setLayoutManager(layoutManager);
 		recyclerView.addOnItemTouchListener(new RecyclerItemClickListener(getContext(), recyclerView, this));
+
 		recyclerView.addItemDecoration(new DividerItemDecoration(
 				getResources().getDimension(R.dimen.doodle_grid_item_border_width),
 				ContextCompat.getColor(getContext(), R.color.doodleGridThumbnailBorder)
 		));
 
-		adapter = new DoodleDocumentAdapter(recyclerView, getContext(), columns, emptyView);
+		adapter = new DoodleDocumentAdapter(recyclerView, getContext(), columns, getResources().getDimension(R.dimen.doodle_grid_item_thumbnail_padding), emptyView);
+
 		recyclerView.setAdapter(adapter);
 
 		return v;

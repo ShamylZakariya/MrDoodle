@@ -111,7 +111,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		}
 	};
 
-	public DoodleDocumentAdapter(RecyclerView recyclerView, Context context, int columns, View emptyView) {
+	public DoodleDocumentAdapter(RecyclerView recyclerView, Context context, int columns, float thumbnailPadding, View emptyView) {
 		this.context = context;
 		this.emptyView = emptyView;
 		weakRecyclerView = new WeakReference<>(recyclerView);
@@ -119,7 +119,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		this.realm = Realm.getDefaultInstance();
 		dateFormatter = DateFormat.getDateTimeInstance();
 		crossFadeDuration = context.getResources().getInteger(android.R.integer.config_shortAnimTime);
-		thumbnailPadding = 4 * context.getResources().getDimensionPixelSize(R.dimen.doodle_grid_item_border_width);
+		this.thumbnailPadding = thumbnailPadding;
 
 		updateItems();
 	}

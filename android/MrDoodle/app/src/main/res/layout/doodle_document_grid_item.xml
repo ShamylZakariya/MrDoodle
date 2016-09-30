@@ -4,14 +4,13 @@
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:orientation="vertical">
 
 	<ImageView
 		android:id="@+id/imageView"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:scaleType="centerCrop"
+		android:scaleType="centerInside"
 		tools:ignore="ContentDescription"
 		/>
 
@@ -19,11 +18,11 @@
 		android:id="@+id/loadingImageView"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
+		android:background="@color/windowBackground"
+		android:scaleType="center"
 		android:src="@drawable/icon_thumbnail_rendering"
 		android:tint="@color/placeholderIconTint"
-		android:scaleType="center"
 		tools:ignore="ContentDescription"
-		android:background="@color/windowBackground"
 		/>
 
 	<LinearLayout
@@ -47,8 +46,6 @@
 			tools:text="Name"/>
 
 	</LinearLayout>
-
-
 
 
 </org.zakariya.mrdoodle.ui.view.SquareFrameLayout>
