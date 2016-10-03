@@ -102,7 +102,7 @@ public class SyncServer {
 		}
 	}
 
-	public static void flushStorage(JedisPool pool, String prefix) {
+	private static void flushStorage(JedisPool pool, String prefix) {
 		logger.info("Deleting all storage under the {}* namespace", prefix);
 		try (Jedis jedis = pool.getResource()) {
 			Set<String> keys = jedis.keys(prefix + "*");

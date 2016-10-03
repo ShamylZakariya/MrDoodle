@@ -188,6 +188,10 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		// confirm delete of valid blob id is success
 		response = request("DELETE", getPath() + "blob/" + DATA1_ID, authorizedWriteSessionHeaders);
 		assertEquals("DELETE of DATA1_ID should return status 200", 200, response.getStatus());
+		TimestampRecordEntry deletionTimestamp = response.getBody(TimestampRecordEntry.class);
+		assertEquals("DELETE of DATA1_ID should respond with timestamp record entry with same document id", deletionTimestamp.getDocumentId(), DATA1_ID);
+		assertEquals("DELETE of DATA1_ID should respond with timestamp record entry with same document type", deletionTimestamp.getDocumentType(), DATA_TYPE);
+		assertEquals("DELETE of DATA1_ID should response with timestamp record entry with DELETE action", deletionTimestamp.getAction(), TimestampRecord.Action.DELETE.ordinal());
 
 		// confirm DATA1 is still in store since session isn't committed
 		response = request("GET", getPath() + "blob/" + DATA1_ID, authHeader);
@@ -210,7 +214,9 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		assertNotNull("Having committed write session, changes should include our data", changes.get(DATA1_ID));
 		assertNotNull("Having committed write session, changes should include our data", changes.get(DATA2_ID));
 		assertEquals("changes should have DATA1_ID as DELETE action", TimestampRecord.Action.DELETE.ordinal(), changes.get(DATA1_ID).getAction());
+		assertEquals("changes should have DATA1_ID have correct document type", DATA_TYPE, changes.get(DATA1_ID).getDocumentType());
 		assertEquals("changes should have DATA2_ID as WRITE action", TimestampRecord.Action.WRITE.ordinal(), changes.get(DATA2_ID).getAction());
+		assertEquals("changes should have DATA2_ID have correct document type", DATA_TYPE, changes.get(DATA2_ID).getDocumentType());
 
 	}
 

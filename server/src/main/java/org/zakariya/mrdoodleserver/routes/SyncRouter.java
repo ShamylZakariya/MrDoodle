@@ -319,20 +319,29 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		TimestampRecord timestampRecord = session.getTimestampRecord();
 		BlobStore blobStore = session.getBlobStore();
 
-		// the blob may be in the current write session or the committed main store
-		if (!syncManager.getBlobStore().has(blobId) && !blobStore.has(blobId)) {
+		// find whether blob lives in committed main store or this write session's store, and
+		// extract the document type.
+
+		String blobType;
+		if (syncManager.getBlobStore().has(blobId)) {
+			blobType = syncManager.getBlobStore().getType(blobId);
+		} else if (blobStore.has(blobId)) {
+			blobType = blobStore.getType(blobId);
+		} else {
 			sendErrorAndHalt(response, 404, "SyncRouter::deleteBlob - blob id \"" + blobId + "\" is not valid");
 			return null;
 		}
 
-		// delete blob
-		logger.debug("SyncRouter::deleteBlob - will delete blob \"{}\"", blobId);
-		String blobType = blobStore.getType(blobId);
+
+		// delete blob - note the session blob store may not actually have the blob,
+		// but the deletion will be recorded and applied when merged with the committed store
 		blobStore.delete(blobId);
 
 		// record deletion.
 		long timestamp = syncManager.getTimestampSeconds();
 		TimestampRecordEntry entry = timestampRecord.record(blobId, blobType, timestamp, TimestampRecord.Action.DELETE);
+
+		logger.info("Deleted blob: {} type: {} timestamp: {}", blobId, blobType, timestamp);
 
 		response.type(RESPONSE_TYPE_JSON);
 		return entry;
@@ -402,7 +411,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				// now check if any users of a particular account are still connected. if
 				// not, we can free that account's syncManager
 				if (connection.getTotalConnectedDevicesForUserId(userId) == 0) {
-					logger.info("SyncRouter::onUserSessionDisconnected - userId: {} has no connected devices. Freeing user's syncManager", userId);
+					logger.info("SyncRouter::onWebSocketConnectionCreated#onUserSessionDisconnected - userId: {} has no connected devices. Freeing user's syncManager", userId);
 					syncManager.close();
 					syncManagersByAccountId.remove(userId);
 				}

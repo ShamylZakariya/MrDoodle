@@ -107,7 +107,7 @@ public class BlobStore {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
 			transaction.set(getEntryIdKey(accountId, namespace, id), id);
-			transaction.set(getEntryModelClassKey(accountId, namespace, id), type);
+			transaction.set(getEntryTypeKey(accountId, namespace, id), type);
 			transaction.set(getEntryTimestampKey(accountId, namespace, id), Long.toString(timestamp));
 			transaction.set(getEntryDataKey(accountId, namespace, id).getBytes(), data);
 			transaction.exec();
@@ -124,7 +124,7 @@ public class BlobStore {
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
 			Response<String> idResponse = transaction.get(getEntryIdKey(accountId, namespace, id));
-			Response<String> modelClassResponse = transaction.get(getEntryModelClassKey(accountId, namespace, id));
+			Response<String> modelClassResponse = transaction.get(getEntryTypeKey(accountId, namespace, id));
 			Response<String> timestampResponse = transaction.get(getEntryTimestampKey(accountId, namespace, id));
 			Response<byte[]> byteResponse = transaction.get(getEntryDataKey(accountId, namespace, id).getBytes());
 
@@ -144,9 +144,14 @@ public class BlobStore {
 		}
 	}
 
+	/**
+	 * Get just the data type of a blob
+	 * @param id the id of the blob in question
+	 * @return the type assigned when the blob was written
+	 */
 	public String getType(String id) {
 		try (Jedis jedis = jedisPool.getResource()) {
-			return jedis.get(getEntryModelClassKey(accountId, namespace, id));
+			return jedis.get(getEntryTypeKey(accountId, namespace, id));
 		}
 	}
 
@@ -160,7 +165,7 @@ public class BlobStore {
 		try (Jedis jedis = jedisPool.getResource()) {
 			return jedis.exists(
 					getEntryIdKey(accountId, namespace, id),
-					getEntryModelClassKey(accountId, namespace, id),
+					getEntryTypeKey(accountId, namespace, id),
 					getEntryTimestampKey(accountId, namespace, id),
 					getEntryDataKey(accountId, namespace, id)) == 4;
 		}
@@ -172,14 +177,14 @@ public class BlobStore {
 	 * @param id the id of the blob to remove
 	 */
 	public void delete(String id) {
+		deletions.add(id);
 		try (Jedis jedis = jedisPool.getResource()) {
 			Transaction transaction = jedis.multi();
 			transaction.del(getEntryIdKey(accountId, namespace, id));
-			transaction.del(getEntryModelClassKey(accountId, namespace, id));
+			transaction.del(getEntryTypeKey(accountId, namespace, id));
 			transaction.del(getEntryTimestampKey(accountId, namespace, id));
 			transaction.del(getEntryDataKey(accountId, namespace, id));
 			transaction.exec();
-			deletions.add(id);
 		}
 	}
 
@@ -212,7 +217,7 @@ public class BlobStore {
 				Transaction writeTransaction = jedis.multi();
 				for (String id : writes) {
 					writeTransaction.rename(getEntryIdKey(accountId, namespace, id), getEntryIdKey(store.getAccountId(), store.getNamespace(), id));
-					writeTransaction.rename(getEntryModelClassKey(accountId, namespace, id), getEntryModelClassKey(store.getAccountId(), store.getNamespace(), id));
+					writeTransaction.rename(getEntryTypeKey(accountId, namespace, id), getEntryTypeKey(store.getAccountId(), store.getNamespace(), id));
 					writeTransaction.rename(getEntryTimestampKey(accountId, namespace, id), getEntryTimestampKey(store.getAccountId(), store.getNamespace(), id));
 					writeTransaction.rename(getEntryDataKey(accountId, namespace, id), getEntryDataKey(store.getAccountId(), store.getNamespace(), id));
 				}
@@ -225,7 +230,7 @@ public class BlobStore {
 				Transaction deleteTransaction = jedis.multi();
 				for (String id : deletions) {
 					deleteTransaction.del(getEntryIdKey(store.getAccountId(), store.getNamespace(), id));
-					deleteTransaction.del(getEntryModelClassKey(store.getAccountId(), store.getNamespace(), id));
+					deleteTransaction.del(getEntryTypeKey(store.getAccountId(), store.getNamespace(), id));
 					deleteTransaction.del(getEntryTimestampKey(store.getAccountId(), store.getNamespace(), id));
 					deleteTransaction.del(getEntryDataKey(store.getAccountId(), store.getNamespace(), id));
 				}
@@ -247,7 +252,7 @@ public class BlobStore {
 		return getEntryRootKey(accountId, namespace) + id + ":data";
 	}
 
-	static String getEntryModelClassKey(String accountId, String namespace, String id) {
+	static String getEntryTypeKey(String accountId, String namespace, String id) {
 		return getEntryRootKey(accountId, namespace) + id + ":type";
 	}
 

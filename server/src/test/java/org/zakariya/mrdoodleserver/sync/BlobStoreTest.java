@@ -47,7 +47,7 @@ public class BlobStoreTest {
 		// confirm the data is deleted
 		try (Jedis jedis = pool.getResource()) {
 			assertFalse("blob id should be deleted", jedis.exists(BlobStore.getEntryIdKey(accountId, mainStore.getNamespace(), e.getId())));
-			assertFalse("blob type should be deleted", jedis.exists(BlobStore.getEntryModelClassKey(accountId, mainStore.getNamespace(), e.getId())));
+			assertFalse("blob type should be deleted", jedis.exists(BlobStore.getEntryTypeKey(accountId, mainStore.getNamespace(), e.getId())));
 			assertFalse("blob timestamp should be deleted", jedis.exists(BlobStore.getEntryTimestampKey(accountId, mainStore.getNamespace(), e.getId())));
 			assertFalse("blob data should be deleted", jedis.exists(BlobStore.getEntryDataKey(accountId, mainStore.getNamespace(), e.getId())));
 		}
