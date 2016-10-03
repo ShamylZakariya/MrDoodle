@@ -29,7 +29,8 @@ public class SyncLogEntry extends RealmObject {
 		PULL_START,
 		PULL_ITEM,
 		PULL_COMPLETE,
-		COMPLETE
+		COMPLETE,
+		FAILED
 	}
 
 	private String uuid;
@@ -88,7 +89,8 @@ public class SyncLogEntry extends RealmObject {
 
 	public void appendError(Phase phase, String message, Throwable t) {
 		failure = t.getMessage();
-		lineItems.add(new SyncLogEntryLineItem(phase.ordinal(), new Date(), message, failure));
+		String longFailure = failure + "\n" + throwableStacktraceToString(t);
+		lineItems.add(new SyncLogEntryLineItem(phase.ordinal(), new Date(), message, longFailure));
 	}
 
 	public String getLog() {

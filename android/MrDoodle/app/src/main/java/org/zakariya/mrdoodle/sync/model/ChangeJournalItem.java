@@ -50,12 +50,9 @@ public class ChangeJournalItem extends RealmObject {
 		return change;
 	}
 
-	public static String toString(ChangeJournalItem c) {
-		if (c != null) {
-			return "<ChangeJournalItem modelObjectId: " + c.getModelObjectId() + " modelObjectClass: " + c.getModelObjectClass() + " type: " + ChangeType.values()[c.getChangeType()].name() + ">";
-		}
-
-		return "<ChangeJournalItem null>";
+	@Override
+	public String toString() {
+		return "[ChangeJournalItem modelObjectId: " + getModelObjectId() + " modelObjectClass: " + getModelObjectClass() + " type: " + ChangeType.values()[getChangeType()].name() + "]";
 	}
 
 	public String getPrefix() {

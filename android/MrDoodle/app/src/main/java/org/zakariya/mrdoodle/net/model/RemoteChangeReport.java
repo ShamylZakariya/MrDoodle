@@ -30,6 +30,6 @@ public class RemoteChangeReport {
 
 	@Override
 	public String toString() {
-		return "[RemoteChange id: " + documentId + " action: " + action + "]";
+		return "[RemoteChange action: " + action + " id: " + documentId + "]";
 	}
 }

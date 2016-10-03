@@ -27,6 +27,6 @@ public class TimestampRecordEntry {
 
 	@Override
 	public String toString() {
-		return "[TimestampRecordEntry documentId: " + documentId + " timestampSeconds: " + timestampSeconds + " action: " + Action.values()[action] + "]";
+		return "[TimestampRecordEntry action: " + Action.values()[action] + " documentId: " + documentId + " documentType: " + documentType + " timestampSeconds: " + timestampSeconds + "]";
 	}
 }

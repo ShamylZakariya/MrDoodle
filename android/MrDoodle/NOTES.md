@@ -1,8 +1,8 @@
 #Sync
 
-Got an issue when deleting items. I get a JsonReader parse exception, replying that char 1, line 1 "$" is not acceptable, which it isn't. Why am I getting a "$" back?
-
-Think I need to log in a more finely grained manner
+Remote deletes are problematic
+	- we send the DELETE upstream, but when the remote changes are merged back, the remote delete timestamp record entry is missing the documentType, it's null.
+	    - is this a problem server side? or mismatched field name GSON issue?
 
 #Currently
 

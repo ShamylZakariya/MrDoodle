@@ -232,8 +232,12 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 					Realm realm = Realm.getDefaultInstance();
 					try {
 						DoodleDocument doc = DoodleDocument.byUUID(realm, modelId);
-						DoodleDocument.delete(MrDoodleApplication.getInstance().getApplicationContext(), realm, doc);
-						return true;
+						if (doc != null) {
+							DoodleDocument.delete(MrDoodleApplication.getInstance().getApplicationContext(), realm, doc);
+							return true;
+						} else {
+							return false;
+						}
 					} finally {
 						realm.close();
 					}

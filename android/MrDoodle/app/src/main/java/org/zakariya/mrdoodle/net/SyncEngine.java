@@ -39,6 +39,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.converter.scalars.ScalarsConverterFactory;
 
 import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.COMPLETE;
+import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.FAILED;
 import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PULL_COMPLETE;
 import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PULL_ITEM;
 import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PULL_START;
@@ -257,6 +258,12 @@ public class SyncEngine {
 
 			return syncReport;
 
+		} catch (Exception e) {
+
+			// log & rethrow
+			log(log, FAILED, "Sync failed", e);
+			throw e;
+
 		} finally {
 			log(log, COMPLETE, "DONE");
 
@@ -303,15 +310,16 @@ public class SyncEngine {
 			for (ChangeJournalItem change : changesToPushUpstream) {
 
 				// push the change and mark that the change has been pushed
-				pushLocalChange(timestampRecorder, modelObjectDataProvider, accountId, writeSessionToken, change);
-				log(log, PUSH_ITEM, "Pushed item: \"" + change.getModelObjectId() + " upstream");
+				pushLocalChange(log, timestampRecorder, modelObjectDataProvider, accountId, writeSessionToken, change);
 				changeJournal.clear(change.getModelObjectId());
+
 			}
 
 			// 3) Commit write session. If we get a status response, the session was closed
 			// successfully, and we return it for the push phase to consume
 
 			if (writeSessionToken != null) {
+				log(log, PUSH_COMPLETE, "Finished PUSH phase successfully");
 				RemoteStatus remoteStatus = commitWriteSession(accountId, writeSessionToken);
 				if (remoteStatus != null) {
 					writeSessionToken = null; // mark null so finally{} block doesn't try again
@@ -323,7 +331,7 @@ public class SyncEngine {
 
 		} catch (Throwable t) {
 			// log and rethrow
-			log(log, PUSH_COMPLETE, "Sync failed", t);
+			log(log, PUSH_COMPLETE, "Failed push", t);
 			throw t;
 		} finally {
 
@@ -333,7 +341,7 @@ public class SyncEngine {
 			// and that exception will already be in-flight
 
 			if (writeSessionToken != null) {
-				log(log, PUSH_COMPLETE, "After failed sync, attempting to close write session: \"" + writeSessionToken + "\"");
+				log(log, PUSH_COMPLETE, "After failed PUSH phase, attempting to close write session: \"" + writeSessionToken + "\"");
 				try {
 					syncService.commitWriteSession(accountId, writeSessionToken).execute();
 					log(log, PUSH_COMPLETE, "Write session closed.");
@@ -364,11 +372,13 @@ public class SyncEngine {
 		}
 	}
 
-	private void pushLocalChange(TimestampRecorder timestampRecorder, ModelObjectDataProvider modelObjectDataProvider, String accountId, String writeToken, ChangeJournalItem change) throws Exception {
+	private void pushLocalChange(SyncLogEntry log, TimestampRecorder timestampRecorder, ModelObjectDataProvider modelObjectDataProvider, String accountId, String writeToken, ChangeJournalItem change) throws Exception {
 		String id = change.getModelObjectId();
 		String modelClass = change.getModelObjectClass();
 		ChangeType type = ChangeType.values()[change.getChangeType()];
 		TimestampRecordEntry timestampRecordEntry = null;
+
+		log(log, PUSH_ITEM, "Pushing change: " + change);
 
 		switch (type) {
 			case MODIFY: {
@@ -401,13 +411,14 @@ public class SyncEngine {
 						id,
 						writeToken).execute();
 
-				// a 404 is OK, because we might be pushing a deletion of something
-				// which hasn't yet been pushed to the server.
-				if (!timestampResponse.isSuccessful() && timestampResponse.code() != 404) {
-					throw new SyncException("Unable to delete remote object[id: " + id + " documentType: " + modelClass + "] blob data", timestampResponse);
+				if (timestampResponse.isSuccessful()) {
+					timestampRecordEntry = timestampResponse.body();
+				} else if (timestampResponse.code() != 404) {
+					// 404 is OK, because we might have a record of deleting something which had
+					// not yet been pushed to server. Other failures need to be logged.
+					throw new SyncException("Unable to delete remote object[id: " + id + " documentType: " + modelClass + "] response: ", timestampResponse);
 				}
 
-				timestampRecordEntry = timestampResponse.body();
 				break;
 			}
 		}
@@ -427,8 +438,9 @@ public class SyncEngine {
 
 			// record response
 			timestampRecorder.setTimestamp(id, timestampRecordEntry.timestampSeconds);
-		}
 
+			log(log, PUSH_ITEM, "Pushed change, response: " + timestampRecordEntry);
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -454,70 +466,82 @@ public class SyncEngine {
 
 		// early exit if we're up to date
 		if (remoteStatus.timestampHeadSeconds <= syncState.getTimestampHeadSeconds()) {
-			log(log, PULL_COMPLETE, "We're up to date, finishing.");
+			log(log, PULL_COMPLETE, "Already up to date, finishing.");
 			return new SyncReport(remoteStatus.timestampHeadSeconds);
 		}
 
-		// get list of changes since local timestamp head
-		Map<String, TimestampRecordEntry> remoteChanges = getRemoteChanges(syncState, accountId);
+		try {
 
-		// for each change, apply it and record it
-		for (String id : remoteChanges.keySet()) {
-			TimestampRecordEntry remoteChange = remoteChanges.get(id);
-			RemoteChangeReport report = pullRemoteChange(timestampRecorder, modelObjectDataConsumer, modelObjectDeleter, accountId, id, remoteChange);
+			// get list of changes since local timestamp head
+			Map<String, TimestampRecordEntry> remoteChanges = getRemoteChanges(syncState, accountId);
 
-			if (report != null) {
-				remoteChangeReports.add(report);
-				log(log, PULL_ITEM, "Pulled remote change to object: " + id + " to local");
-			} else {
-				log(log, PULL_ITEM, "Skipped remote change to object: " + id + " as we're up to date on this object");
+			// for each change, apply it and record it
+			for (TimestampRecordEntry remoteChange : remoteChanges.values()) {
+				log(log, PULL_ITEM, "Pulling change: " + remoteChange);
+				RemoteChangeReport report = pullRemoteChange(log, timestampRecorder, modelObjectDataConsumer, modelObjectDeleter, accountId, remoteChange);
+
+				if (report != null) {
+					remoteChangeReports.add(report);
+					log(log, PULL_ITEM, "Pulled remote change - report: " + report);
+				} else {
+					log(log, PULL_ITEM, "Pulled remote change, no report");
+				}
 			}
 
+			// we're done
+			return new SyncReport(remoteChangeReports, remoteStatus.timestampHeadSeconds);
+		} catch (Exception e) {
+			// log and rethrow
+			log(log, PULL_COMPLETE, "Failed pull", e);
+			throw e;
 		}
-
-		// we're done
-		return new SyncReport(remoteChangeReports, remoteStatus.timestampHeadSeconds);
 	}
 
 	@Nullable
-	private RemoteChangeReport pullRemoteChange(TimestampRecorder timestampRecorder, ModelObjectDataConsumer modelObjectDataConsumer, ModelObjectDeleter modelObjectDeleter, String accountId, String id, TimestampRecordEntry remoteChange) throws Exception {
-		ChangeType changeType = ChangeType.values()[remoteChange.action];
+	private RemoteChangeReport pullRemoteChange(SyncLogEntry log, TimestampRecorder timestampRecorder, ModelObjectDataConsumer modelObjectDataConsumer, ModelObjectDeleter modelObjectDeleter, String accountId, TimestampRecordEntry remoteChange) throws Exception {
+		final ChangeType changeType = ChangeType.values()[remoteChange.action];
+		final String documentId = remoteChange.documentId;
+		final String documentType = remoteChange.documentType;
+
 		switch (changeType) {
 			case MODIFY: {
-				long localTimestamp = timestampRecorder.getTimestamp(id);
+				long localTimestamp = timestampRecorder.getTimestamp(documentId);
 
 				// early exit if remote timestamp is not newer than ours
 				if (remoteChange.timestampSeconds <= localTimestamp) {
+					log(log, PULL_ITEM, "MODIFY Skipping item " + documentId + " as local item has same or newer timestamp");
 					return null;
 				}
 
+				log(log, PULL_ITEM, "MODIFY Downloading updated data item " + documentId);
+
 				// get the blob data
-				Response<ResponseBody> blobResponse = syncService.getBlob(accountId, remoteChange.documentId).execute();
+				Response<ResponseBody> blobResponse = syncService.getBlob(accountId, documentId).execute();
 				if (!blobResponse.isSuccessful()) {
-					throw new SyncException("Unable to download blob data for id: " + remoteChange.documentId, blobResponse);
+					throw new SyncException("Unable to download blob data for id: " + documentId, blobResponse);
 				}
 
 				// create/update a document using the data
 				byte[] blobBytes = blobResponse.body().bytes();
-				ModelObjectDataConsumer.Action action = modelObjectDataConsumer.setModelObjectData(remoteChange.documentId, remoteChange.documentType, blobBytes);
-				timestampRecorder.setTimestamp(id, remoteChange.timestampSeconds);
+				ModelObjectDataConsumer.Action action = modelObjectDataConsumer.setModelObjectData(documentId, documentType, blobBytes);
+				timestampRecorder.setTimestamp(documentId, remoteChange.timestampSeconds);
 
 				// now record a change report
 				switch (action) {
 					case CREATE:
-						return new RemoteChangeReport(id, RemoteChangeReport.Action.CREATE);
+						return new RemoteChangeReport(documentId, RemoteChangeReport.Action.CREATE);
 					case UPDATE:
-						return new RemoteChangeReport(id, RemoteChangeReport.Action.UPDATE);
+						return new RemoteChangeReport(documentId, RemoteChangeReport.Action.UPDATE);
 				}
 
 				break;
 			}
 
 			case DELETE: {
-				// simply delete the model and make a change report
-				boolean successful = modelObjectDeleter.deleteModelObject(remoteChange.documentId, remoteChange.documentType);
-				timestampRecorder.clearTimestamp(id);
-				return successful ? new RemoteChangeReport(id, RemoteChangeReport.Action.DELETE) : null;
+				log(log, PULL_ITEM, "DELETE item: " + documentId + " type: " + documentType);
+				modelObjectDeleter.deleteModelObject(documentId, documentType);
+				timestampRecorder.clearTimestamp(documentId);
+				return new RemoteChangeReport(documentId, RemoteChangeReport.Action.DELETE);
 			}
 		}
 
