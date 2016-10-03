@@ -84,7 +84,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		// blobs
 		get(basePath + "/blob/:blobId", this::getBlob);
 		put(basePath + "/blob/:blobId", this::putBlob, jsonResponseTransformer);
-		delete(basePath + "/blob/:blobId", this::deleteBlob);
+		delete(basePath + "/blob/:blobId", this::deleteBlob, jsonResponseTransformer);
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -321,16 +321,18 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		// the blob may be in the current write session or the committed main store
 		if (!syncManager.getBlobStore().has(blobId) && !blobStore.has(blobId)) {
-			sendErrorAndHalt(response, 404, "SyncRouter::deleteBlob - The blob id is not valid");
+			sendErrorAndHalt(response, 404, "SyncRouter::deleteBlob - blob id \"" + blobId + "\" is not valid");
 			return null;
 		}
 
 		// delete blob
+		logger.debug("SyncRouter::deleteBlob - will delete blob \"{}\"", blobId);
+		String blobType = blobStore.getType(blobId);
 		blobStore.delete(blobId);
 
-		// record deletion. note, the type of the deleted item is irrelevant
+		// record deletion.
 		long timestamp = syncManager.getTimestampSeconds();
-		TimestampRecordEntry entry = timestampRecord.record(blobId, "", timestamp, TimestampRecord.Action.DELETE);
+		TimestampRecordEntry entry = timestampRecord.record(blobId, blobType, timestamp, TimestampRecord.Action.DELETE);
 
 		response.type(RESPONSE_TYPE_JSON);
 		return entry;

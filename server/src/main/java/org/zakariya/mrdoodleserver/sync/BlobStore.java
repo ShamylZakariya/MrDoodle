@@ -144,6 +144,12 @@ public class BlobStore {
 		}
 	}
 
+	public String getType(String id) {
+		try (Jedis jedis = jedisPool.getResource()) {
+			return jedis.get(getEntryModelClassKey(accountId, namespace, id));
+		}
+	}
+
 	/**
 	 * Check if a given blob id is accessible to this store
 	 *
