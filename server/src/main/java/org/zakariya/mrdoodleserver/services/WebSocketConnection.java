@@ -41,7 +41,7 @@ import static org.zakariya.mrdoodleserver.util.Preconditions.checkNotNull;
 @WebSocket
 public class WebSocketConnection {
 
-	static final Logger logger = LoggerFactory.getLogger(WebSocketConnection.class);
+	private static final Logger logger = LoggerFactory.getLogger(WebSocketConnection.class);
 
 	public interface WebSocketConnectionCreatedListener {
 		void onWebSocketConnectionCreated(WebSocketConnection connection);
@@ -53,26 +53,26 @@ public class WebSocketConnection {
 		 *
 		 * @param connection the websocket connection
 		 * @param session    the user/device websocket session
-		 * @param userId     the user id of the connected user/device
+		 * @param accountId  the user id of the connected user/device
 		 */
-		void onUserSessionConnected(WebSocketConnection connection, Session session, String userId);
+		void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId);
 
 		/**
 		 * Invoked when a user/device disconnects
 		 *
 		 * @param connection the websocket connection
 		 * @param session    the user/device websocket session
-		 * @param userId     the user id of the connected user/device
+		 * @param accountId  the user id of the connected user/device
 		 */
-		void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId);
+		void onUserSessionDisconnected(WebSocketConnection connection, Session session, String accountId);
 	}
 
 	private static class UserGroup {
-		String userId;
+		String accountId;
 		Set<Session> userSessions = new HashSet<>();
 
-		UserGroup(String userId) {
-			this.userId = userId;
+		UserGroup(String accountId) {
+			this.accountId = accountId;
 		}
 	}
 
@@ -108,8 +108,8 @@ public class WebSocketConnection {
 	private static List<WebSocketConnectionCreatedListener> webSocketConnectionCreatedListeners = new ArrayList<>();
 
 	private ObjectMapper objectMapper = new ObjectMapper();
-	private Map<String, UserGroup> authenticatedUserGroupsByUserId = new HashMap<>();
-	private Map<Session, String> userIdByUserSession = new HashMap<>();
+	private Map<String, UserGroup> authenticatedUserGroupsByAccountId = new HashMap<>();
+	private Map<Session, String> accountIdsByUserSession = new HashMap<>();
 	private List<OnUserSessionStatusChangeListener> userSessionStatusChangeListeners = new ArrayList<>();
 
 	public WebSocketConnection() {
@@ -151,8 +151,8 @@ public class WebSocketConnection {
 	/**
 	 * @return set containing user ids of all connected users
 	 */
-	public Set<String> getConnectedUserIds() {
-		return authenticatedUserGroupsByUserId.keySet();
+	public Set<String> getConnectedAccountIds() {
+		return authenticatedUserGroupsByAccountId.keySet();
 	}
 
 	/**
@@ -160,19 +160,19 @@ public class WebSocketConnection {
 	 */
 	public int getTotalConnectedDeviceCount() {
 		int count = 0;
-		for (String userId : authenticatedUserGroupsByUserId.keySet()) {
-			count += authenticatedUserGroupsByUserId.get(userId).userSessions.size();
+		for (String accountId : authenticatedUserGroupsByAccountId.keySet()) {
+			count += authenticatedUserGroupsByAccountId.get(accountId).userSessions.size();
 		}
 
 		return count;
 	}
 
 	/**
-	 * @param userId id of user in question
+	 * @param accountId id of user account in question
 	 * @return the number of devices this user has connected right now to sync service
 	 */
-	public int getTotalConnectedDevicesForUserId(String userId) {
-		UserGroup group = authenticatedUserGroupsByUserId.get(userId);
+	public int getTotalConnectedDevicesForAccountId(String accountId) {
+		UserGroup group = authenticatedUserGroupsByAccountId.get(accountId);
 		if (group != null) {
 			return group.userSessions.size();
 		}
@@ -188,19 +188,19 @@ public class WebSocketConnection {
 	public void onClose(Session userSession, int statusCode, String reason) {
 
 		// clean up
-		String userId = userIdByUserSession.get(userSession);
-		if (userId != null) {
-			userIdByUserSession.remove(userSession);
-			UserGroup userGroup = authenticatedUserGroupsByUserId.get(userId);
+		String accountId = accountIdsByUserSession.get(userSession);
+		if (accountId != null) {
+			accountIdsByUserSession.remove(userSession);
+			UserGroup userGroup = authenticatedUserGroupsByAccountId.get(accountId);
 			if (userGroup != null) {
 				userGroup.userSessions.remove(userSession);
 			}
 
-			logger.info("onClose userId: {} status: {} reason: {} - after cleanup we have {} connected devices remaining for account, {} devices total",
-					userId, statusCode, reason, getTotalConnectedDevicesForUserId(userId), getTotalConnectedDeviceCount());
+			logger.info("onClose accountId: {} status: {} reason: {} - after cleanup we have {} connected devices remaining for account, {} devices total",
+					accountId, statusCode, reason, getTotalConnectedDevicesForAccountId(accountId), getTotalConnectedDeviceCount());
 
 			for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
-				listener.onUserSessionDisconnected(this, userSession, userId);
+				listener.onUserSessionDisconnected(this, userSession, accountId);
 			}
 
 		} else {
@@ -228,15 +228,15 @@ public class WebSocketConnection {
 
 			boolean didAuthenticate = false;
 			if (!isSessionAuthenticated(userSession)) {
-				String userId = authenticate(userSession, authToken);
-				sendAuthenticationResponse(userSession, userId != null);
+				String accountId = authenticate(userSession, authToken);
+				sendAuthenticationResponse(userSession, accountId != null);
 
-				if (userId != null) {
+				if (accountId != null) {
 					didAuthenticate = true;
 
 					// notify
 					for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
-						listener.onUserSessionConnected(this, userSession, userId);
+						listener.onUserSessionConnected(this, userSession, accountId);
 					}
 				}
 
@@ -250,8 +250,8 @@ public class WebSocketConnection {
 				// if we didn't authenticate a new session just now
 				// we need to confirm that user's auth is still valid
 				if (!didAuthenticate) {
-					String userId = authenticator.verify(authToken);
-					if (userId == null) {
+					String accountId = authenticator.verify(authToken);
+					if (accountId == null) {
 
 						// the authorization must have expired
 						deauthenticate(userSession);
@@ -275,20 +275,20 @@ public class WebSocketConnection {
 	private String authenticate(Session userSession, String authToken) {
 		if (authToken != null && !authToken.isEmpty()) {
 
-			String userId = authenticator.verify(authToken);
-			if (userId != null && !userId.isEmpty()) {
+			String accountId = authenticator.verify(authToken);
+			if (accountId != null && !accountId.isEmpty()) {
 
 				// and move this session to our authenticated region
-				userIdByUserSession.put(userSession, userId);
+				accountIdsByUserSession.put(userSession, accountId);
 
-				UserGroup userGroup = authenticatedUserGroupsByUserId.get(userId);
+				UserGroup userGroup = authenticatedUserGroupsByAccountId.get(accountId);
 				if (userGroup == null) {
-					userGroup = new UserGroup(userId);
-					authenticatedUserGroupsByUserId.put(userId, userGroup);
+					userGroup = new UserGroup(accountId);
+					authenticatedUserGroupsByAccountId.put(accountId, userGroup);
 				}
 
 				userGroup.userSessions.add(userSession);
-				return userId;
+				return accountId;
 			} else {
 
 				// couldn't extract an ID from the token
@@ -309,19 +309,19 @@ public class WebSocketConnection {
 	 */
 	private void deauthenticate(Session userSession) {
 		// move this session from authenticated region to unauthenticated
-		String userId = userIdByUserSession.get(userSession);
-		if (userId != null) {
-			UserGroup userGroup = authenticatedUserGroupsByUserId.get(userId);
+		String accountId = accountIdsByUserSession.get(userSession);
+		if (accountId != null) {
+			UserGroup userGroup = authenticatedUserGroupsByAccountId.get(accountId);
 			if (userGroup != null) {
 				userGroup.userSessions.remove(userSession);
 			}
 
 			for (OnUserSessionStatusChangeListener listener : userSessionStatusChangeListeners) {
-				listener.onUserSessionDisconnected(this, userSession, userId);
+				listener.onUserSessionDisconnected(this, userSession, accountId);
 			}
 		}
 
-		userIdByUserSession.remove(userSession);
+		accountIdsByUserSession.remove(userSession);
 	}
 
 	/**
@@ -341,7 +341,7 @@ public class WebSocketConnection {
 	 * @return true if the session has been authenticated
 	 */
 	private boolean isSessionAuthenticated(Session userSession) {
-		return userIdByUserSession.containsKey(userSession);
+		return accountIdsByUserSession.containsKey(userSession);
 	}
 
 	/**
@@ -368,11 +368,11 @@ public class WebSocketConnection {
 	/**
 	 * Broadcast the message object as JSON to every user connected to this service authenticated by a given google id
 	 *
-	 * @param userId        the user id representing a number of connected devices using same sign-in
+	 * @param accountId     the account id representing a number of connected devices using same sign-in
 	 * @param messageObject and arbitrary POJO to send
 	 */
-	public void broadcast(String userId, Object messageObject) {
-		UserGroup group = authenticatedUserGroupsByUserId.get(userId);
+	public void broadcast(String accountId, Object messageObject) {
+		UserGroup group = authenticatedUserGroupsByAccountId.get(accountId);
 		if (group != null) {
 			try {
 				String messageJsonString = objectMapper.writeValueAsString(messageObject);

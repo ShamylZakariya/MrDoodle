@@ -489,6 +489,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	@Override
 	public void onRemoteStatusReceived(RemoteStatus remoteStatus) {
 		Log.i(TAG, "onRemoteStatusReceived: received Status notification from web socket connection: " + remoteStatus.toString());
+		syncEngine.setDeviceId(remoteStatus.deviceId);
 		remoteStatusSyncTriggerDebouncer.send(remoteStatus);
 	}
 

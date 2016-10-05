@@ -42,6 +42,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	public static final String REQUEST_HEADER_AUTH = "Authorization";
 	public static final String REQUEST_HEADER_DOCUMENT_TYPE = "X-Document-Type";
 	public static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
+	public static final String REQUEST_HEADER_DEVICE_ID = "X-Device-ID";
 
 	private static final String DEFAULT_STORAGE_PREFIX = "dev";
 	private static final boolean READ_WRITE_LOCK_IS_FAIR = true;
@@ -123,8 +124,14 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			String accountId = request.params("accountId");
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 
+			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+			if (!syncManager.isValidDeviceId(deviceId)) {
+				sendErrorAndHalt(response, 403, "SyncRouter::startWriteSession - The deviceId provided \"" + deviceId + "\" is not valid.");
+				return null;
+			}
+
 			response.type(RESPONSE_TYPE_JSON);
-			return syncManager.getStatus();
+			return syncManager.getStatus(deviceId);
 
 		} finally {
 			readWriteLock.readLock().unlock();
@@ -163,7 +170,14 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private String startWriteSession(Request request, Response response) {
 		String accountId = request.params("accountId");
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
-		SyncManager.WriteSession session = syncManager.startWriteSession();
+
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+		if (!syncManager.isValidDeviceId(deviceId)) {
+			sendErrorAndHalt(response, 403, "SyncRouter::startWriteSession - The deviceId provided \"" + deviceId + "\" is not valid.");
+			return null;
+		}
+
+		SyncManager.WriteSession session = syncManager.startWriteSession(deviceId);
 
 		// for the duration of a write session, whitelist the token
 		String authToken = request.headers(REQUEST_HEADER_AUTH);
@@ -179,17 +193,23 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		String sessionToken = request.params("token");
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
 
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+		if (!syncManager.isValidDeviceId(deviceId)) {
+			sendErrorAndHalt(response, 403, "SyncRouter::commitWriteSession - The deviceId provided \"" + deviceId + "\" is not valid.");
+			return null;
+		}
+
 		// write session is finished, we can remove auth token from whitelist
 		String authToken = request.headers(REQUEST_HEADER_AUTH);
 		authenticator.removeFromWhitelist(authToken);
 
 		try {
 			readWriteLock.writeLock().lock();
-			if (syncManager.commitWriteSession(sessionToken)) {
+			if (syncManager.commitWriteSession(deviceId, sessionToken)) {
 
 				// sync session is complete! time to broadcast status (which includes updated
 				// timestampHeadSeconds) to clients
-				Status status = syncManager.getStatus();
+				Status status = syncManager.getStatus(deviceId);
 
 				WebSocketConnection connection = WebSocketConnection.getInstance();
 				connection.broadcast(accountId, status);
@@ -398,22 +418,22 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		// register to listen for user connect/disconnect, and forward them to the correct SyncManager
 		connection.addUserSessionStatusChangeListener(new WebSocketConnection.OnUserSessionStatusChangeListener() {
 			@Override
-			public void onUserSessionConnected(WebSocketConnection connection, Session session, String userId) {
-				SyncManager syncManager = getSyncManagerForAccount(userId);
-				syncManager.onUserSessionConnected(connection, session, userId);
+			public void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId) {
+				SyncManager syncManager = getSyncManagerForAccount(accountId);
+				syncManager.onUserSessionConnected(connection, session, accountId);
 			}
 
 			@Override
-			public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId) {
-				SyncManager syncManager = getSyncManagerForAccount(userId);
-				syncManager.onUserSessionDisconnected(connection, session, userId);
+			public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String accountId) {
+				SyncManager syncManager = getSyncManagerForAccount(accountId);
+				syncManager.onUserSessionDisconnected(connection, session, accountId);
 
 				// now check if any users of a particular account are still connected. if
 				// not, we can free that account's syncManager
-				if (connection.getTotalConnectedDevicesForUserId(userId) == 0) {
-					logger.info("SyncRouter::onWebSocketConnectionCreated#onUserSessionDisconnected - userId: {} has no connected devices. Freeing user's syncManager", userId);
+				if (connection.getTotalConnectedDevicesForAccountId(accountId) == 0) {
+					logger.info("SyncRouter::onWebSocketConnectionCreated#onUserSessionDisconnected - userId: {} has no connected devices. Freeing user's syncManager", accountId);
 					syncManager.close();
-					syncManagersByAccountId.remove(userId);
+					syncManagersByAccountId.remove(accountId);
 				}
 			}
 		});

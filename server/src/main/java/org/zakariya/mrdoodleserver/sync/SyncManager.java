@@ -8,10 +8,7 @@ import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.JedisPool;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -31,21 +28,25 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	private JedisPool jedisPool;
 	private TimestampRecord timestampRecord;
 	private BlobStore blobStore;
-	private Map<String, WriteSession> writeSessions = new HashMap<>();
-	private ScheduledExecutorService writeSessionDiscardScheduler = Executors.newSingleThreadScheduledExecutor();
+	private Map<String, WriteSession> writeSessionsByToken = new HashMap<>();
+	private Map<String, WriteSession> writeSessionsByDeviceId = new HashMap<>();
+	private LockManager lockManager;
+	private Map<Session,String> deviceIdsByWebsocketSession = new HashMap<>();
+	private Set<String> deviceIds = new HashSet<>();
 
 
 	public static class WriteSession {
 		private String storagePrefix;
 		private String accountId;
 		private String token;
+		private String deviceId;
 		private TimestampRecord timestampRecord;
 		private BlobStore blobStore;
-		private ScheduledFuture discardFuture;
 
-		WriteSession(JedisPool jedisPool, String storagePrefix, String accountId) {
+		WriteSession(JedisPool jedisPool, String storagePrefix, String accountId, String deviceId) {
 			this.storagePrefix = storagePrefix;
 			this.accountId = accountId;
+			this.deviceId = deviceId;
 			token = UUID.randomUUID().toString();
 			timestampRecord = new TimestampRecord();
 			blobStore = new BlobStore(jedisPool, storagePrefix + "/" + WRITE_SESSION_NAMESPACE + "/" + token, accountId);
@@ -63,20 +64,16 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 			return accountId;
 		}
 
+		public String getDeviceId() {
+			return deviceId;
+		}
+
 		public TimestampRecord getTimestampRecord() {
 			return timestampRecord;
 		}
 
 		public BlobStore getBlobStore() {
 			return blobStore;
-		}
-
-		ScheduledFuture getDiscardFuture() {
-			return discardFuture;
-		}
-
-		void setDiscardFuture(ScheduledFuture discardFuture) {
-			this.discardFuture = discardFuture;
 		}
 
 		public void commit(TimestampRecord toTimestampRecord, BlobStore toBlobStore) {
@@ -96,6 +93,7 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		this.storagePrefix = storagePrefix;
 		this.timestampRecord = new TimestampRecord(jedisPool, storagePrefix, accountId);
 		this.blobStore = new BlobStore(jedisPool, storagePrefix, accountId);
+		this.lockManager = new LockManager();
 	}
 
 	public void close() {
@@ -110,6 +108,10 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		return accountId;
 	}
 
+	public LockManager getLockManager() {
+		return lockManager;
+	}
+
 	public TimestampRecord getTimestampRecord() {
 		return timestampRecord;
 	}
@@ -118,38 +120,24 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		return blobStore;
 	}
 
-	public WriteSession startWriteSession() {
-		WriteSession session = new WriteSession(jedisPool, storagePrefix, accountId);
-		writeSessions.put(session.getToken(), session);
-
-		// now schedule a discard after a timeout. this way, if a client fails to close
-		// a write session (crash, loss of connection, etc) we will eventually discard
-		// the write session. this is mainly to be tidy since the blobStore
-		// uses some disc space
-
-		session.setDiscardFuture(writeSessionDiscardScheduler.schedule(
-				() -> discardWriteSession(session),
-				configuration.getInt("syncManager/writeSessionInactiveDiscardDelayHours", 1),
-				TimeUnit.HOURS));
-
+	public WriteSession startWriteSession(String deviceId) {
+		WriteSession session = new WriteSession(jedisPool, storagePrefix, accountId, deviceId);
+		writeSessionsByToken.put(session.getToken(), session);
+		writeSessionsByDeviceId.put(deviceId, session);
 		return session;
 	}
 
 	@Nullable
 	public WriteSession getWriteSession(String token) {
-		return writeSessions.get(token);
+		return writeSessionsByToken.get(token);
 	}
 
-	public boolean commitWriteSession(String token) {
-		WriteSession session = writeSessions.get(token);
+	public boolean commitWriteSession(String deviceId, String token) {
+		WriteSession session = writeSessionsByToken.get(token);
 		if (session != null) {
 			session.commit(timestampRecord, blobStore);
-			writeSessions.remove(token);
-
-			if (session.getDiscardFuture() != null && !session.getDiscardFuture().isCancelled()) {
-				session.getDiscardFuture().cancel(false);
-				session.setDiscardFuture(null);
-			}
+			writeSessionsByToken.remove(token);
+			writeSessionsByDeviceId.remove(deviceId);
 
 			return true;
 		} else {
@@ -157,10 +145,12 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		}
 	}
 
-	private void discardWriteSession(WriteSession session) {
-		if (session.getDiscardFuture() != null && !session.getDiscardFuture().isCancelled()) {
+	private void discardActiveWriteSessionsForDeviceId(String deviceId) {
+		WriteSession session = writeSessionsByDeviceId.get(deviceId);
+		if (session != null) {
 			session.discard();
-			writeSessions.remove(session.getToken());
+			writeSessionsByDeviceId.remove(deviceId);
+			writeSessionsByToken.remove(session.getToken());
 		}
 	}
 
@@ -169,8 +159,9 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	 *
 	 * @return the current account status
 	 */
-	public Status getStatus() {
+	public Status getStatus(String deviceId) {
 		Status status = new Status();
+		status.deviceId = deviceId;
 
 		TimestampRecordEntry timestampHead = timestampRecord.getTimestampHead();
 		if (timestampHead != null) {
@@ -187,14 +178,44 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		return (new Date()).getTime() / 1000;
 	}
 
-	@Override
-	public void onUserSessionConnected(WebSocketConnection connection, Session session, String userId) {
-		// on connection, first thing we do is send the current status
-		connection.send(session, getStatus());
+	/**
+	 * Check if a given device id is valid, e.g, represents an active and connected device
+	 * @param deviceId a device id
+	 * @return true iff it was issued to a connected device
+	 */
+	synchronized public boolean isValidDeviceId(String deviceId) {
+		return deviceId != null && deviceIds.contains(deviceId);
+	}
+
+	synchronized private String getDeviceIdForWebSocketSession(Session session) {
+		if (!deviceIdsByWebsocketSession.containsKey(session)) {
+			String deviceId = UUID.randomUUID().toString();
+			deviceIdsByWebsocketSession.put(session, deviceId);
+			deviceIds.add(deviceId);
+			return deviceId;
+		} else {
+			return deviceIdsByWebsocketSession.get(session);
+		}
 	}
 
 	@Override
-	public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId) {
+	public void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId) {
+		// on connection, first thing we do is create a device id and send the current status
+		String deviceId = getDeviceIdForWebSocketSession(session);
+		connection.send(session, getStatus(deviceId));
+	}
+
+	@Override
+	public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String accountId) {
+		String deviceId = getDeviceIdForWebSocketSession(session);
+
+		// release any locks that device may have been holding
+		getLockManager().unlock(deviceId);
+
+		// clean up
+		discardActiveWriteSessionsForDeviceId(deviceId);
+		deviceIdsByWebsocketSession.remove(session);
+		deviceIds.remove(deviceId);
 	}
 }
 
