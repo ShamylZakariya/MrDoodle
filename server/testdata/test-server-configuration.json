@@ -15,7 +15,10 @@
 	"syncManager": {
 		"deviceIdManager": {
 			"mock": {
-				"deviceId": "abcde"
+				"deviceIds": [
+					"abcde",
+					"fghij"
+				]
 			}
 		}
 	}

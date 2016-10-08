@@ -3,20 +3,24 @@ package org.zakariya.mrdoodleserver.sync.mock;
 import org.eclipse.jetty.websocket.api.Session;
 import org.zakariya.mrdoodleserver.sync.DeviceIdManagerInterface;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * A mock device id manager for testing
  */
 public class MockDeviceIdManager implements DeviceIdManagerInterface {
 
-	private String deviceId;
+	private Set<String> deviceIds = new HashSet<>();
 
-	public MockDeviceIdManager(String deviceId) {
-		this.deviceId = deviceId;
+	public MockDeviceIdManager(Collection<String> deviceIds) {
+		this.deviceIds = new HashSet<>(deviceIds);
 	}
 
 	@Override
 	public boolean isValidDeviceId(String deviceId) {
-		return this.deviceId != null && this.deviceId.equals(deviceId);
+		return deviceIds.contains(deviceId);
 	}
 
 	@Override
@@ -26,6 +30,6 @@ public class MockDeviceIdManager implements DeviceIdManagerInterface {
 
 	@Override
 	public void unregisterDeviceId(String deviceId) {
-		this.deviceId = null;
+		deviceIds.remove(deviceId);
 	}
 }

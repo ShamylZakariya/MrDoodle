@@ -95,10 +95,10 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		this.lockManager = new LockManager();
 
 		// TODO: Learn how to use dependency injection to make this smarter
-		String deviceId = configuration.get("syncManager/deviceIdManager/mock/deviceId");
-		if (deviceId != null) {
-			logger.info("Creating MockDeviceIdManager with mock device id: {}", deviceId);
-			this.deviceIdManager = new MockDeviceIdManager(deviceId);
+		List<String> deviceIds = configuration.getArray("syncManager/deviceIdManager/mock/deviceIds");
+		if (deviceIds != null) {
+			logger.info("Creating MockDeviceIdManager with mock device ids: {}", deviceIds);
+			this.deviceIdManager = new MockDeviceIdManager(deviceIds);
 		} else {
 			this.deviceIdManager = new DeviceIdManager();
 		}
@@ -175,13 +175,17 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	public Status getStatus() {
 		Status status = new Status();
 
-		// device id is only set by WebSocketConnection on FIRST connection
+		// device id is only set when we're notified by WebSocketConnection
+		// that a new client has connected. See SyncManager::onUserSessionConnected
 		status.deviceId = null;
 
-		TimestampRecordEntry timestampHead = timestampRecord.getTimestampHead();
+		TimestampRecordEntry timestampHead = getTimestampRecord().getTimestampHead();
 		if (timestampHead != null) {
 			status.timestampHeadSeconds = timestampHead.getTimestampSeconds();
 		}
+
+		// copy over locks
+		status.lockedDocumentIds = new ArrayList<>(getLockManager().lockedDocumentIds());
 
 		return status;
 	}
@@ -224,18 +228,17 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 
 	@Override
 	public void onLockAcquired(String deviceId, String documentId) {
-		WebSocketConnection connection = WebSocketConnection.getInstance();
-		connection.broadcast(accountId, getStatus());
+		broadcastStatus();
 	}
 
 	@Override
 	public void onLockReleased(String deviceId, String documentId) {
-		WebSocketConnection connection = WebSocketConnection.getInstance();
-		connection.broadcast(accountId, getStatus());
+		broadcastStatus();
 	}
 
 	private void broadcastStatus() {
-
+		WebSocketConnection connection = WebSocketConnection.getInstance();
+		connection.broadcast(accountId, getStatus());
 	}
 }
 

@@ -66,7 +66,7 @@ public class LockManager {
 	 * @return true if the lock was acquired, false if the lock was already taken by another device
 	 */
 	synchronized public boolean lock(String deviceId, String documentId) {
-		if (!lockedDocumentIds.contains(deviceId)) {
+		if (!lockedDocumentIds.contains(documentId)) {
 			lockedDocumentIds.add(documentId);
 			getDeviceLocks(deviceId).getDocumentIds().add(documentId);
 
@@ -119,6 +119,17 @@ public class LockManager {
 				listener.onLockReleased(deviceId, documentId);
 			}
 		}
+	}
+
+	/**
+	 * Check if a device is holding a lock on a document
+	 * @param deviceId the id issued by the WebSocketConnection to a specific device
+	 * @param documentId the document id in question
+	 * @return true iff the lock is held by the device
+	 */
+	synchronized public boolean hasLock(String deviceId, String documentId) {
+		DeviceLocks deviceLocks = getDeviceLocks(deviceId);
+		 return deviceLocks.getDocumentIds().contains(documentId);
 	}
 
 	/**

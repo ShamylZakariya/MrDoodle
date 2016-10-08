@@ -167,6 +167,12 @@ public class Configuration {
 		}
 	}
 
+	/**
+	 * Get an array in the configuration as a list
+	 * @param path deep path into configuration, where forward slashes denote structure, e.g., 'a/b/c/leaf'
+	 * @param <T> the type of the list item, e.g., String
+	 * @return List of items, or null if no such element exists
+	 */
 	@org.jetbrains.annotations.Nullable
 	public <T> List<T> getArray(String path) {
 		JsonNode node = getNode(path);

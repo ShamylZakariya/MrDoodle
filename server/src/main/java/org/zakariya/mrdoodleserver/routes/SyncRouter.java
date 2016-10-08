@@ -91,7 +91,9 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		delete(basePath + "/blob/:blobId", this::deleteBlob, jsonResponseTransformer);
 
 		// locks
-		get(basePath + "/locks/:documentId", this::requestLock, jsonResponseTransformer);
+		put(basePath + "/locks/:documentId", this::requestLock, jsonResponseTransformer);
+		delete(basePath + "/locks/:documentId", this::releaseLock, jsonResponseTransformer);
+		get(basePath + "/locks/:documentId", this::isLocked, jsonResponseTransformer);
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -101,7 +103,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			String authToken = request.headers(REQUEST_HEADER_AUTH);
 			if (authToken == null || authToken.isEmpty()) {
 				sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Missing authorization token");
-				return;
 			} else {
 				String verifiedId = null;
 
@@ -117,11 +118,9 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 					// token passed validation, but only allows access to :accountId subpath
 					if (!verifiedId.equals(pathAccountId)) {
 						sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
-						return;
 					}
 				} else {
 					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Invalid authorization token");
-					return;
 				}
 			}
 		}
@@ -383,28 +382,84 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	@Nullable
-	private Object requestLock(Request request, Response response) {
+	private LockResponse requestLock(Request request, Response response) {
 		try {
-			readWriteLock.readLock().lock();
 			String accountId = request.params("accountId");
 			String documentId = request.params("documentId");
 			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
 
-			if (documentId == null || documentId.isEmpty()){
-				sendErrorAndHalt(response,400,"Missing documentId in request");
-				return null;
+			SyncManager syncManager = getSyncManagerForAccount(accountId);
+			LockManager lockManager = syncManager.getLockManager();
+
+			readWriteLock.writeLock().lock();
+
+			LockResponse lockResponse = new LockResponse();
+			lockResponse.documentId = documentId;
+
+			response.type(RESPONSE_TYPE_JSON);
+
+			if (lockManager.hasLock(deviceId, documentId)) {
+				lockResponse.locked = true;
+				return lockResponse;
+			} else {
+				lockResponse.locked = lockManager.lock(deviceId, documentId);
+				return lockResponse;
 			}
+
+		} finally {
+			readWriteLock.writeLock().unlock();
+		}
+	}
+
+	@Nullable
+	private LockResponse releaseLock(Request request, Response response) {
+		try {
+			String accountId = request.params("accountId");
+			String documentId = request.params("documentId");
+			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
 
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 			LockManager lockManager = syncManager.getLockManager();
 
+			readWriteLock.writeLock().lock();
+
 			LockResponse lockResponse = new LockResponse();
 			lockResponse.documentId = documentId;
-			lockResponse.locked = lockManager.lock(deviceId, documentId);
+
+
+			if (lockManager.hasLock(deviceId, documentId)) {
+				lockManager.unlock(deviceId, documentId);
+				lockResponse.locked = false;
+				response.type(RESPONSE_TYPE_JSON);
+				return lockResponse;
+			} else {
+				sendErrorAndHalt(response, 400, "Cannot unlock document locked by another device.");
+				return null;
+			}
+
+		} finally {
+			readWriteLock.writeLock().unlock();
+		}
+	}
+
+	@Nullable
+	private LockResponse isLocked(Request request, Response response) {
+		try {
+			String accountId = request.params("accountId");
+			String documentId = request.params("documentId");
+			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+
+			SyncManager syncManager = getSyncManagerForAccount(accountId);
+			LockManager lockManager = syncManager.getLockManager();
+
+			readWriteLock.readLock().lock();
+
+			LockResponse lockResponse = new LockResponse();
+			lockResponse.documentId = documentId;
+			lockResponse.locked = lockManager.isLocked(documentId);
 
 			response.type(RESPONSE_TYPE_JSON);
 			return lockResponse;
-
 		} finally {
 			readWriteLock.readLock().unlock();
 		}
