@@ -67,7 +67,7 @@ public class ConfigurationTest {
 		Configuration configuration = new Configuration();
 		configuration.addConfigJsonFilePath("test.json");
 
-		List<Object> arrayValue = configuration.getArray("array");
+		List<String> arrayValue = configuration.getArray("array");
 		assertNotNull("array should not be null", arrayValue);
 		assertEquals("array should have 4 values", 4, arrayValue.size());
 		assertEquals("array[0] should equal \"a\"", "a", arrayValue.get(0));

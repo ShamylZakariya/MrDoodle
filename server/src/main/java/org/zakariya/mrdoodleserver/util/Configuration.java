@@ -1,5 +1,6 @@
 package org.zakariya.mrdoodleserver.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -167,11 +168,11 @@ public class Configuration {
 	}
 
 	@org.jetbrains.annotations.Nullable
-	public List<Object> getArray(String path) {
+	public <T> List<T> getArray(String path) {
 		JsonNode node = getNode(path);
 		if (node != null) {
-			//noinspection unchecked
-			return mapper.convertValue(node, List.class);
+			return mapper.convertValue(node, new TypeReference<List<T>>() {
+			});
 		} else {
 			return null;
 		}
