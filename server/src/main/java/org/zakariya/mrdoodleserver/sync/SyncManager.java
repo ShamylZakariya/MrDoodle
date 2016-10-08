@@ -97,7 +97,7 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		// TODO: Learn how to use dependency injection to make this smarter
 		String deviceId = configuration.get("syncManager/deviceIdManager/mock/deviceId");
 		if (deviceId != null) {
-			logger.debug("Creating MockDeviceIdManager with mock device id: {}", deviceId);
+			logger.info("Creating MockDeviceIdManager with mock device id: {}", deviceId);
 			this.deviceIdManager = new MockDeviceIdManager(deviceId);
 		} else {
 			this.deviceIdManager = new DeviceIdManager();
