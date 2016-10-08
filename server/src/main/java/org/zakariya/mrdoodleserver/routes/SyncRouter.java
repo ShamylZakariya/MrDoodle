@@ -73,6 +73,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		// all api calls must authenticate
 		before(basePath + "/*", this::authenticate);
+		before(basePath + "/*", this::checkRequiredPreconditions);
 
 		get(basePath + "/status", this::getStatus, jsonResponseTransformer);
 		get(basePath + "/changes", this::getChanges, jsonResponseTransformer);
@@ -95,6 +96,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			String authToken = request.headers(REQUEST_HEADER_AUTH);
 			if (authToken == null || authToken.isEmpty()) {
 				sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Missing authorization token");
+				return;
 			} else {
 				String verifiedId = null;
 
@@ -102,6 +104,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 					verifiedId = authenticator.verify(authToken);
 				} catch (Exception e) {
 					sendErrorAndHalt(response, 500, "SyncRouter::authenticate - Unable to verify authorization token, error: " + e.getLocalizedMessage(), e);
+					return;
 				}
 
 				String pathAccountId = request.params("accountId");
@@ -109,10 +112,31 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 					// token passed validation, but only allows access to :accountId subpath
 					if (!verifiedId.equals(pathAccountId)) {
 						sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
+						return;
 					}
 				} else {
 					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Invalid authorization token");
+					return;
 				}
+			}
+		}
+	}
+
+	private void checkRequiredPreconditions(Request request, Response response) {
+
+		// all requests require a device id
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+		if (deviceId == null || deviceId.isEmpty()) {
+			sendErrorAndHalt(response, 400, "SyncRouter::checkRequiredPreconditions - Missing deviceId token");
+			return;
+		}
+
+		// if the request includes an accountId in path, confirm the device id is valid
+		String accountId = request.params("accountId");
+		if (accountId != null && !accountId.isEmpty()) {
+			SyncManager syncManager = getSyncManagerForAccount(accountId);
+			if (!syncManager.isValidDeviceId(deviceId)) {
+				sendErrorAndHalt(response, 400, "SyncRouter::checkRequiredPreconditions - The deviceId provided \"" + deviceId + "\" is not valid.");
 			}
 		}
 	}
@@ -122,13 +146,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		try {
 			readWriteLock.readLock().lock();
 			String accountId = request.params("accountId");
-			SyncManager syncManager = getSyncManagerForAccount(accountId);
-
 			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
-			if (!syncManager.isValidDeviceId(deviceId)) {
-				sendErrorAndHalt(response, 403, "SyncRouter::startWriteSession - The deviceId provided \"" + deviceId + "\" is not valid.");
-				return null;
-			}
+			SyncManager syncManager = getSyncManagerForAccount(accountId);
 
 			response.type(RESPONSE_TYPE_JSON);
 			return syncManager.getStatus(deviceId);
@@ -169,14 +188,9 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	@Nullable
 	private String startWriteSession(Request request, Response response) {
 		String accountId = request.params("accountId");
-		SyncManager syncManager = getSyncManagerForAccount(accountId);
-
 		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
-		if (!syncManager.isValidDeviceId(deviceId)) {
-			sendErrorAndHalt(response, 403, "SyncRouter::startWriteSession - The deviceId provided \"" + deviceId + "\" is not valid.");
-			return null;
-		}
 
+		SyncManager syncManager = getSyncManagerForAccount(accountId);
 		SyncManager.WriteSession session = syncManager.startWriteSession(deviceId);
 
 		// for the duration of a write session, whitelist the token
@@ -191,13 +205,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private Object commitWriteSession(Request request, Response response) {
 		String accountId = request.params("accountId");
 		String sessionToken = request.params("token");
-		SyncManager syncManager = getSyncManagerForAccount(accountId);
-
 		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
-		if (!syncManager.isValidDeviceId(deviceId)) {
-			sendErrorAndHalt(response, 403, "SyncRouter::commitWriteSession - The deviceId provided \"" + deviceId + "\" is not valid.");
-			return null;
-		}
+		SyncManager syncManager = getSyncManagerForAccount(accountId);
 
 		// write session is finished, we can remove auth token from whitelist
 		String authToken = request.headers(REQUEST_HEADER_AUTH);
@@ -277,7 +286,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
 		if (writeToken == null || writeToken.isEmpty()) {
-			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing write token(\"" + REQUEST_HEADER_DOCUMENT_TYPE + "\"); writes are disallowed without a write token");
+			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing write token(\"" + REQUEST_HEADER_WRITE_TOKEN + "\"); writes are disallowed without a write token");
 			return null;
 		}
 

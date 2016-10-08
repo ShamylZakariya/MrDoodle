@@ -3,9 +3,9 @@
 	"redis": {
 		"host": "localhost"
 	},
-	"prefix":"test",
+	"prefix": "test",
 	"authenticator": {
-		"useMockAuthenticator":true,
+		"useMockAuthenticator": true,
 		"mock": {
 			"tokens": {
 				"VALID-MOCK-TOKEN-I-GUESS": "12345"
@@ -13,6 +13,11 @@
 		}
 	},
 	"syncManager": {
-		"writeSessionInactiveDiscardDelayHours":6
+		"deviceIdManager": {
+			"mock": {
+				"deviceId": "abcde"
+			}
+		}
 	}
+}
 }

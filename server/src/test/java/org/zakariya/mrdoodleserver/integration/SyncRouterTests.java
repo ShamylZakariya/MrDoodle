@@ -20,7 +20,10 @@ import static org.junit.Assert.assertNotNull;
 public class SyncRouterTests extends BaseIntegrationTest {
 
 	private static final String AUTH_TOKEN = "VALID-MOCK-TOKEN-I-GUESS";
+
+	// sourced from test-server-configuration.json
 	private static final String ACCOUNT_ID = "12345";
+	private static final String DEVICE_ID = "abcde";
 
 
 	@BeforeClass
@@ -43,23 +46,33 @@ public class SyncRouterTests extends BaseIntegrationTest {
 	}
 
 	private Map<String, String> authHeader() {
-		return header("Authorization", AUTH_TOKEN);
+		return header(SyncRouter.REQUEST_HEADER_AUTH, AUTH_TOKEN);
 	}
+
+	private Map<String, String> authHeaderWithoutDeviceId() {
+		return super.header(SyncRouter.REQUEST_HEADER_AUTH, AUTH_TOKEN);
+	}
+
+	@Override
+	Map<String, String> header(String name, String value) {
+		Map<String,String> headers = super.header(name, value);
+		headers.put(SyncRouter.REQUEST_HEADER_DEVICE_ID, DEVICE_ID);
+		return headers;
+	}
+
 
 	@Test
 	public void testAuthentication() {
-
-
-		TestResponse response = request("GET", getPath() + "status", header("Authorization", AUTH_TOKEN));
+		TestResponse response = request("GET", getPath() + "status", header(SyncRouter.REQUEST_HEADER_AUTH, AUTH_TOKEN));
 		assertEquals("Authorized request response status should be 200", 200, response.getStatus());
 
-		response = request("GET", getPath() + "status", header("Authorization", "BAD_TOKEN"));
+		response = request("GET", getPath() + "status", header(SyncRouter.REQUEST_HEADER_AUTH, "BAD_TOKEN"));
 		assertEquals("Invalidly authorized request response status should be 401", 401, response.getStatus());
 
 		response = request("GET", getPath() + "status", null);
 		assertEquals("non-authorized request response status should be 401", 401, response.getStatus());
 
-		response = request("GET", getPath("345") + "status", header("Authorization", AUTH_TOKEN));
+		response = request("GET", getPath("345") + "status", header(SyncRouter.REQUEST_HEADER_AUTH, AUTH_TOKEN));
 		assertEquals("Authorized request to wrong account response status should be 401", 401, response.getStatus());
 	}
 
@@ -75,6 +88,9 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		// confirm that the change list is empty
 		final TypeReference timestampRecordTypeReference = new TypeReference<Map<String, TimestampRecordEntry>>() {
 		};
+
+		response = request("GET", getPath() + "changes", authHeaderWithoutDeviceId());
+		assertEquals("Request without device id should return status 400", 400, response.getStatus());
 
 		response = request("GET", getPath() + "changes", authHeader());
 		assertEquals("Changes response code should be 200", 200, response.getStatus());

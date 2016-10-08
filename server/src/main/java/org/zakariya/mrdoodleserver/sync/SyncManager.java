@@ -2,17 +2,16 @@ package org.zakariya.mrdoodleserver.sync;
 
 import org.eclipse.jetty.websocket.api.Session;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
+import org.zakariya.mrdoodleserver.sync.mock.MockDeviceIdManager;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
 import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.JedisPool;
 
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * SyncManager
@@ -20,6 +19,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener {
 
+	private static final Logger logger = LoggerFactory.getLogger(SyncManager.class);
 	private static final String WRITE_SESSION_NAMESPACE = "write-session";
 
 	private Configuration configuration;
@@ -31,8 +31,7 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	private Map<String, WriteSession> writeSessionsByToken = new HashMap<>();
 	private Map<String, WriteSession> writeSessionsByDeviceId = new HashMap<>();
 	private LockManager lockManager;
-	private Map<Session,String> deviceIdsByWebsocketSession = new HashMap<>();
-	private Set<String> deviceIds = new HashSet<>();
+	private DeviceIdManagerInterface deviceIdManager;
 
 
 	public static class WriteSession {
@@ -94,6 +93,16 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		this.timestampRecord = new TimestampRecord(jedisPool, storagePrefix, accountId);
 		this.blobStore = new BlobStore(jedisPool, storagePrefix, accountId);
 		this.lockManager = new LockManager();
+
+		// TODO: Learn how to use dependency injection to make this smarter
+		String deviceId = configuration.get("syncManager/deviceIdManager/mock/deviceId");
+		if (deviceId != null) {
+			logger.debug("Creating MockDeviceIdManager with mock device id: {}", deviceId);
+			this.deviceIdManager = new MockDeviceIdManager(deviceId);
+		} else {
+			this.deviceIdManager = new DeviceIdManager();
+		}
+
 	}
 
 	public void close() {
@@ -118,6 +127,10 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 
 	public BlobStore getBlobStore() {
 		return blobStore;
+	}
+
+	public DeviceIdManagerInterface getDeviceIdManager() {
+		return deviceIdManager;
 	}
 
 	public WriteSession startWriteSession(String deviceId) {
@@ -183,39 +196,27 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	 * @param deviceId a device id
 	 * @return true iff it was issued to a connected device
 	 */
-	synchronized public boolean isValidDeviceId(String deviceId) {
-		return deviceId != null && deviceIds.contains(deviceId);
-	}
-
-	synchronized private String getDeviceIdForWebSocketSession(Session session) {
-		if (!deviceIdsByWebsocketSession.containsKey(session)) {
-			String deviceId = UUID.randomUUID().toString();
-			deviceIdsByWebsocketSession.put(session, deviceId);
-			deviceIds.add(deviceId);
-			return deviceId;
-		} else {
-			return deviceIdsByWebsocketSession.get(session);
-		}
+	public boolean isValidDeviceId(String deviceId) {
+		return deviceIdManager.isValidDeviceId(deviceId);
 	}
 
 	@Override
 	public void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId) {
 		// on connection, first thing we do is create a device id and send the current status
-		String deviceId = getDeviceIdForWebSocketSession(session);
+		String deviceId = getDeviceIdManager().getDeviceIdForWebSocketSession(session);
 		connection.send(session, getStatus(deviceId));
 	}
 
 	@Override
 	public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String accountId) {
-		String deviceId = getDeviceIdForWebSocketSession(session);
+		String deviceId = getDeviceIdManager().getDeviceIdForWebSocketSession(session);
 
 		// release any locks that device may have been holding
 		getLockManager().unlock(deviceId);
 
 		// clean up
 		discardActiveWriteSessionsForDeviceId(deviceId);
-		deviceIdsByWebsocketSession.remove(session);
-		deviceIds.remove(deviceId);
+		deviceIdManager.unregisterDeviceId(deviceId);
 	}
 }
 
