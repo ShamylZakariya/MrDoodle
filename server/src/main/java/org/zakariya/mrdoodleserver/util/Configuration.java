@@ -166,6 +166,17 @@ public class Configuration {
 		}
 	}
 
+	@org.jetbrains.annotations.Nullable
+	public List<Object> getArray(String path) {
+		JsonNode node = getNode(path);
+		if (node != null) {
+			//noinspection unchecked
+			return mapper.convertValue(node, List.class);
+		} else {
+			return null;
+		}
+	}
+
 	/**
 	 * Get an object in the configuration as a simple map
 	 *
