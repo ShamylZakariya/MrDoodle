@@ -186,7 +186,7 @@ public class WebSocketConnection extends WebSocketAdapter {
 
 	@Override
 	public void onDisconnected(WebSocket websocket, WebSocketFrame serverCloseFrame, WebSocketFrame clientCloseFrame, boolean closedByServer) throws Exception {
-		Log.d(TAG, "onDisconnected() called with: " + "websocket = [" + websocket + "], serverCloseFrame = [" + serverCloseFrame + "], clientCloseFrame = [" + clientCloseFrame + "], closedByServer = [" + closedByServer + "]");
+		Log.d(TAG, "onDisconnectedFromSyncServer() called with: " + "websocket = [" + websocket + "], serverCloseFrame = [" + serverCloseFrame + "], clientCloseFrame = [" + clientCloseFrame + "], closedByServer = [" + closedByServer + "]");
 
 		boolean wasIntentionallyDisconnected = isDisconnecting();
 		setConnectionStatus(ConnectionStatus.DISCONNECTED);

@@ -2,6 +2,7 @@ package org.zakariya.mrdoodle.sync;
 
 import android.content.Context;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.squareup.otto.Subscribe;
@@ -56,6 +57,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private static final String TAG = SyncManager.class.getSimpleName();
 
 	private static SyncManager instance;
+	private boolean connected;
 	private SignInAccount userAccount;
 	private boolean applicationIsActive, running;
 	private SyncConfiguration syncConfiguration;
@@ -117,7 +119,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 * @return true if SyncManager is connected to the sync server
 	 */
 	public boolean isConnected() {
-		return getSyncServerConnection().isConnected();
+		return connected;
 	}
 
 	public SyncConfiguration getSyncConfiguration() {
@@ -299,7 +301,8 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	/**
 	 * Record a local data store document creation event in the change journal, possibly kicking off a sync
-	 * @param id document id
+	 *
+	 * @param id   document id
 	 * @param type document type
 	 */
 	public void markLocalDocumentCreation(String id, String type) {
@@ -308,7 +311,8 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	/**
 	 * Record a local data store document edit event in the change journal, possibly kicking off a sync
-	 * @param id document id
+	 *
+	 * @param id   document id
 	 * @param type document type
 	 */
 	public void markLocalDocumentModification(String id, String type) {
@@ -318,7 +322,8 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	/**
 	 * Record a local data store document deletion event in the change journal, possibly kicking off a sync
-	 * @param id document id
+	 *
+	 * @param id   document id
 	 * @param type document type
 	 */
 	public void markLocalDocumentDeletion(String id, String type) {
@@ -362,7 +367,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 					@Override
 					public void onError(Throwable e) {
-						// TODO: Show some kind of unobtrusive error message?
+						// TODO: Show some kind of unobtrusive error message? But how? We don't know the active activity!
 						Log.e(TAG, "performBackgroundSync - onError: ", e);
 					}
 
@@ -487,10 +492,41 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	///////////////////////////////////////////////////////////////////
 
 	@Override
-	public void onRemoteStatusReceived(RemoteStatus remoteStatus) {
-		Log.i(TAG, "onRemoteStatusReceived: received Status notification from web socket connection: " + remoteStatus.toString());
-		syncEngine.setDeviceId(remoteStatus.deviceId);
+	public void onSyncServerRemoteStatusReceived(RemoteStatus remoteStatus) {
+		Log.i(TAG, "onSyncServerRemoteStatusReceived: received Status notification from web socket connection: " + remoteStatus.toString());
+
+		// we receive a deviceId on initial connection/authorization with server
+		// if we already have one we've got trouble. it should only be set once per
+		// connection to server, and is nulled on disconnect.
+		String deviceId = remoteStatus.deviceId;
+		if (!TextUtils.isEmpty(deviceId)) {
+			if (TextUtils.isEmpty(syncEngine.getDeviceId())) {
+				Log.i(TAG, "onSyncServerRemoteStatusReceived: received a deviceId - assigning it to SyncEngine");
+				syncEngine.setDeviceId(deviceId);
+			} else {
+				Log.e(TAG, "onSyncServerRemoteStatusReceived: received a device id, but we already have one. This shouldn't happen." );
+				throw new IllegalStateException("Received a device id from server but we already have one for this session");
+			}
+		}
+
 		remoteStatusSyncTriggerDebouncer.send(remoteStatus);
+	}
+
+	@Override
+	public void onConnectingToSyncServer() {
+	}
+
+	@Override
+	public void onConnectedAndAuthorizedToSyncServer() {
+		Log.i(TAG, "onConnectedAndAuthorizedToSyncServer: connected to sync server");
+		connected = true;
+	}
+
+	@Override
+	public void onDisconnectedFromSyncServer() {
+		Log.i(TAG, "onConnectedAndAuthorizedToSyncServer: disconnected from sync server");
+		connected = false;
+		syncEngine.setDeviceId(null);
 	}
 
 	///////////////////////////////////////////////////////////////////

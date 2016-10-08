@@ -17,7 +17,7 @@ import java.util.*;
  * SyncManager
  * Top level coordinator for sync activities for a specific google account
  */
-public class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener {
+public class SyncManager implements WebSocketConnection.OnUserSessionStatusChangeListener, LockManager.Listener {
 
 	private static final Logger logger = LoggerFactory.getLogger(SyncManager.class);
 	private static final String WRITE_SESSION_NAMESPACE = "write-session";
@@ -172,9 +172,11 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	 *
 	 * @return the current account status
 	 */
-	public Status getStatus(String deviceId) {
+	public Status getStatus() {
 		Status status = new Status();
-		status.deviceId = deviceId;
+
+		// device id is only set by WebSocketConnection on FIRST connection
+		status.deviceId = null;
 
 		TimestampRecordEntry timestampHead = timestampRecord.getTimestampHead();
 		if (timestampHead != null) {
@@ -203,8 +205,9 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	@Override
 	public void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId) {
 		// on connection, first thing we do is create a device id and send the current status
-		String deviceId = getDeviceIdManager().getDeviceIdForWebSocketSession(session);
-		connection.send(session, getStatus(deviceId));
+		Status status = getStatus();
+		status.deviceId = getDeviceIdManager().getDeviceIdForWebSocketSession(session);
+		connection.send(session, status);
 	}
 
 	@Override
@@ -217,6 +220,22 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		// clean up
 		discardActiveWriteSessionsForDeviceId(deviceId);
 		deviceIdManager.unregisterDeviceId(deviceId);
+	}
+
+	@Override
+	public void onLockAcquired(String deviceId, String documentId) {
+		WebSocketConnection connection = WebSocketConnection.getInstance();
+		connection.broadcast(accountId, getStatus());
+	}
+
+	@Override
+	public void onLockReleased(String deviceId, String documentId) {
+		WebSocketConnection connection = WebSocketConnection.getInstance();
+		connection.broadcast(accountId, getStatus());
+	}
+
+	private void broadcastStatus() {
+
 	}
 }
 

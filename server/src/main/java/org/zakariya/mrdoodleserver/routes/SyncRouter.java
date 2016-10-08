@@ -9,8 +9,10 @@ import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.BlobStore;
+import org.zakariya.mrdoodleserver.sync.LockManager;
 import org.zakariya.mrdoodleserver.sync.SyncManager;
 import org.zakariya.mrdoodleserver.sync.TimestampRecord;
+import org.zakariya.mrdoodleserver.sync.transport.LockResponse;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
 import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Configuration;
@@ -87,6 +89,9 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		get(basePath + "/blob/:blobId", this::getBlob);
 		put(basePath + "/blob/:blobId", this::putBlob, jsonResponseTransformer);
 		delete(basePath + "/blob/:blobId", this::deleteBlob, jsonResponseTransformer);
+
+		// locks
+		get(basePath + "/locks/:documentId", this::requestLock, jsonResponseTransformer);
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -131,13 +136,15 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			return;
 		}
 
-		// if the request includes an accountId in path, confirm the device id is valid
+		// now confirm deviceId is valid
 		String accountId = request.params("accountId");
 		if (accountId != null && !accountId.isEmpty()) {
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 			if (!syncManager.isValidDeviceId(deviceId)) {
 				sendErrorAndHalt(response, 400, "SyncRouter::checkRequiredPreconditions - The deviceId provided \"" + deviceId + "\" is not valid.");
 			}
+		} else {
+			sendErrorAndHalt(response, 400, "SyncRouter::checkRequiredPreconditions - Missing accountId");
 		}
 	}
 
@@ -146,11 +153,10 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		try {
 			readWriteLock.readLock().lock();
 			String accountId = request.params("accountId");
-			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 
 			response.type(RESPONSE_TYPE_JSON);
-			return syncManager.getStatus(deviceId);
+			return syncManager.getStatus();
 
 		} finally {
 			readWriteLock.readLock().unlock();
@@ -218,7 +224,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 				// sync session is complete! time to broadcast status (which includes updated
 				// timestampHeadSeconds) to clients
-				Status status = syncManager.getStatus(deviceId);
+				Status status = syncManager.getStatus();
 
 				WebSocketConnection connection = WebSocketConnection.getInstance();
 				connection.broadcast(accountId, status);
@@ -374,6 +380,34 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		response.type(RESPONSE_TYPE_JSON);
 		return entry;
+	}
+
+	@Nullable
+	private Object requestLock(Request request, Response response) {
+		try {
+			readWriteLock.readLock().lock();
+			String accountId = request.params("accountId");
+			String documentId = request.params("documentId");
+			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+
+			if (documentId == null || documentId.isEmpty()){
+				sendErrorAndHalt(response,400,"Missing documentId in request");
+				return null;
+			}
+
+			SyncManager syncManager = getSyncManagerForAccount(accountId);
+			LockManager lockManager = syncManager.getLockManager();
+
+			LockResponse lockResponse = new LockResponse();
+			lockResponse.documentId = documentId;
+			lockResponse.locked = lockManager.lock(deviceId, documentId);
+
+			response.type(RESPONSE_TYPE_JSON);
+			return lockResponse;
+
+		} finally {
+			readWriteLock.readLock().unlock();
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////

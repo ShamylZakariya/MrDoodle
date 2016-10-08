@@ -10,6 +10,7 @@ import com.google.gson.JsonSyntaxException;
 import com.neovisionaries.ws.client.WebSocket;
 
 import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.transport.AuthorizationPayload;
 import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
 import org.zakariya.mrdoodle.signin.SignInManager;
@@ -28,7 +29,10 @@ import java.util.Map;
 public class SyncServerConnection extends WebSocketConnection {
 
 	public interface NotificationListener {
-		void onRemoteStatusReceived(RemoteStatus remoteStatus);
+		void onConnectingToSyncServer();
+		void onConnectedAndAuthorizedToSyncServer();
+		void onSyncServerRemoteStatusReceived(RemoteStatus remoteStatus);
+		void onDisconnectedFromSyncServer();
 	}
 
 	private static final String TAG = SyncServerConnection.class.getSimpleName();
@@ -64,16 +68,58 @@ public class SyncServerConnection extends WebSocketConnection {
 		notificationListeners.remove(listener);
 	}
 
-	protected void setAuthenticated(boolean authenticated) {
+	private void setAuthenticated(boolean authenticated) {
 		this.authenticating = false;
 		this.authenticated = authenticated;
 		if (authenticated) {
-			BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTED));
+			notifyOnConnectedAndAuthorized();
 		} else {
 			Log.d(TAG, "setAuthenticated: NOT AUTHENTICATED, scheduling reconnect");
 			resetExponentialBackoff();
 			reconnect();
 		}
+	}
+
+	private void notifyOnConnecting(){
+		for (NotificationListener listener : notificationListeners) {
+			listener.onConnectingToSyncServer();
+		}
+
+		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTING));
+	}
+
+	private void notifyAuthorizationBegun(){
+		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.AUTHORIZING));
+	}
+
+	private void notifyOnRemoteStatusReceived(RemoteStatus status) {
+		for (NotificationListener listener : notificationListeners) {
+			listener.onSyncServerRemoteStatusReceived(status);
+		}
+	}
+
+	private void notifyOnDisconnected() {
+
+		// the WebSocketConnection constructor immediately sets connection status to DISCONNECTED
+		// before our constructor can create the notificationListeners array. So we have to check.
+
+		if (notificationListeners != null) {
+			for (NotificationListener listener : notificationListeners) {
+				listener.onDisconnectedFromSyncServer();
+			}
+		}
+
+		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.DISCONNECTED));
+	}
+
+	private void notifyOnConnectedAndAuthorized() {
+
+		for (NotificationListener listener : notificationListeners) {
+			listener.onConnectedAndAuthorizedToSyncServer();
+		}
+
+		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTED));
+
 	}
 
 	@Override
@@ -91,7 +137,7 @@ public class SyncServerConnection extends WebSocketConnection {
 					Log.d(TAG, "onIdTokenAvailable: authorizing...");
 
 					authenticating = true;
-					BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.AUTHORIZING));
+					notifyAuthorizationBegun();
 					send(new AuthorizationPayload(authenticationToken));
 				}
 
@@ -138,9 +184,7 @@ public class SyncServerConnection extends WebSocketConnection {
 			try {
 				RemoteStatus remoteStatus = gson.fromJson(text, RemoteStatus.class);
 				if (remoteStatus != null) {
-					for (NotificationListener listener : notificationListeners) {
-						listener.onRemoteStatusReceived(remoteStatus);
-					}
+					notifyOnRemoteStatusReceived(remoteStatus);
 				}
 			} catch (JsonSyntaxException e) {
 				Log.e(TAG, "onTextMessage: unable to parse " + text + " as JSON", e);
@@ -154,25 +198,17 @@ public class SyncServerConnection extends WebSocketConnection {
 
 		switch (newStatus) {
 			case CONNECTING:
-				BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTING));
+				notifyOnConnecting();
 				break;
 
 			case DISCONNECTED:
 				authenticating = false;
 				authenticated = false;
-				BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.DISCONNECTED));
+				notifyOnDisconnected();
 				break;
 
 			default:
 				break;
-		}
-	}
-
-	private static final class AuthorizationPayload {
-		String auth;
-
-		AuthorizationPayload(String auth) {
-			this.auth = auth;
 		}
 	}
 

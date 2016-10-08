@@ -116,11 +116,11 @@ public class SyncEngine {
 		return syncService;
 	}
 
-	public String getAuthorizationToken() {
+	@Nullable public String getAuthorizationToken() {
 		return authorizationToken;
 	}
 
-	public String getDeviceId() {
+	@Nullable public String getDeviceId() {
 		return deviceId;
 	}
 
@@ -135,10 +135,10 @@ public class SyncEngine {
 	}
 
 	/**
-	 * Set the device ID issued by the sync server on connection
-	 * @param deviceId
+	 * Set the device ID issued by the sync server on connection. This is called from SyncManager::onSyncServerRemoteStatusReceived iff the payload contains a deviceId
+	 * @param deviceId id issued by sync server on connection and authorization
 	 */
-	public void setDeviceId(String deviceId) {
+	public void setDeviceId(@Nullable  String deviceId) {
 		this.deviceId = deviceId;
 	}
 
