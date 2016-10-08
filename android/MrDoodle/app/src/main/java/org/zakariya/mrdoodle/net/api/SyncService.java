@@ -27,6 +27,8 @@ public interface SyncService {
 	String REQUEST_HEADER_USER_AGENT = "User-Agent";
 	String REQUEST_HEADER_DOCUMENT_TYPE = "X-Document-Type";
 	String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
+	String REQUEST_HEADER_DEVICE_ID = "X-Device-ID";
+
 	MediaType BLOB_MEDIA_TYPE = MediaType.parse("application/octet-stream");
 
 

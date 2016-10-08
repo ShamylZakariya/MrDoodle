@@ -1,14 +1,7 @@
-#Sync
-
-Remote deletes are problematic
-	- we send the DELETE upstream, but when the remote changes are merged back, the remote delete timestamp record entry is missing the documentType, it's null.
-	    - is this a problem server side? or mismatched field name GSON issue?
-
 #Currently
 
+- Locking
 - Divide brush radius by current zoom level. this will allow for delicate hairlines when zoomed in.
-
-#Currently
 
 #BUGS
 When deleting a bunch of items quickly - looks like the previously removed doc gets deleted. I assume snackbar is a singleton and is flushing its ondismissed queue or something to that effect.

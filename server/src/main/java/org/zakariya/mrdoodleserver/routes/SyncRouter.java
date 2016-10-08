@@ -42,6 +42,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	public static final String REQUEST_HEADER_AUTH = "Authorization";
 	public static final String REQUEST_HEADER_DOCUMENT_TYPE = "X-Document-Type";
 	public static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
+	public static final String REQUEST_HEADER_DEVICE_ID = "X-Device-ID";
 
 	private static final String DEFAULT_STORAGE_PREFIX = "dev";
 	private static final boolean READ_WRITE_LOCK_IS_FAIR = true;
@@ -72,6 +73,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		// all api calls must authenticate
 		before(basePath + "/*", this::authenticate);
+		before(basePath + "/*", this::checkRequiredPreconditions);
 
 		get(basePath + "/status", this::getStatus, jsonResponseTransformer);
 		get(basePath + "/changes", this::getChanges, jsonResponseTransformer);
@@ -94,6 +96,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			String authToken = request.headers(REQUEST_HEADER_AUTH);
 			if (authToken == null || authToken.isEmpty()) {
 				sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Missing authorization token");
+				return;
 			} else {
 				String verifiedId = null;
 
@@ -101,6 +104,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 					verifiedId = authenticator.verify(authToken);
 				} catch (Exception e) {
 					sendErrorAndHalt(response, 500, "SyncRouter::authenticate - Unable to verify authorization token, error: " + e.getLocalizedMessage(), e);
+					return;
 				}
 
 				String pathAccountId = request.params("accountId");
@@ -108,10 +112,31 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 					// token passed validation, but only allows access to :accountId subpath
 					if (!verifiedId.equals(pathAccountId)) {
 						sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
+						return;
 					}
 				} else {
 					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Invalid authorization token");
+					return;
 				}
+			}
+		}
+	}
+
+	private void checkRequiredPreconditions(Request request, Response response) {
+
+		// all requests require a device id
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+		if (deviceId == null || deviceId.isEmpty()) {
+			sendErrorAndHalt(response, 400, "SyncRouter::checkRequiredPreconditions - Missing deviceId token");
+			return;
+		}
+
+		// if the request includes an accountId in path, confirm the device id is valid
+		String accountId = request.params("accountId");
+		if (accountId != null && !accountId.isEmpty()) {
+			SyncManager syncManager = getSyncManagerForAccount(accountId);
+			if (!syncManager.isValidDeviceId(deviceId)) {
+				sendErrorAndHalt(response, 400, "SyncRouter::checkRequiredPreconditions - The deviceId provided \"" + deviceId + "\" is not valid.");
 			}
 		}
 	}
@@ -121,10 +146,11 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		try {
 			readWriteLock.readLock().lock();
 			String accountId = request.params("accountId");
+			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 
 			response.type(RESPONSE_TYPE_JSON);
-			return syncManager.getStatus();
+			return syncManager.getStatus(deviceId);
 
 		} finally {
 			readWriteLock.readLock().unlock();
@@ -162,8 +188,10 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	@Nullable
 	private String startWriteSession(Request request, Response response) {
 		String accountId = request.params("accountId");
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
-		SyncManager.WriteSession session = syncManager.startWriteSession();
+		SyncManager.WriteSession session = syncManager.startWriteSession(deviceId);
 
 		// for the duration of a write session, whitelist the token
 		String authToken = request.headers(REQUEST_HEADER_AUTH);
@@ -177,6 +205,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private Object commitWriteSession(Request request, Response response) {
 		String accountId = request.params("accountId");
 		String sessionToken = request.params("token");
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
 		SyncManager syncManager = getSyncManagerForAccount(accountId);
 
 		// write session is finished, we can remove auth token from whitelist
@@ -185,11 +214,11 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		try {
 			readWriteLock.writeLock().lock();
-			if (syncManager.commitWriteSession(sessionToken)) {
+			if (syncManager.commitWriteSession(deviceId, sessionToken)) {
 
 				// sync session is complete! time to broadcast status (which includes updated
 				// timestampHeadSeconds) to clients
-				Status status = syncManager.getStatus();
+				Status status = syncManager.getStatus(deviceId);
 
 				WebSocketConnection connection = WebSocketConnection.getInstance();
 				connection.broadcast(accountId, status);
@@ -257,7 +286,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		String writeToken = request.headers(REQUEST_HEADER_WRITE_TOKEN);
 		if (writeToken == null || writeToken.isEmpty()) {
-			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing write token(\"" + REQUEST_HEADER_DOCUMENT_TYPE + "\"); writes are disallowed without a write token");
+			sendErrorAndHalt(response, 400, "SyncRouter::putBlob - Missing write token(\"" + REQUEST_HEADER_WRITE_TOKEN + "\"); writes are disallowed without a write token");
 			return null;
 		}
 
@@ -398,22 +427,22 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		// register to listen for user connect/disconnect, and forward them to the correct SyncManager
 		connection.addUserSessionStatusChangeListener(new WebSocketConnection.OnUserSessionStatusChangeListener() {
 			@Override
-			public void onUserSessionConnected(WebSocketConnection connection, Session session, String userId) {
-				SyncManager syncManager = getSyncManagerForAccount(userId);
-				syncManager.onUserSessionConnected(connection, session, userId);
+			public void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId) {
+				SyncManager syncManager = getSyncManagerForAccount(accountId);
+				syncManager.onUserSessionConnected(connection, session, accountId);
 			}
 
 			@Override
-			public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String userId) {
-				SyncManager syncManager = getSyncManagerForAccount(userId);
-				syncManager.onUserSessionDisconnected(connection, session, userId);
+			public void onUserSessionDisconnected(WebSocketConnection connection, Session session, String accountId) {
+				SyncManager syncManager = getSyncManagerForAccount(accountId);
+				syncManager.onUserSessionDisconnected(connection, session, accountId);
 
 				// now check if any users of a particular account are still connected. if
 				// not, we can free that account's syncManager
-				if (connection.getTotalConnectedDevicesForUserId(userId) == 0) {
-					logger.info("SyncRouter::onWebSocketConnectionCreated#onUserSessionDisconnected - userId: {} has no connected devices. Freeing user's syncManager", userId);
+				if (connection.getTotalConnectedDevicesForAccountId(accountId) == 0) {
+					logger.info("SyncRouter::onWebSocketConnectionCreated#onUserSessionDisconnected - userId: {} has no connected devices. Freeing user's syncManager", accountId);
 					syncManager.close();
-					syncManagersByAccountId.remove(userId);
+					syncManagersByAccountId.remove(accountId);
 				}
 			}
 		});

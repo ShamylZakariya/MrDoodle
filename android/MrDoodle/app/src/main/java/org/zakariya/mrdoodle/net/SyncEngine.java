@@ -61,6 +61,7 @@ public class SyncEngine {
 	private OkHttpClient httpClient;
 	private Retrofit retrofit;
 	private String authorizationToken;
+	private String deviceId;
 	private SyncService syncService;
 	private boolean syncing;
 
@@ -77,6 +78,7 @@ public class SyncEngine {
 				Request request = original.newBuilder()
 						.header(SyncService.REQUEST_HEADER_USER_AGENT, "MrDoodle")
 						.header(SyncService.REQUEST_HEADER_AUTH, getAuthorizationToken())
+						.header(SyncService.REQUEST_HEADER_DEVICE_ID, getDeviceId())
 						.build();
 
 				return chain.proceed(request);
@@ -118,6 +120,10 @@ public class SyncEngine {
 		return authorizationToken;
 	}
 
+	public String getDeviceId() {
+		return deviceId;
+	}
+
 	/**
 	 * Set the (likely JWT) authorization token. This is called automatically by SyncManager when the
 	 * auth token becomes available, and when it's updated.
@@ -126,6 +132,14 @@ public class SyncEngine {
 	 */
 	public void setAuthorizationToken(String authorizationToken) {
 		this.authorizationToken = authorizationToken;
+	}
+
+	/**
+	 * Set the device ID issued by the sync server on connection
+	 * @param deviceId
+	 */
+	public void setDeviceId(String deviceId) {
+		this.deviceId = deviceId;
 	}
 
 	/**
