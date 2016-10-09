@@ -12,7 +12,8 @@ import org.zakariya.mrdoodleserver.sync.BlobStore;
 import org.zakariya.mrdoodleserver.sync.LockManager;
 import org.zakariya.mrdoodleserver.sync.SyncManager;
 import org.zakariya.mrdoodleserver.sync.TimestampRecord;
-import org.zakariya.mrdoodleserver.sync.transport.LockResponse;
+import org.zakariya.mrdoodleserver.sync.transport.LockRequestResponse;
+import org.zakariya.mrdoodleserver.sync.transport.LockStatus;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
 import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Configuration;
@@ -382,7 +383,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	@Nullable
-	private LockResponse requestLock(Request request, Response response) {
+	private LockRequestResponse requestLock(Request request, Response response) {
 		try {
 			String accountId = request.params("accountId");
 			String documentId = request.params("documentId");
@@ -393,26 +394,28 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 			readWriteLock.writeLock().lock();
 
-			LockResponse lockResponse = new LockResponse();
-			lockResponse.documentId = documentId;
+			LockRequestResponse lockRequestResponse = new LockRequestResponse();
+			lockRequestResponse.documentId = documentId;
 
 			response.type(RESPONSE_TYPE_JSON);
 
 			if (lockManager.hasLock(deviceId, documentId)) {
-				lockResponse.locked = true;
-				return lockResponse;
+				// device already has the lock - but it wasn't granted
+				lockRequestResponse.locked = true;
+				lockRequestResponse.granted = false;
 			} else {
-				lockResponse.locked = lockManager.lock(deviceId, documentId);
-				return lockResponse;
+				lockRequestResponse.granted = lockManager.lock(deviceId, documentId);
+				lockRequestResponse.locked = lockManager.isLocked(documentId);
 			}
 
+			return lockRequestResponse;
 		} finally {
 			readWriteLock.writeLock().unlock();
 		}
 	}
 
 	@Nullable
-	private LockResponse releaseLock(Request request, Response response) {
+	private LockRequestResponse releaseLock(Request request, Response response) {
 		try {
 			String accountId = request.params("accountId");
 			String documentId = request.params("documentId");
@@ -423,28 +426,30 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 			readWriteLock.writeLock().lock();
 
-			LockResponse lockResponse = new LockResponse();
-			lockResponse.documentId = documentId;
+			LockRequestResponse lockRequestResponse = new LockRequestResponse();
+			lockRequestResponse.documentId = documentId;
 
 
 			// if this device has the lock and can unlock it, unlock it
 			// otherwise just return the lock status
 			if (lockManager.hasLock(deviceId, documentId)) {
 				lockManager.unlock(deviceId, documentId);
-				lockResponse.locked = false;
+				lockRequestResponse.locked = false;
+				lockRequestResponse.granted = true;
 			} else {
-				lockResponse.locked = lockManager.isLocked(documentId);
+				lockRequestResponse.locked = lockManager.isLocked(documentId);
+				lockRequestResponse.granted = false;
 			}
 
 			response.type(RESPONSE_TYPE_JSON);
-			return lockResponse;
+			return lockRequestResponse;
 		} finally {
 			readWriteLock.writeLock().unlock();
 		}
 	}
 
 	@Nullable
-	private LockResponse isLocked(Request request, Response response) {
+	private LockStatus isLocked(Request request, Response response) {
 		try {
 			String accountId = request.params("accountId");
 			String documentId = request.params("documentId");
@@ -455,12 +460,12 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 			readWriteLock.readLock().lock();
 
-			LockResponse lockResponse = new LockResponse();
-			lockResponse.documentId = documentId;
-			lockResponse.locked = lockManager.isLocked(documentId);
+			LockStatus lockStatus = new LockStatus();
+			lockStatus.documentId = documentId;
+			lockStatus.locked = lockManager.isLocked(documentId);
 
 			response.type(RESPONSE_TYPE_JSON);
-			return lockResponse;
+			return lockStatus;
 		} finally {
 			readWriteLock.readLock().unlock();
 		}
