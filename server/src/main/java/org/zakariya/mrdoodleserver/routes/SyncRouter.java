@@ -153,10 +153,12 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		try {
 			readWriteLock.readLock().lock();
 			String accountId = request.params("accountId");
+			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 
 			response.type(RESPONSE_TYPE_JSON);
-			return syncManager.getStatus();
+			return syncManager.getStatus(deviceId);
 
 		} finally {
 			readWriteLock.readLock().unlock();
@@ -224,7 +226,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 				// sync session is complete! time to broadcast status (which includes updated
 				// timestampHeadSeconds) to clients
-				Status status = syncManager.getStatus();
+				Status status = syncManager.getStatus(deviceId);
 
 				WebSocketConnection connection = WebSocketConnection.getInstance();
 				connection.broadcast(accountId, status);

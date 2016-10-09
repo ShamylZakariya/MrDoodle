@@ -141,10 +141,19 @@ public class LockManager {
 	}
 
 	/**
-	 * @return a list of all locked document ids
+	 * @return a set of all locked document ids
 	 */
-	public Set<String> lockedDocumentIds() {
+	public Set<String> getLockedDocumentIds() {
 		return new HashSet<>(lockedDocumentIds);
+	}
+
+	/**
+	 * @param deviceId id of a specific device
+	 * @return set of locked document ids for a specific device
+	 */
+	public Set<String> getLockedDocumentIds(String deviceId) {
+		DeviceLocks locks = getDeviceLocks(deviceId);
+		return locks.getDocumentIds();
 	}
 
 	private DeviceLocks getDeviceLocks(String deviceId) {

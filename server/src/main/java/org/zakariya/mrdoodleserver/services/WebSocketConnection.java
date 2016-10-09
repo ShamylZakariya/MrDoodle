@@ -389,5 +389,24 @@ public class WebSocketConnection {
 		}
 	}
 
+	public interface BroadcastMessageProducer<T> {
+		T generate(String accountId, Session session);
+	}
+
+	public <T> void broadcast(String accountId, BroadcastMessageProducer<T> messageProducer) {
+		UserGroup group = authenticatedUserGroupsByAccountId.get(accountId);
+		if (group != null) {
+			group.userSessions.stream().filter(Session::isOpen).forEach(session -> {
+				try {
+					T messageObject = messageProducer.generate(accountId, session);
+					String messageJsonString = objectMapper.writeValueAsString(messageObject);
+					session.getRemote().sendString(messageJsonString);
+				} catch (IOException e) {
+					logger.error("Unable to send message JSON to session: " + session, e);
+				}
+			});
+		}
+	}
+
 
 }

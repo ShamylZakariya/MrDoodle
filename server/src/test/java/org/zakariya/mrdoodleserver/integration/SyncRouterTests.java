@@ -247,11 +247,16 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		// DELETE of a lock unlocks
 		// getStatus() should contain all locks
 
-		TestResponse response = request("GET", getPath() + "status", authHeader());
+		TestResponse response = request("GET", getPath() + "status", authHeader(DEVICE_ID_0));
 		Status status = response.getBody(Status.class);
-		assertTrue("Locks should be empty", status.lockedDocumentIds.isEmpty());
+		assertTrue("Granted Locks should be empty", status.grantedLockedDocumentIds.isEmpty());
+		assertTrue("Foreign Locks should be empty", status.foreignLockedDocumentIds.isEmpty());
 
+
+		//
 		// lock DOCUMENT_ID_0 by DEVICE_ID_0
+		//
+
 		response = request("PUT", getPath() + "locks/" + DOCUMENT_ID_0, authHeader(DEVICE_ID_0));
 		assertEquals("PUT lock response status should be 200", 200, response.getStatus());
 		LockRequestResponse lockRequestResponse = response.getBody(LockRequestResponse.class);
@@ -259,7 +264,10 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		assertTrue("Locking unlocked document should succeed", lockRequestResponse.locked);
 		assertTrue("Locking unlocked document should be granted", lockRequestResponse.granted);
 
+		//
 		// lock DOCUMENT_ID_1 by DEVICE_ID_1
+		//
+
 		response = request("PUT", getPath() + "locks/" + DOCUMENT_ID_1, authHeader(DEVICE_ID_1));
 		assertEquals("PUT lock response status should be 200", 200, response.getStatus());
 		lockRequestResponse = response.getBody(LockRequestResponse.class);
@@ -273,10 +281,20 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		lockRequestResponse = response.getBody(LockRequestResponse.class);
 		assertFalse("Lock request of a document locked by another device should not be granted", lockRequestResponse.granted);
 
-		// confirm that a call to status should include the documents we just locked
-		status = request("GET", getPath() + "status", authHeader()).getBody(Status.class);
-		assertTrue("Status locks should contain DOCUMENT_ID_0", status.lockedDocumentIds.contains(DOCUMENT_ID_0));
-		assertTrue("Status locks should contain DOCUMENT_ID_1", status.lockedDocumentIds.contains(DOCUMENT_ID_1));
+		// get status for DEVICE_ID_0, it should have DOC 0 in granted locks, and DOC 1 should be in foreign locks
+		status = request("GET", getPath() + "status", authHeader(DEVICE_ID_0)).getBody(Status.class);
+		assertTrue("Status for DEVICE_ID_0 should include DOCUMENT_ID_0 in granted locks", status.grantedLockedDocumentIds.contains(DOCUMENT_ID_0));
+		assertFalse("Status for DEVICE_ID_0 should not include DOCUMENT_ID_1 in granted locks", status.grantedLockedDocumentIds.contains(DOCUMENT_ID_1));
+		assertTrue("Status for DEVICE_ID_0 should include DOCUMENT_ID_1 in foreign locks", status.foreignLockedDocumentIds.contains(DOCUMENT_ID_1));
+		assertFalse("Status for DEVICE_ID_0 should not include DOCUMENT_ID_0 in foreign locks", status.foreignLockedDocumentIds.contains(DOCUMENT_ID_0));
+
+		// get status for DEVICE_ID_1, it should have DOC 1 in granted locks, and DOC 0 should be in foreign locks
+		status = request("GET", getPath() + "status", authHeader(DEVICE_ID_1)).getBody(Status.class);
+		assertTrue("Status for DEVICE_ID_1 should include DOCUMENT_ID_1 in granted locks", status.grantedLockedDocumentIds.contains(DOCUMENT_ID_1));
+		assertFalse("Status for DEVICE_ID_1 should not include DOCUMENT_ID_0 in granted locks", status.grantedLockedDocumentIds.contains(DOCUMENT_ID_0));
+		assertTrue("Status for DEVICE_ID_1 should include DOCUMENT_ID_0 in foreign locks", status.foreignLockedDocumentIds.contains(DOCUMENT_ID_0));
+		assertFalse("Status for DEVICE_ID_1 should not include DOCUMENT_ID_1 in foreign locks", status.foreignLockedDocumentIds.contains(DOCUMENT_ID_1));
+
 
 		// confirm that explicit call to check lock of a document works as expected
 		LockStatus lockStatus = request("GET", getPath() + "locks/" + DOCUMENT_ID_0, authHeader()).getBody(LockStatus.class);
@@ -292,24 +310,45 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		assertTrue("Unlocking a document locked by another device should show document still locked", lockRequestResponse.locked);
 		assertFalse("Unlocking a document locked by another device should not be granted", lockRequestResponse.granted);
 
+		//
+		// unlock DOCUMENT_ID_1
 		// confirm DEVICE_ID_1 can unlock DEVICE_ID_1's locks
+		//
 		lockRequestResponse = request("DELETE", getPath() + "locks/" + DOCUMENT_ID_1, authHeader(DEVICE_ID_1)).getBody(LockRequestResponse.class);
 		assertEquals("Unlocking a locked document should report correct document id", DOCUMENT_ID_1, lockRequestResponse.documentId);
 		assertFalse("Document should be unlocked", lockRequestResponse.locked);
 		assertTrue("Unlock request should be granted", lockRequestResponse.granted);
 
-		// now get status and confirm DOCUMENT_ID_1 is no longer in it
-		status = request("GET", getPath() + "status", authHeader()).getBody(Status.class);
-		assertTrue("Status locks should contain DOCUMENT_ID_0", status.lockedDocumentIds.contains(DOCUMENT_ID_0));
-		assertFalse("Status locks should not contain DOCUMENT_ID_1", status.lockedDocumentIds.contains(DOCUMENT_ID_1));
+		// get DEVICE_ID_1 status and confirm DOCUMENT_ID_1 is no longer in DEVICE_ID_1's granted locks
+		status = request("GET", getPath() + "status", authHeader(DEVICE_ID_1)).getBody(Status.class);
+		assertFalse("Status for DEVICE_ID_1 granted locks should not include DOCUMENT_ID_1", status.grantedLockedDocumentIds.contains(DOCUMENT_ID_1));
+		assertTrue("Status for DEVICE_ID_1 foreign locks should include DOCUMENT_ID_0", status.foreignLockedDocumentIds.contains(DOCUMENT_ID_0));
 
+		// get DEVICE_ID_0 status and confirm DOCUMENT_ID_1 is no longer in DEVICE_ID_0's foreign locks
+		status = request("GET", getPath() + "status", authHeader(DEVICE_ID_0)).getBody(Status.class);
+		assertFalse("Status for DEVICE_ID_0 granted locks should not include DOCUMENT_ID_1", status.grantedLockedDocumentIds.contains(DOCUMENT_ID_1));
+		assertFalse("Status for DEVICE_ID_0 foreign locks should include DOCUMENT_ID_1", status.foreignLockedDocumentIds.contains(DOCUMENT_ID_1));
+
+		//
+		// unlock DOCUMENT_ID_0
 		// confirm DEVICE_ID_0 can unlock DEVICE_ID_0's locks
+		//
+
 		lockRequestResponse = request("DELETE", getPath() + "locks/" + DOCUMENT_ID_0, authHeader(DEVICE_ID_0)).getBody(LockRequestResponse.class);
 		assertEquals("Unlocking a locked document should report correct document id", DOCUMENT_ID_0, lockRequestResponse.documentId);
 		assertFalse("Document should be unlocked", lockRequestResponse.locked);
 		assertTrue("Unlock request should be granted", lockRequestResponse.granted);
 
+		// confirm status for DEVICE_ID_0 no longer has DOCUMENT_ID_0 in granted locks
+		status = request("GET", getPath() + "status", authHeader(DEVICE_ID_0)).getBody(Status.class);
+		assertTrue("Status for DEVICE_ID_0 granted locks should be empty", status.grantedLockedDocumentIds.isEmpty());
+		assertTrue("Status for DEVICE_ID_0 foreign locks should be empty", status.foreignLockedDocumentIds.isEmpty());
 
+		// confirm status for DEVICE_ID_1 no longer has DOCUMENT_ID_0 in foreign locks
+		status = request("GET", getPath() + "status", authHeader(DEVICE_ID_1)).getBody(Status.class);
+		assertTrue("Status for DEVICE_ID_1 granted locks should be empty", status.grantedLockedDocumentIds.isEmpty());
+		assertTrue("Status for DEVICE_ID_1 foreign locks should be empty", status.foreignLockedDocumentIds.isEmpty());
+		
 	}
 
 }

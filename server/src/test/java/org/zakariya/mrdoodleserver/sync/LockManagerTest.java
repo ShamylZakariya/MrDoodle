@@ -141,7 +141,7 @@ public class LockManagerTest {
 		lockManager.lock(DEVICE_ID_2, "c");
 		lockManager.lock(DEVICE_ID_2, "d");
 
-		Set<String> locks = lockManager.lockedDocumentIds();
+		Set<String> locks = lockManager.getLockedDocumentIds();
 		assertTrue("locked document set should include locked document", locks.contains("a"));
 		assertTrue("locked document set should include locked document", locks.contains("b"));
 		assertTrue("locked document set should include locked document", locks.contains("c"));
@@ -149,7 +149,7 @@ public class LockManagerTest {
 		assertFalse("locked document set shouldn't include documents which were not locked", locks.contains("q"));
 
 		lockManager.unlock(DEVICE_ID_1, "a");
-		locks = lockManager.lockedDocumentIds();
+		locks = lockManager.getLockedDocumentIds();
 		assertFalse("locked document set should not include unlocked document", locks.contains("a"));
 	}
 

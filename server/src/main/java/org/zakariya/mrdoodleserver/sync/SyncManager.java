@@ -172,20 +172,25 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	 *
 	 * @return the current account status
 	 */
-	public Status getStatus() {
-		Status status = new Status();
+	public Status getStatus(String deviceId) {
+		if (deviceId == null) {
+			throw new NullPointerException("DeviceId cannot be null");
+		}
 
-		// device id is only set when we're notified by WebSocketConnection
-		// that a new client has connected. See SyncManager::onUserSessionConnected
-		status.deviceId = null;
+		Status status = new Status();
+		status.deviceId = deviceId;
 
 		TimestampRecordEntry timestampHead = getTimestampRecord().getTimestampHead();
 		if (timestampHead != null) {
 			status.timestampHeadSeconds = timestampHead.getTimestampSeconds();
 		}
 
-		// copy over locks
-		status.lockedDocumentIds = new ArrayList<>(getLockManager().lockedDocumentIds());
+		// copy over this device's granted locks
+		status.grantedLockedDocumentIds = new ArrayList<>(getLockManager().getLockedDocumentIds(deviceId));
+
+		// foreign locks are all locks minus device's granted locks
+		status.foreignLockedDocumentIds = new ArrayList<>(getLockManager().getLockedDocumentIds());
+		status.foreignLockedDocumentIds.removeAll(status.grantedLockedDocumentIds);
 
 		return status;
 	}
@@ -209,8 +214,8 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	@Override
 	public void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId) {
 		// on connection, first thing we do is create a device id and send the current status
-		Status status = getStatus();
-		status.deviceId = getDeviceIdManager().getDeviceIdForWebSocketSession(session);
+		String deviceId = getDeviceIdManager().getDeviceIdForWebSocketSession(session);
+		Status status = getStatus(deviceId);
 		connection.send(session, status);
 	}
 
@@ -237,8 +242,19 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	}
 
 	private void broadcastStatus() {
+
+		// broadcast an updated status to each connected device.
+		// note: Each device get a custom status, since they each have
+		// a different set of granted and foreign locks
+
 		WebSocketConnection connection = WebSocketConnection.getInstance();
-		connection.broadcast(accountId, getStatus());
+		connection.broadcast(accountId, new WebSocketConnection.BroadcastMessageProducer<Status>() {
+			@Override
+			public Status generate(String accountId, Session session) {
+				String deviceId = deviceIdManager.getDeviceIdForWebSocketSession(session);
+				return getStatus(deviceId);
+			}
+		});
 	}
 }
 

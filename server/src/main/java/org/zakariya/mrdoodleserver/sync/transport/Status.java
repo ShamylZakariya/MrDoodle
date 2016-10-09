@@ -10,5 +10,6 @@ import java.util.List;
 public final class Status {
 	public String deviceId;
 	public long timestampHeadSeconds = 0;
-	public List<String> lockedDocumentIds = new ArrayList<>();
+	public List<String> grantedLockedDocumentIds = new ArrayList<>();
+	public List<String> foreignLockedDocumentIds = new ArrayList<>();
 }
