@@ -6,4 +6,5 @@ package org.zakariya.mrdoodleserver.sync.transport;
 public class LockStatus {
 	public String documentId;
 	public boolean locked;
+	public boolean lockHeldByRequestingDevice;
 }

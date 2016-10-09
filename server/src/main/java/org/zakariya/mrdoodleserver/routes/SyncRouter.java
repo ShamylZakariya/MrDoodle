@@ -465,6 +465,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			LockStatus lockStatus = new LockStatus();
 			lockStatus.documentId = documentId;
 			lockStatus.locked = lockManager.isLocked(documentId);
+			lockStatus.lockHeldByRequestingDevice = lockManager.hasLock(deviceId, documentId);
 
 			response.type(RESPONSE_TYPE_JSON);
 			return lockStatus;
