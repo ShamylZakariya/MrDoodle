@@ -427,16 +427,17 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			lockResponse.documentId = documentId;
 
 
+			// if this device has the lock and can unlock it, unlock it
+			// otherwise just return the lock status
 			if (lockManager.hasLock(deviceId, documentId)) {
 				lockManager.unlock(deviceId, documentId);
 				lockResponse.locked = false;
-				response.type(RESPONSE_TYPE_JSON);
-				return lockResponse;
 			} else {
-				sendErrorAndHalt(response, 400, "Cannot unlock document locked by another device.");
-				return null;
+				lockResponse.locked = lockManager.isLocked(documentId);
 			}
 
+			response.type(RESPONSE_TYPE_JSON);
+			return lockResponse;
 		} finally {
 			readWriteLock.writeLock().unlock();
 		}

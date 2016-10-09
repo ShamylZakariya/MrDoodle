@@ -50,8 +50,8 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		return authHeader(DEVICE_ID_0);
 	}
 
-	private Map<String,String> authHeader(String deviceId) {
-		Map<String,String> headers = header(SyncRouter.REQUEST_HEADER_AUTH, AUTH_TOKEN);
+	private Map<String, String> authHeader(String deviceId) {
+		Map<String, String> headers = header(SyncRouter.REQUEST_HEADER_AUTH, AUTH_TOKEN);
 		headers.put(SyncRouter.REQUEST_HEADER_DEVICE_ID, deviceId);
 		return headers;
 	}
@@ -102,7 +102,7 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		final String DATA2_ID = "B";
 		final String DATA_TYPE = "text/plain";
 
-		Map<String,String> authHeader = this.authHeader();
+		Map<String, String> authHeader = this.authHeader();
 		Map<String, String> authorizedWriteSessionHeaders = authHeader();
 		authorizedWriteSessionHeaders.put(SyncRouter.REQUEST_HEADER_DOCUMENT_TYPE, DATA_TYPE);
 
@@ -285,8 +285,8 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		assertTrue("Explicit check of lock status of locked document should report correct lock status", lockResponse.locked);
 
 		// confirm DEVICE_ID_0 can't unlock DEVICE_ID_1's locks
-		int code = request("DELETE", getPath() + "locks/" + DOCUMENT_ID_1, authHeader(DEVICE_ID_0)).getStatus();
-		assertEquals("Unlocking a document locked by another device should fail", 400, code);
+		lockResponse = request("DELETE", getPath() + "locks/" + DOCUMENT_ID_1, authHeader(DEVICE_ID_0)).getBody(LockResponse.class);
+		assertTrue("Unlocking a document locked by another device should fail", lockResponse.locked);
 
 		// confirm DEVICE_ID_1 can unlock DEVICE_ID_1's locks
 		lockResponse = request("DELETE", getPath() + "locks/" + DOCUMENT_ID_1, authHeader(DEVICE_ID_1)).getBody(LockResponse.class);
@@ -302,7 +302,6 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		lockResponse = request("DELETE", getPath() + "locks/" + DOCUMENT_ID_0, authHeader(DEVICE_ID_0)).getBody(LockResponse.class);
 		assertEquals("Unlocking a locked document should report correct document id", DOCUMENT_ID_0, lockResponse.documentId);
 		assertFalse("Device can unlock its locks", lockResponse.locked);
-
 
 
 	}
