@@ -6,15 +6,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
+import org.zakariya.mrdoodleserver.util.Debouncer;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 
 /**
  *
@@ -28,21 +26,15 @@ public class TimestampRecord {
 		DELETE
 	}
 
-	private static final long DEBOUNCE_MILLIS = 3000;
+	private static final int DEBOUNCE_MILLIS = 3000;
 
 	private JedisPool jedisPool;
 	private String namespace;
 	private String accountId;
 	private Map<String, TimestampRecordEntry> entriesByDocumentId = new HashMap<>();
 	private TimestampRecordEntry head;
-	private Runnable saver = new Runnable() {
-		public void run() {
-			save();
-		}
-	};
+	private Debouncer.Function<Void> debouncedSave;
 
-	private ScheduledExecutorService debounceScheduler = Executors.newSingleThreadScheduledExecutor();
-	private ScheduledFuture debouncedSave;
 	private ObjectMapper objectMapper = new ObjectMapper();
 
 	/**
@@ -175,15 +167,16 @@ public class TimestampRecord {
 			return;
 		}
 
-		cancelDebouncedSave();
-		debouncedSave = debounceScheduler.schedule(saver, DEBOUNCE_MILLIS, java.util.concurrent.TimeUnit.MILLISECONDS);
-	}
-
-	private void cancelDebouncedSave() {
-		if (debouncedSave != null && !debouncedSave.isCancelled()) {
-			debouncedSave.cancel(false);
-			debouncedSave = null;
+		if (debouncedSave == null) {
+			debouncedSave = Debouncer.debounce(new Debouncer.Function<Void>() {
+				@Override
+				public void apply(Void aVoid) {
+					save();
+				}
+			}, DEBOUNCE_MILLIS);
 		}
+
+		debouncedSave.apply(null);
 	}
 
 	/**
@@ -205,7 +198,6 @@ public class TimestampRecord {
 			return;
 		}
 
-		cancelDebouncedSave();
 		try (Jedis jedis = jedisPool.getResource()) {
 			String jsonString = objectMapper.writeValueAsString(entriesByDocumentId);
 			jedis.set(getJedisKey(), jsonString);

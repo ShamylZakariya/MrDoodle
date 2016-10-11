@@ -9,6 +9,7 @@ import org.zakariya.mrdoodleserver.sync.mock.MockDeviceIdManager;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
 import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Configuration;
+import org.zakariya.mrdoodleserver.util.Debouncer;
 import redis.clients.jedis.JedisPool;
 
 import java.util.*;
@@ -21,6 +22,7 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 
 	private static final Logger logger = LoggerFactory.getLogger(SyncManager.class);
 	private static final String WRITE_SESSION_NAMESPACE = "write-session";
+	private static final int STATUS_BROADCAST_DEBOUNCE_MILLISECONDS = 1000;
 
 	private Configuration configuration;
 	private String storagePrefix;
@@ -32,6 +34,7 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	private DeviceIdManagerInterface deviceIdManager;
 	private Map<String, WriteSession> writeSessionsByToken = new HashMap<>();
 	private Map<String, WriteSession> writeSessionsByDeviceId = new HashMap<>();
+	private Debouncer.Function<Void> debouncedStatusBroadcastCall;
 
 	public static class WriteSession {
 		private String storagePrefix;
@@ -210,6 +213,34 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		return deviceIdManager.isValidDeviceId(deviceId);
 	}
 
+	/**
+	 * Sends status via websocket to each connected device associated with this SyncManager's account
+	 */
+	public void broadcastStatusToConnectedDevices() {
+
+		if (debouncedStatusBroadcastCall == null) {
+			debouncedStatusBroadcastCall = Debouncer.debounce(new Debouncer.Function<Void>() {
+				@Override
+				public void apply(Void aVoid) {
+					// broadcast an updated status to each connected device.
+					// note: Each device get a custom status, since they each have
+					// a different set of granted and foreign locks
+
+					WebSocketConnection connection = WebSocketConnection.getInstance();
+					connection.broadcast(accountId, new WebSocketConnection.BroadcastMessageProducer<Status>() {
+						@Override
+						public Status generate(String accountId, Session session) {
+							String deviceId = deviceIdManager.getDeviceIdForWebSocketSession(session);
+							return getStatus(deviceId);
+						}
+					});
+				}
+			}, STATUS_BROADCAST_DEBOUNCE_MILLISECONDS);
+		}
+
+		debouncedStatusBroadcastCall.apply(null);
+	}
+
 	@Override
 	public void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId) {
 		// on connection, first thing we do is create a device id and send the current status
@@ -232,28 +263,12 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 
 	@Override
 	public void onLockAcquired(String deviceId, String documentId) {
-		broadcastStatus();
+		broadcastStatusToConnectedDevices();
 	}
 
 	@Override
 	public void onLockReleased(String deviceId, String documentId) {
-		broadcastStatus();
-	}
-
-	public void broadcastStatus() {
-
-		// broadcast an updated status to each connected device.
-		// note: Each device get a custom status, since they each have
-		// a different set of granted and foreign locks
-
-		WebSocketConnection connection = WebSocketConnection.getInstance();
-		connection.broadcast(accountId, new WebSocketConnection.BroadcastMessageProducer<Status>() {
-			@Override
-			public Status generate(String accountId, Session session) {
-				String deviceId = deviceIdManager.getDeviceIdForWebSocketSession(session);
-				return getStatus(deviceId);
-			}
-		});
+		broadcastStatusToConnectedDevices();
 	}
 }
 

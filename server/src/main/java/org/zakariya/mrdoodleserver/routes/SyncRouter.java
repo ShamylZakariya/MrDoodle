@@ -163,8 +163,8 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 
 			// TODO: Delete me at some point
-			logger.info("getStatus - FOR TESTING, calling broadcastStatus");
-			syncManager.broadcastStatus();
+			logger.info("getStatus - FOR TESTING, calling broadcastStatusToConnectedDevices");
+			syncManager.broadcastStatusToConnectedDevices();
 
 			response.type(RESPONSE_TYPE_JSON);
 			return syncManager.getStatus(deviceId);
@@ -237,7 +237,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			if (syncManager.commitWriteSession(deviceId, sessionToken)) {
 
 				// notify all clients of updated status
-				syncManager.broadcastStatus();
+				syncManager.broadcastStatusToConnectedDevices();
 
 				// sync session is complete! time to broadcast status (which includes updated
 				// timestampHeadSeconds) to clients
