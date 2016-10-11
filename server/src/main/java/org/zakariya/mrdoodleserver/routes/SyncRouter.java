@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static spark.Spark.*;
@@ -53,13 +54,16 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private static final String RESPONSE_TYPE_TEXT = MediaType.PLAIN_TEXT_UTF_8.toString();
 	private static final String RESPONSE_TYPE_OCTET_STREAM = MediaType.OCTET_STREAM.toString();
 
+	// multiple SyncRouters may exist because of threading, so we need to
+	// make certain our syncManagers and locks are unique per account
+	private static Map<String, SyncManager> syncManagersByAccountId = new HashMap<>();
+	private static Map<String, ReentrantReadWriteLock> readWriteLocksByAccountId = new HashMap<>();
+
 	private Configuration configuration;
 	private Authenticator authenticator;
 	private JedisPool jedisPool;
-	private Map<String, SyncManager> syncManagersByAccountId = new HashMap<>();
 	private boolean authenticationEnabled;
 	private String storagePrefix;
-	private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(READ_WRITE_LOCK_IS_FAIR);
 	private ResponseTransformer jsonResponseTransformer = new JsonResponseTransformer();
 
 	public SyncRouter(Configuration configuration, Authenticator authenticator, JedisPool jedisPool) {
@@ -149,27 +153,34 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private Object getStatus(Request request, Response response) {
+		String accountId = request.params("accountId");
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+		ReadWriteLock lock = getReadWriteLockForAccount(accountId);
+
 		try {
-			readWriteLock.readLock().lock();
-			String accountId = request.params("accountId");
-			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+			lock.readLock().lock();
 
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
+
+			// TODO: Delete me at some point
+			logger.info("getStatus - FOR TESTING, calling broadcastStatus");
+			syncManager.broadcastStatus();
 
 			response.type(RESPONSE_TYPE_JSON);
 			return syncManager.getStatus(deviceId);
 
 		} finally {
-			readWriteLock.readLock().unlock();
+			lock.readLock().unlock();
 		}
 	}
 
 	@Nullable
 	private Object getChanges(Request request, Response response) {
+		String accountId = request.params("accountId");
+		ReadWriteLock lock = getReadWriteLockForAccount(accountId);
 		try {
-			readWriteLock.readLock().lock();
+			lock.readLock().lock();
 
-			String accountId = request.params("accountId");
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 			TimestampRecord timestampRecord = syncManager.getTimestampRecord();
 
@@ -188,7 +199,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			return timestampRecord.getEntriesSince(sinceTimestamp);
 
 		} finally {
-			readWriteLock.readLock().unlock();
+			lock.readLock().unlock();
 		}
 	}
 
@@ -219,16 +230,18 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		String authToken = request.headers(REQUEST_HEADER_AUTH);
 		authenticator.removeFromWhitelist(authToken);
 
+		ReadWriteLock lock = getReadWriteLockForAccount(accountId);
+
 		try {
-			readWriteLock.writeLock().lock();
+			lock.writeLock().lock();
 			if (syncManager.commitWriteSession(deviceId, sessionToken)) {
+
+				// notify all clients of updated status
+				syncManager.broadcastStatus();
 
 				// sync session is complete! time to broadcast status (which includes updated
 				// timestampHeadSeconds) to clients
 				Status status = syncManager.getStatus(deviceId);
-
-				WebSocketConnection connection = WebSocketConnection.getInstance();
-				connection.broadcast(accountId, status);
 
 				response.type(RESPONSE_TYPE_JSON);
 				return status;
@@ -237,17 +250,18 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 				return null;
 			}
 		} finally {
-			readWriteLock.writeLock().unlock();
+			lock.writeLock().unlock();
 		}
 	}
 
 	@Nullable
 	private Object getBlob(Request request, Response response) {
+		String accountId = request.params("accountId");
+		ReadWriteLock lock = getReadWriteLockForAccount(accountId);
 
 		try {
-			readWriteLock.readLock().lock();
+			lock.readLock().lock();
 
-			String accountId = request.params("accountId");
 			String blobId = request.params("blobId");
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 			BlobStore blobStore = syncManager.getBlobStore();
@@ -273,7 +287,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		} catch (IOException e) {
 			sendErrorAndHalt(response, 500, "SyncRouter::getBlob - Unable to copy blob bytes to response", e);
 		} finally {
-			readWriteLock.readLock().unlock();
+			lock.readLock().unlock();
 		}
 
 		return null;
@@ -385,15 +399,17 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	@Nullable
 	private LockStatus requestLock(Request request, Response response) {
+		String accountId = request.params("accountId");
+		String documentId = request.params("documentId");
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+		ReadWriteLock lock = getReadWriteLockForAccount(accountId);
+
 		try {
-			String accountId = request.params("accountId");
-			String documentId = request.params("documentId");
-			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
 
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 			LockManager lockManager = syncManager.getLockManager();
 
-			readWriteLock.writeLock().lock();
+			lock.writeLock().lock();
 
 			LockStatus lockStatus = new LockStatus();
 			lockStatus.documentId = documentId;
@@ -411,21 +427,23 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 			return lockStatus;
 		} finally {
-			readWriteLock.writeLock().unlock();
+			lock.writeLock().unlock();
 		}
 	}
 
 	@Nullable
 	private LockStatus releaseLock(Request request, Response response) {
+		String accountId = request.params("accountId");
+		String documentId = request.params("documentId");
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+		ReadWriteLock lock = getReadWriteLockForAccount(accountId);
+
 		try {
-			String accountId = request.params("accountId");
-			String documentId = request.params("documentId");
-			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
 
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 			LockManager lockManager = syncManager.getLockManager();
 
-			readWriteLock.writeLock().lock();
+			lock.writeLock().lock();
 
 			LockStatus lockStatus = new LockStatus();
 			lockStatus.documentId = documentId;
@@ -445,21 +463,23 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			response.type(RESPONSE_TYPE_JSON);
 			return lockStatus;
 		} finally {
-			readWriteLock.writeLock().unlock();
+			lock.writeLock().unlock();
 		}
 	}
 
 	@Nullable
 	private LockStatus isLocked(Request request, Response response) {
+		String accountId = request.params("accountId");
+		String documentId = request.params("documentId");
+		String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
+		ReadWriteLock lock = getReadWriteLockForAccount(accountId);
+
 		try {
-			String accountId = request.params("accountId");
-			String documentId = request.params("documentId");
-			String deviceId = request.headers(REQUEST_HEADER_DEVICE_ID);
 
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
 			LockManager lockManager = syncManager.getLockManager();
 
-			readWriteLock.readLock().lock();
+			lock.readLock().lock();
 
 			LockStatus lockStatus = new LockStatus();
 			lockStatus.documentId = documentId;
@@ -469,7 +489,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			response.type(RESPONSE_TYPE_JSON);
 			return lockStatus;
 		} finally {
-			readWriteLock.readLock().unlock();
+			lock.readLock().unlock();
 		}
 	}
 
@@ -477,6 +497,16 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 	private String getBasePath() {
 		return "/api/" + configuration.get("version") + "/sync/:accountId";
+	}
+
+	private synchronized ReentrantReadWriteLock getReadWriteLockForAccount(String accountId) {
+		ReentrantReadWriteLock lock = readWriteLocksByAccountId.get(accountId);
+		if (lock == null) {
+			lock = new ReentrantReadWriteLock(READ_WRITE_LOCK_IS_FAIR);
+			readWriteLocksByAccountId.put(accountId, lock);
+		}
+
+		return lock;
 	}
 
 	private SyncManager getSyncManagerForAccount(String accountId) {

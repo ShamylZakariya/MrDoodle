@@ -28,11 +28,10 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	private JedisPool jedisPool;
 	private TimestampRecord timestampRecord;
 	private BlobStore blobStore;
-	private Map<String, WriteSession> writeSessionsByToken = new HashMap<>();
-	private Map<String, WriteSession> writeSessionsByDeviceId = new HashMap<>();
 	private LockManager lockManager;
 	private DeviceIdManagerInterface deviceIdManager;
-
+	private Map<String, WriteSession> writeSessionsByToken = new HashMap<>();
+	private Map<String, WriteSession> writeSessionsByDeviceId = new HashMap<>();
 
 	public static class WriteSession {
 		private String storagePrefix;
@@ -241,7 +240,7 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		broadcastStatus();
 	}
 
-	private void broadcastStatus() {
+	public void broadcastStatus() {
 
 		// broadcast an updated status to each connected device.
 		// note: Each device get a custom status, since they each have

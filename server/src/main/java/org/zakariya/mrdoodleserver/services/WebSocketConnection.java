@@ -400,6 +400,9 @@ public class WebSocketConnection {
 				try {
 					T messageObject = messageProducer.generate(accountId, session);
 					String messageJsonString = objectMapper.writeValueAsString(messageObject);
+
+					logger.info("sending: {} to: {}", messageJsonString, session.getRemoteAddress());
+
 					session.getRemote().sendString(messageJsonString);
 				} catch (IOException e) {
 					logger.error("Unable to send message JSON to session: " + session, e);
