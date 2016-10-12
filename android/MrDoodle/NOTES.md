@@ -2,6 +2,11 @@
 
 
 #BUGS
+
+Explicit sync by tapping Sync button in SyncSettingsActivity when not connected to server caused a UI freeze.
+	- I can't seem to reproduce this. Network activity does appear to be running in an io thread, like it should.
+
+
 When deleting a bunch of items quickly - looks like the previously removed doc gets deleted. I assume snackbar is a singleton and is flushing its ondismissed queue or something to that effect.
 
 We need to do something like detect if a delete is requested while another delete is still showing the undo button, and in that case, force that delete to run??? Or is the problem that that's happening automatically, and correctly???

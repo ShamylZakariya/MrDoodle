@@ -261,6 +261,11 @@ public class SyncSettingsActivity extends BaseActivity {
 			return;
 		}
 
+		if (!syncManager.isConnected()) {
+			Log.i(TAG, "syncNow: not connected to server...");
+			return;
+		}
+
 		syncSubscription = syncManager.sync()
 				.subscribeOn(Schedulers.io())
 				.observeOn(AndroidSchedulers.mainThread())
@@ -287,6 +292,11 @@ public class SyncSettingsActivity extends BaseActivity {
 		SyncManager syncManager = SyncManager.getInstance();
 		if (syncManager.isSyncing()) {
 			Log.i(TAG, "syncNow: currently syncing, never mind...");
+			return;
+		}
+
+		if (!syncManager.isConnected()) {
+			Log.i(TAG, "resetAndSync: not connected to server...");
 			return;
 		}
 
@@ -378,6 +388,7 @@ public class SyncSettingsActivity extends BaseActivity {
 	private void syncToCurrentServerConnectionState() {
 		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
 
+		boolean connected = false;
 		@StringRes int textId = 0;
 		if (connection.isConnecting()) {
 			textId = R.string.sync_server_connection_status_connecting;
@@ -386,6 +397,7 @@ public class SyncSettingsActivity extends BaseActivity {
 				textId = R.string.sync_server_connection_status_authorizing;
 			} else if (connection.isAuthenticated()) {
 				textId = R.string.sync_server_connection_status_connected;
+				connected = true;
 			}
 		} else {
 			textId = R.string.sync_server_connection_status_disconnected;
