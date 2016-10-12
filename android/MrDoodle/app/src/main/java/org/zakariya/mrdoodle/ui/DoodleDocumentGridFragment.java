@@ -39,6 +39,7 @@ import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
+import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleShareHelper;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
@@ -359,6 +360,11 @@ public class DoodleDocumentGridFragment extends Fragment
 		Log.i(TAG, "onDoodleDocumentEditedEvent: uuid: " + event.getUuid());
 		DoodleDocument document = DoodleDocument.byUUID(realm, event.getUuid());
 		adapter.onItemUpdated(document);
+	}
+
+	@Subscribe
+	public void onLockStateChangedEvent(LockStateChangedEvent event) {
+		Log.i(TAG, "onLockStateChangedEvent: event: " + event);
 	}
 
 	///////////////////////////////////////////////////////////////////

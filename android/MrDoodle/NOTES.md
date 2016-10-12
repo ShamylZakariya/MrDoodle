@@ -1,11 +1,11 @@
 #Currently
 
-
 #BUGS
+
+Drawings done on other devices seem to have odd offsets saved in the document. This means a document drawn on one device can be weirdly transformed when viewed on another. Trouble is, how do we handle this?
 
 Explicit sync by tapping Sync button in SyncSettingsActivity when not connected to server caused a UI freeze.
 	- I can't seem to reproduce this. Network activity does appear to be running in an io thread, like it should.
-
 
 When deleting a bunch of items quickly - looks like the previously removed doc gets deleted. I assume snackbar is a singleton and is flushing its ondismissed queue or something to that effect.
 

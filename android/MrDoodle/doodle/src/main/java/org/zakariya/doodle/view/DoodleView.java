@@ -10,14 +10,23 @@ import android.view.ViewTreeObserver;
 
 import org.zakariya.doodle.model.Doodle;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Base view for doodling
  */
 public class DoodleView extends View {
 
+	public interface SizeListener {
+		void onDoodleViewResized(DoodleView doodleView, int width, int height);
+	}
+
 	private static final String TAG = "DoodleView";
 	private Doodle doodle;
 	private ViewTreeObserver.OnGlobalLayoutListener layoutListener;
+	private List<SizeListener> sizeListeners = new ArrayList<>();
+	private boolean readOnly;
 
 	public DoodleView(Context context) {
 		super(context);
@@ -36,6 +45,14 @@ public class DoodleView extends View {
 		doodle.setDoodleView(this);
 	}
 
+	public boolean isReadOnly() {
+		return readOnly;
+	}
+
+	public void setReadOnly(boolean readOnly) {
+		this.readOnly = readOnly;
+	}
+
 	@Override
 	protected void onAttachedToWindow() {
 		super.onAttachedToWindow();
@@ -47,6 +64,9 @@ public class DoodleView extends View {
 				public void onGlobalLayout() {
 					if (getWidth() != doodle.getWidth() || getHeight() != doodle.getHeight()) {
 						doodle.resize(getWidth(), getHeight());
+						for (SizeListener listener : sizeListeners) {
+							listener.onDoodleViewResized(DoodleView.this, getWidth(), getHeight());
+						}
 					}
 				}
 			};
@@ -73,11 +93,23 @@ public class DoodleView extends View {
 
 	@Override
 	public boolean onTouchEvent(@NonNull MotionEvent event) {
-		if (doodle != null) {
+		if (!readOnly && doodle != null) {
 			return doodle.onTouchEvent(event);
 		} else {
 			return super.onTouchEvent(event);
 		}
+	}
+
+	public void addSizeListener(SizeListener listener) {
+		sizeListeners.add(listener);
+	}
+
+	public void removeSizeListener(SizeListener listener) {
+		sizeListeners.remove(listener);
+	}
+
+	public void clearSizeListeners() {
+		sizeListeners.clear();
 	}
 
 }

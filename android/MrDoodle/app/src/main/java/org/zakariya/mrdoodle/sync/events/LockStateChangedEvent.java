@@ -29,5 +29,8 @@ public class LockStateChangedEvent {
 		return foreignLocks.contains(documentId);
 	}
 
-
+	@Override
+	public String toString() {
+		return "[LockStateChangedEvent grantedLocks: [" + grantedLocks + "] foreignLocks: [" + foreignLocks + "]]";
+	}
 }

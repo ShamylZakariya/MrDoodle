@@ -53,7 +53,7 @@ import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.schedulers.Schedulers;
 
-public class DoodleActivity extends BaseActivity {
+public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener {
 
 	public static final String EXTRA_DOODLE_DOCUMENT_UUID = "DoodleActivity.EXTRA_DOODLE_DOCUMENT_UUID";
 
@@ -110,6 +110,8 @@ public class DoodleActivity extends BaseActivity {
 	@State
 	int toolFlyoutMenuSelectionId;
 
+	@State
+	boolean firstDisplayOfDoodle = true;
 
 	Realm realm;
 	Subscription lockSubscription;
@@ -250,6 +252,7 @@ public class DoodleActivity extends BaseActivity {
 		doodle.setBackgroundColor(ContextCompat.getColor(this, R.color.doodleBackground));
 
 		doodleView.setDoodle(doodle);
+		doodleView.addSizeListener(this);
 
 		updateBrush();
 
@@ -284,6 +287,7 @@ public class DoodleActivity extends BaseActivity {
 
 	@Override
 	protected void onDestroy() {
+		doodleView.removeSizeListener(this);
 		BusProvider.getMainThreadBus().unregister(this);
 
 		if (lockSubscription != null && !lockSubscription.isUnsubscribed()) {
@@ -408,9 +412,20 @@ public class DoodleActivity extends BaseActivity {
 	}
 
 	void setReadOnly(boolean readOnly) {
-		// TODO: Make read only flag actually disable edits to the document and hide drawing tool controls
 		Log.i(TAG, "setReadOnly() called with: readOnly = [" + readOnly + "]");
+
 		this.readOnly = readOnly;
+		doodleView.setReadOnly(this.readOnly);
+
+		// TODO: Animate this?
+		if (this.readOnly) {
+			toolSelectorFlyoutMenu.setVisibility(View.GONE);
+			paletteFlyoutMenu.setVisibility(View.GONE);
+		} else {
+			toolSelectorFlyoutMenu.setVisibility(View.VISIBLE);
+			paletteFlyoutMenu.setVisibility(View.VISIBLE);
+		}
+
 	}
 
 	private void requestDocumentWriteLock() {
@@ -687,5 +702,11 @@ public class DoodleActivity extends BaseActivity {
 
 	}
 
-
+	@Override
+	public void onDoodleViewResized(DoodleView doodleView, int width, int height) {
+		if (firstDisplayOfDoodle) {
+			fitDoodleCanvasContents();
+			firstDisplayOfDoodle = false;
+		}
+	}
 }
