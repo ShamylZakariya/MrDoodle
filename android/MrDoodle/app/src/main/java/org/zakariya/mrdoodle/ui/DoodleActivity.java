@@ -23,6 +23,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.squareup.otto.Subscribe;
@@ -88,6 +89,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	@Bind(R.id.paletteFlyoutMenu)
 	FlyoutMenuView paletteFlyoutMenu;
+
+	@Bind(R.id.lockIconImageView)
+	ImageView lockIconImageView;
 
 	@State
 	int brushColor = 0xFF000000;
@@ -426,6 +430,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			paletteFlyoutMenu.setVisibility(View.VISIBLE);
 		}
 
+		lockIconImageView.setVisibility(readOnly ? View.VISIBLE : View.GONE);
 	}
 
 	private void requestDocumentWriteLock() {

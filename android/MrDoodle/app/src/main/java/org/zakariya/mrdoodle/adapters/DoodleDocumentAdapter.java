@@ -20,6 +20,8 @@ import android.widget.TextView;
 
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.model.DoodleDocument;
+import org.zakariya.mrdoodle.sync.LockState;
+import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
 
 import java.lang.ref.WeakReference;
@@ -29,6 +31,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import io.realm.Realm;
 
@@ -39,26 +42,29 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 
 	private static final String TAG = DoodleDocumentAdapter.class.getSimpleName();
 
-	public class ViewHolder extends RecyclerView.ViewHolder {
-		public DoodleDocument doodleDocument;
-		public String thumbnailId;
-		public View rootView;
-		public ImageView imageView;
-		public ImageView loadingImageView;
-		public TextView infoTextView;
+	class ViewHolder extends RecyclerView.ViewHolder {
+		DoodleDocument doodleDocument;
+		String thumbnailId;
+		View rootView;
+		ImageView imageView;
+		ImageView loadingImageView;
+		TextView infoTextView;
+		ImageView documentLockedImageView;
+
 
 		DoodleThumbnailRenderer.RenderTask thumbnailRenderTask;
 
-		public ViewHolder(View v) {
+		ViewHolder(View v) {
 			super(v);
 			rootView = v;
 			imageView = (ImageView) v.findViewById(R.id.imageView);
 			loadingImageView = (ImageView) v.findViewById(R.id.loadingImageView);
 			infoTextView = (TextView) v.findViewById(R.id.infoTextView);
+			documentLockedImageView = (ImageView) v.findViewById(R.id.lockIconImageView);
 		}
 
 		@TargetApi(Build.VERSION_CODES.LOLLIPOP)
-		public void setThumbnailImage(Bitmap thumbnail) {
+		void setThumbnailImage(Bitmap thumbnail) {
 			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 				Context context = rootView.getContext();
 				int rippleColor = ContextCompat.getColor(context, R.color.primary);
@@ -74,27 +80,29 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 	private static class Item {
 		String uuid;
 		DoodleDocument document;
+		boolean lockedByAnotherDevice;
 
-		public Item(DoodleDocument document) {
+		Item(DoodleDocument document, boolean lockedByAnotherDevice) {
 			this.document = document;
 			this.uuid = document.getUuid();
+			this.lockedByAnotherDevice = lockedByAnotherDevice;
 		}
 	}
 
-	WeakReference<RecyclerView> weakRecyclerView;
-	Context context;
-	Realm realm;
-	View emptyView;
-	ArrayList<Item> items = new ArrayList<>();
-	Map<String, Item> hiddenItems = new HashMap<>();
+	private WeakReference<RecyclerView> weakRecyclerView;
+	private Context context;
+	private Realm realm;
+	private View emptyView;
+	private ArrayList<Item> items = new ArrayList<>();
+	private Map<String, Item> hiddenItems = new HashMap<>();
 
-	DateFormat dateFormatter;
-	int columns;
-	int crossFadeDuration;
-	int itemWidth;
-	float thumbnailPadding;
+	private DateFormat dateFormatter;
+	private int columns;
+	private int crossFadeDuration;
+	private int itemWidth;
+	private float thumbnailPadding;
 
-	Comparator<Item> sortComparator = new Comparator<Item>() {
+	private Comparator<Item> sortComparator = new Comparator<Item>() {
 		@Override
 		public int compare(Item lhs, Item rhs) {
 			long leftCreationDate = lhs.document.getCreationDate().getTime();
@@ -130,6 +138,24 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 
 	public DoodleDocument getDocumentAt(int position) {
 		return this.items.get(position).document;
+	}
+
+	public void setForeignLockState(Set<String> foreignLocks) {
+
+		// update each item's lock state and notify if the state has changed
+
+		int position = 0;
+		for (Item item : items) {
+
+			boolean wasLocked = item.lockedByAnotherDevice;
+			item.lockedByAnotherDevice = foreignLocks.contains(item.uuid);
+
+			if (wasLocked != item.lockedByAnotherDevice) {
+				notifyItemChanged(position);
+			}
+
+			position++;
+		}
 	}
 
 	public void setDocumentHidden(DoodleDocument document, boolean hidden) {
@@ -171,7 +197,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		return isDocumentHidden(document.getUuid());
 	}
 
-	public int getIndexOfDocument(String uuid) {
+	private int getIndexOfDocument(String uuid) {
 		// we need to compare UUIDs because object === checks might not work with Realm objects
 		for (int i = 0; i < items.size(); i++) {
 			Item item = items.get(i);
@@ -183,14 +209,18 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		return -1;
 	}
 
-	public int getIndexOfDocument(DoodleDocument document) {
+	private int getIndexOfDocument(DoodleDocument document) {
 		return getIndexOfDocument(document.getUuid());
 	}
 
 	public void onItemAdded(DoodleDocument doc) {
 		Log.d(TAG, "onItemAdded() called with: " + "doc = [" + doc + "]");
 
-		items.add(new Item(doc));
+		SyncManager syncManager = SyncManager.getInstance();
+		LockState lockState = syncManager.getLockState();
+		boolean isLocked = syncManager.isConnected() && lockState.isLockedByAnotherDevice(doc.getUuid());
+
+		items.add(new Item(doc, isLocked));
 		sortDocuments();
 
 		int index = getIndexOfDocument(doc);
@@ -235,7 +265,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 	@Override
 	public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 		LayoutInflater inflater = LayoutInflater.from(parent.getContext());
-		View v = inflater.inflate(R.layout.doodle_document_grid_item, parent, false);
+		View v = inflater.inflate(R.layout.list_item_doodle_document, parent, false);
 		return new ViewHolder(v);
 	}
 
@@ -263,6 +293,9 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 				dateFormatter.format(item.document.getCreationDate()),
 				dateFormatter.format(item.document.getModificationDate()),
 				item.document.getUuid()));
+
+		// update the lock icon to show if another device is editing this doodle
+		holder.documentLockedImageView.setVisibility(item.lockedByAnotherDevice ? View.VISIBLE : View.GONE);
 
 		// note: Our icons are square, so knowing item width is sufficient
 		int thumbnailWidth = itemWidth;
@@ -322,9 +355,14 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 	}
 
 	public void updateItems() {
+
+		SyncManager syncManager = SyncManager.getInstance();
+		LockState lockState = syncManager.getLockState();
+
 		this.items.clear();
 		for (DoodleDocument doc : DoodleDocument.all(realm)) {
-			this.items.add(new Item(doc));
+			boolean isLocked = syncManager.isConnected() && lockState.isLockedByAnotherDevice(doc.getUuid());
+			this.items.add(new Item(doc, isLocked));
 		}
 
 		sortDocuments();

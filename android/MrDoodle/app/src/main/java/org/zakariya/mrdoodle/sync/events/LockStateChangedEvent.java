@@ -12,9 +12,9 @@ public class LockStateChangedEvent {
 	private Set<String> grantedLocks;
 	private Set<String> foreignLocks;
 
-	public LockStateChangedEvent(Set<String> grantedLocks, Set<String> foreignLocks) {
-		this.grantedLocks = new HashSet<>(grantedLocks);
-		this.foreignLocks = new HashSet<>(foreignLocks);
+	public LockStateChangedEvent(Set<String> allGrantedLocks, Set<String> allForeignLocks) {
+		this.grantedLocks = new HashSet<>(allGrantedLocks);
+		this.foreignLocks = new HashSet<>(allForeignLocks);
 	}
 
 	public boolean isUnlocked(String documentId) {
@@ -27,6 +27,14 @@ public class LockStateChangedEvent {
 
 	public boolean isLockedByAnotherDevice(String documentId) {
 		return foreignLocks.contains(documentId);
+	}
+
+	public Set<String> getGrantedLocks() {
+		return grantedLocks;
+	}
+
+	public Set<String> getForeignLocks() {
+		return foreignLocks;
 	}
 
 	@Override

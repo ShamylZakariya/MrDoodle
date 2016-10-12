@@ -365,6 +365,11 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Subscribe
 	public void onLockStateChangedEvent(LockStateChangedEvent event) {
 		Log.i(TAG, "onLockStateChangedEvent: event: " + event);
+
+		// we need to notify the adapter of the new lock state so it can
+		// update the right items
+
+		adapter.setForeignLockState(event.getForeignLocks());
 	}
 
 	///////////////////////////////////////////////////////////////////
