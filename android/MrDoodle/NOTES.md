@@ -1,9 +1,5 @@
 #Currently
 
-- If not connected to server, and user taps 'sync', we get a long timeout on main thread.
-- If we have local changes while offline, when connected to server, those local changes aren't pushed upstream
-- Locking
-
 
 #BUGS
 When deleting a bunch of items quickly - looks like the previously removed doc gets deleted. I assume snackbar is a singleton and is flushing its ondismissed queue or something to that effect.
