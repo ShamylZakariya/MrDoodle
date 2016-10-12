@@ -32,7 +32,6 @@
 		android:src="@drawable/ic_pencil_lock"
 		android:layout_marginTop="16dp"
 		android:layout_marginRight="16dp"
-		android:alpha="0.3"
 		android:layout_gravity="top|right"
 		android:contentDescription="@string/locked_for_editing_by_another_device"/>
 

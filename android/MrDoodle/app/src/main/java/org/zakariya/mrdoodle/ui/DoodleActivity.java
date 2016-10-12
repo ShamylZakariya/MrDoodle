@@ -8,6 +8,8 @@ import android.support.annotation.ColorInt;
 import android.support.v4.app.NavUtils;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.graphics.ColorUtils;
+import android.support.v4.view.ViewCompat;
+import android.support.v4.view.ViewPropertyAnimatorCompat;
 import android.support.v7.app.ActionBar;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
@@ -56,17 +58,18 @@ import rx.schedulers.Schedulers;
 
 public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener {
 
-	public static final String EXTRA_DOODLE_DOCUMENT_UUID = "DoodleActivity.EXTRA_DOODLE_DOCUMENT_UUID";
+	private static final String TAG = "DoodleActivity";
 
+	public static final String EXTRA_DOODLE_DOCUMENT_UUID = "DoodleActivity.EXTRA_DOODLE_DOCUMENT_UUID";
 	public static final String RESULT_DID_EDIT_DOODLE = "DoodleActivity.RESULT_DID_EDIT_DOODLE";
 	public static final String RESULT_DOODLE_DOCUMENT_UUID = "DoodleActivity.RESULT_DOODLE_DOCUMENT_UUID";
 
 	private static final String STATE_DOODLE = "DoodleActivity.STATE_DOODLE";
 
+	private static final int ANIMATION_DURATION_MILLIS = 300;
 	private static final float DEFAULT_ZOOM_LEVEL = 1;
 	private static final boolean DEBUG_DRAW_DOODLE = false;
 
-	private static final String TAG = "DoodleActivity";
 
 	@ColorInt
 	private static final int TOOL_MENU_FILL_COLOR = 0xFF303030;
@@ -287,6 +290,12 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 				}
 			}
 		});
+
+		// hide controls, they'll be shown or hidden appropriately after onResume
+		// then the document is locked (or not)
+		animateVisibility(lockIconImageView, false, false);
+		animateVisibility(toolSelectorFlyoutMenu, false, false);
+		animateVisibility(paletteFlyoutMenu, false, false);
 	}
 
 	@Override
@@ -415,23 +424,55 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		return readOnly;
 	}
 
-	void setReadOnly(boolean readOnly) {
+	void setReadOnly(boolean readOnly, boolean animate) {
 		Log.i(TAG, "setReadOnly() called with: readOnly = [" + readOnly + "]");
 
 		this.readOnly = readOnly;
 		doodleView.setReadOnly(this.readOnly);
 
-		// TODO: Animate this?
-		if (this.readOnly) {
-			toolSelectorFlyoutMenu.setVisibility(View.GONE);
-			paletteFlyoutMenu.setVisibility(View.GONE);
-		} else {
-			toolSelectorFlyoutMenu.setVisibility(View.VISIBLE);
-			paletteFlyoutMenu.setVisibility(View.VISIBLE);
-		}
-
-		lockIconImageView.setVisibility(readOnly ? View.VISIBLE : View.GONE);
+		animateVisibility(toolSelectorFlyoutMenu, !readOnly, animate);
+		animateVisibility(paletteFlyoutMenu, !readOnly, animate);
+		animateVisibility(lockIconImageView, readOnly, animate);
 	}
+
+	void animateVisibility(final View v, boolean visible, boolean animate) {
+		if (animate) {
+			if (visible) {
+				v.setVisibility(View.VISIBLE);
+			}
+
+			float scale = visible ? 1 : 0;
+			float alpha = visible ? 1 : 0;
+
+			ViewPropertyAnimatorCompat animator = ViewCompat.animate(v)
+					.scaleX(scale)
+					.scaleY(scale)
+					.alpha(alpha)
+					.setDuration(ANIMATION_DURATION_MILLIS);
+
+			if (!visible) {
+				animator.withEndAction(new Runnable() {
+					@Override
+					public void run() {
+						v.setVisibility(View.GONE);
+					}
+				});
+			}
+		} else {
+			if (visible) {
+				v.setScaleX(1);
+				v.setScaleY(1);
+				v.setAlpha(1);
+				v.setVisibility(View.VISIBLE);
+			} else {
+				v.setScaleX(0);
+				v.setScaleY(0);
+				v.setAlpha(0);
+				v.setVisibility(View.GONE);
+			}
+		}
+	}
+
 
 	private void requestDocumentWriteLock() {
 
@@ -456,11 +497,11 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 						@Override
 						public void onNext(RemoteLockStatus remoteLockStatus) {
-							setReadOnly(!remoteLockStatus.lockHeldByRequestingDevice);
+							setReadOnly(!remoteLockStatus.lockHeldByRequestingDevice, true);
 						}
 					});
 		} else {
-			setReadOnly(false);
+			setReadOnly(false, true);
 		}
 	}
 
@@ -485,11 +526,11 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 						@Override
 						public void onNext(RemoteLockStatus remoteLockStatus) {
-							setReadOnly(true);
+							setReadOnly(true, true);
 						}
 					});
 		} else {
-			setReadOnly(true);
+			setReadOnly(true, true);
 		}
 
 	}
