@@ -161,13 +161,10 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 			lock.readLock().lock();
 
 			SyncManager syncManager = getSyncManagerForAccount(accountId);
-
-			// TODO: Delete me at some point
-			logger.info("getStatus - FOR TESTING, calling broadcastStatusToConnectedDevices");
-			syncManager.broadcastStatusToConnectedDevices();
+			Status status = syncManager.getStatus(deviceId);
 
 			response.type(RESPONSE_TYPE_JSON);
-			return syncManager.getStatus(deviceId);
+			return status;
 
 		} finally {
 			lock.readLock().unlock();
