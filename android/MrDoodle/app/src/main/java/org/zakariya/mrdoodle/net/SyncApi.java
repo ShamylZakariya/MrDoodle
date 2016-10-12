@@ -312,7 +312,7 @@ public class SyncApi {
 					modelObjectDataConsumer,
 					modelObjectDeleter);
 
-			log(log, COMPLETE, "Sync complete, updating local timestamp head to: " + syncReport.getTimestampHeadSeconds());
+			log(log, COMPLETE, "Sync complete: " + syncReport);
 			syncState.setTimestampHeadSeconds(syncReport.getTimestampHeadSeconds());
 			syncState.setLastSyncDate(new Date());
 
