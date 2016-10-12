@@ -102,11 +102,22 @@ public class ChangeJournal {
 		}
 	}
 
-	public boolean shouldPersist() {
+	boolean isEmpty() {
+		if (shouldPersist()) {
+			Realm realm = Realm.getDefaultInstance();
+			boolean isEmpty = realm.where(ChangeJournalItem.class).findAll().isEmpty();
+			realm.close();
+			return isEmpty;
+		} else {
+			return changeJournalItemsByObjectId.isEmpty();
+		}
+	}
+
+	private boolean shouldPersist() {
 		return !TextUtils.isEmpty(persistPrefix);
 	}
 
-	public boolean shouldNotify() {
+	private boolean shouldNotify() {
 		return notifies;
 	}
 
@@ -116,7 +127,7 @@ public class ChangeJournal {
 	 * @param src      a ChangeJournal to copy items from
 	 * @param notifies if true, this journal will post ChangeJournalUpdatedEvent
 	 */
-	public void merge(ChangeJournal src, boolean notifies) {
+	void merge(ChangeJournal src, boolean notifies) {
 		Realm realm = Realm.getDefaultInstance();
 
 		Set<ChangeJournalItem> srcItems = src.shouldPersist()
@@ -167,7 +178,7 @@ public class ChangeJournal {
 	/**
 	 * Deletes recorded local changes
 	 */
-	public void clear(boolean notifies) {
+	void clear(boolean notifies) {
 
 		if (shouldPersist()) {
 			Realm realm = Realm.getDefaultInstance();
@@ -215,26 +226,26 @@ public class ChangeJournal {
 		notifyChangeJournalUpdated();
 	}
 
-	public void markModified(String id, String className) {
+	void markModified(String id, String className) {
 		Log.d(TAG, "markModified class: " + className + " id: " + id);
 		mark(id, className, ChangeType.MODIFY);
 		notifyChangeJournalUpdated();
 	}
 
-	public void markDeleted(String id, String className) {
+	void markDeleted(String id, String className) {
 		Log.d(TAG, "markDeleted class: " + className + " id: " + id);
 		mark(id, className, ChangeType.DELETE);
 		notifyChangeJournalUpdated();
 	}
 
-	void notifyChangeJournalUpdated() {
+	private void notifyChangeJournalUpdated() {
 		if (shouldNotify()) {
 			delayedNotificationHandler.removeCallbacks(delayedNotification);
 			delayedNotificationHandler.postDelayed(delayedNotification, NOTIFICATION_DEBOUNCE_MILLIS);
 		}
 	}
 
-	void mark(String id, String className, ChangeType type) {
+	private void mark(String id, String className, ChangeType type) {
 
 		if (shouldPersist()) {
 			// update an existing item, or create a new one

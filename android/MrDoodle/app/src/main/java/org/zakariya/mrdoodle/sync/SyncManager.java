@@ -581,6 +581,12 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	public void onConnectedAndAuthorizedToSyncServer() {
 		Log.i(TAG, "onConnectedAndAuthorizedToSyncServer: connected to sync server");
 		connected = true;
+
+		// check if we have any need to push journaled changes upstream
+		if (!getChangeJournal().isEmpty()) {
+			localChangeSyncTriggerDebouncer.send(null);
+		}
+
 	}
 
 	@Override
