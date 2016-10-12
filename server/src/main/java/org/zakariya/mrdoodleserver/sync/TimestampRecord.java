@@ -168,12 +168,7 @@ public class TimestampRecord {
 		}
 
 		if (debouncedSave == null) {
-			debouncedSave = Debouncer.debounce(new Debouncer.Function<Void>() {
-				@Override
-				public void apply(Void aVoid) {
-					save();
-				}
-			}, DEBOUNCE_MILLIS);
+			debouncedSave = Debouncer.debounce(aVoid -> save(), DEBOUNCE_MILLIS);
 		}
 
 		debouncedSave.apply(null);

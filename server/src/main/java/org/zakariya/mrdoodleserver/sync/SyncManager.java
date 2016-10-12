@@ -219,22 +219,19 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	public void broadcastStatusToConnectedDevices() {
 
 		if (debouncedStatusBroadcastCall == null) {
-			debouncedStatusBroadcastCall = Debouncer.debounce(new Debouncer.Function<Void>() {
-				@Override
-				public void apply(Void aVoid) {
-					// broadcast an updated status to each connected device.
-					// note: Each device get a custom status, since they each have
-					// a different set of granted and foreign locks
+			debouncedStatusBroadcastCall = Debouncer.debounce(aVoid -> {
+				// broadcast an updated status to each connected device.
+				// note: Each device get a custom status, since they each have
+				// a different set of granted and foreign locks
 
-					WebSocketConnection connection = WebSocketConnection.getInstance();
-					connection.broadcast(accountId, new WebSocketConnection.BroadcastMessageProducer<Status>() {
-						@Override
-						public Status generate(String accountId, Session session) {
-							String deviceId = deviceIdManager.getDeviceIdForWebSocketSession(session);
-							return getStatus(deviceId);
-						}
-					});
-				}
+				WebSocketConnection connection = WebSocketConnection.getInstance();
+				connection.broadcast(accountId, new WebSocketConnection.BroadcastMessageProducer<Status>() {
+					@Override
+					public Status generate(String accountId1, Session session) {
+						String deviceId = deviceIdManager.getDeviceIdForWebSocketSession(session);
+						return getStatus(deviceId);
+					}
+				});
 			}, STATUS_BROADCAST_DEBOUNCE_MILLISECONDS);
 		}
 
