@@ -2,10 +2,6 @@ package org.zakariya.mrdoodle.ui;
 
 import android.annotation.TargetApi;
 import android.content.Intent;
-import android.graphics.Canvas;
-import android.graphics.Paint;
-import android.graphics.Path;
-import android.graphics.RectF;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.ColorInt;
@@ -29,6 +25,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.squareup.otto.Subscribe;
+
 import org.zakariya.doodle.model.Brush;
 import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.doodle.view.DoodleView;
@@ -36,6 +34,10 @@ import org.zakariya.flyoutmenu.FlyoutMenuView;
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
+import org.zakariya.mrdoodle.net.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.transport.RemoteLockStatus;
+import org.zakariya.mrdoodle.sync.SyncManager;
+import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.util.ArrayList;
@@ -46,6 +48,10 @@ import butterknife.ButterKnife;
 import icepick.Icepick;
 import icepick.State;
 import io.realm.Realm;
+import rx.Observer;
+import rx.Subscription;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 public class DoodleActivity extends BaseActivity {
 
@@ -65,9 +71,6 @@ public class DoodleActivity extends BaseActivity {
 	private static final int TOOL_MENU_FILL_COLOR = 0xFF303030;
 
 	private static final float ALPHA_CHECKER_SIZE_DP = 8;
-
-	@ColorInt
-	private static final int ALPHA_CHECKER_COLOR = 0xFFD6D6D6;
 
 	private static final float BRUSH_SCALE = 32f;
 
@@ -109,13 +112,24 @@ public class DoodleActivity extends BaseActivity {
 
 
 	Realm realm;
+	Subscription lockSubscription;
+
 	DoodleDocument document;
 	StrokeDoodle doodle;
+
+	// when true, the document is in a read-only state and can't be edited
+	boolean readOnly;
+
+	// when true, it means the user wants write access
+	boolean wantDocumentWriteLock;
+
 
 	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		BusProvider.getMainThreadBus().register(this);
 
 		setContentView(R.layout.activity_doodle);
 		ButterKnife.bind(this);
@@ -270,6 +284,12 @@ public class DoodleActivity extends BaseActivity {
 
 	@Override
 	protected void onDestroy() {
+		BusProvider.getMainThreadBus().unregister(this);
+
+		if (lockSubscription != null && !lockSubscription.isUnsubscribed()) {
+			lockSubscription.unsubscribe();
+		}
+
 		realm.close();
 		super.onDestroy();
 	}
@@ -294,15 +314,13 @@ public class DoodleActivity extends BaseActivity {
 
 	@Override
 	protected void onResume() {
-		// TODO: Request lock on our document
-		Log.i(TAG, "onResume: ");
+		requestDocumentWriteLock();
 		super.onResume();
 	}
 
 	@Override
 	protected void onPause() {
-		// TODO Release lock on our document
-		Log.i(TAG, "onPause: ");
+		releaseDocumentWriteLock();
 		saveDoodleIfEdited();
 		super.onPause();
 	}
@@ -383,6 +401,77 @@ public class DoodleActivity extends BaseActivity {
 		} else {
 			return false;
 		}
+	}
+
+	boolean isReadOnly() {
+		return readOnly;
+	}
+
+	void setReadOnly(boolean readOnly) {
+		// TODO: Make read only flag actually disable edits to the document and hide drawing tool controls
+		Log.i(TAG, "setReadOnly() called with: readOnly = [" + readOnly + "]");
+		this.readOnly = readOnly;
+	}
+
+	private void requestDocumentWriteLock() {
+
+		wantDocumentWriteLock = true;
+		SyncManager syncManager = SyncManager.getInstance();
+
+		if (syncManager.isConnected()) {
+			Log.i(TAG, "requestDocumentWriteLock: ");
+
+			lockSubscription = SyncManager.getInstance().requestLock(document.getUuid())
+					.subscribeOn(Schedulers.io())
+					.observeOn(AndroidSchedulers.mainThread())
+					.subscribe(new Observer<RemoteLockStatus>() {
+						@Override
+						public void onCompleted() {
+						}
+
+						@Override
+						public void onError(Throwable e) {
+							Log.e(TAG, "requestDocumentWriteLock - onError: ", e);
+						}
+
+						@Override
+						public void onNext(RemoteLockStatus remoteLockStatus) {
+							setReadOnly(!remoteLockStatus.lockHeldByRequestingDevice);
+						}
+					});
+		} else {
+			setReadOnly(false);
+		}
+	}
+
+	private void releaseDocumentWriteLock() {
+
+		wantDocumentWriteLock = false;
+		SyncManager syncManager = SyncManager.getInstance();
+		if (syncManager.isConnected()) {
+			Log.i(TAG, "releaseDocumentWriteLock: ");
+			lockSubscription = SyncManager.getInstance().releaseLock(document.getUuid())
+					.subscribeOn(Schedulers.io())
+					.observeOn(AndroidSchedulers.mainThread())
+					.subscribe(new Observer<RemoteLockStatus>() {
+						@Override
+						public void onCompleted() {
+						}
+
+						@Override
+						public void onError(Throwable e) {
+							Log.e(TAG, "releaseDocumentWriteLock - onError: ", e);
+						}
+
+						@Override
+						public void onNext(RemoteLockStatus remoteLockStatus) {
+							setReadOnly(true);
+						}
+					});
+		} else {
+			setReadOnly(true);
+		}
+
 	}
 
 	private void markDocumentModified() {
@@ -481,29 +570,29 @@ public class DoodleActivity extends BaseActivity {
 
 
 		final int count = 6;
-		List<ToolFlyoutMenuItem> items = new ArrayList<>();
+		List<DoodleActivityTools.ToolFlyoutMenuItem> items = new ArrayList<>();
 		for (int i = 0; i < count; i++) {
 			float size = (float) (i + 1) / (float) count;
-			items.add(new ToolFlyoutMenuItem(items.size(), size, false, alphaCheckerSize, TOOL_MENU_FILL_COLOR));
+			items.add(new DoodleActivityTools.ToolFlyoutMenuItem(items.size(), size, false, alphaCheckerSize, TOOL_MENU_FILL_COLOR));
 		}
 
 		for (int i = 0; i < count; i++) {
 			float size = (float) (i + 1) / (float) count;
-			items.add(new ToolFlyoutMenuItem(items.size(), size, true, alphaCheckerSize, TOOL_MENU_FILL_COLOR));
+			items.add(new DoodleActivityTools.ToolFlyoutMenuItem(items.size(), size, true, alphaCheckerSize, TOOL_MENU_FILL_COLOR));
 		}
 
 		toolSelectorFlyoutMenu.setLayout(new FlyoutMenuView.GridLayout(count, FlyoutMenuView.GridLayout.UNSPECIFIED));
 		toolSelectorFlyoutMenu.setAdapter(new FlyoutMenuView.ArrayAdapter<>(items));
 
 		float toolInsetPx = dp2px(0);
-		final ToolFlyoutButtonRenderer toolButtonRenderer = new ToolFlyoutButtonRenderer(toolInsetPx, 1, false, alphaCheckerSize, TOOL_MENU_FILL_COLOR);
+		final DoodleActivityTools.ToolFlyoutButtonRenderer toolButtonRenderer = new DoodleActivityTools.ToolFlyoutButtonRenderer(toolInsetPx, 1, false, alphaCheckerSize, TOOL_MENU_FILL_COLOR);
 		toolSelectorFlyoutMenu.setButtonRenderer(toolButtonRenderer);
 
 		toolSelectorFlyoutMenu.setSelectionListener(new FlyoutMenuView.SelectionListener() {
 			@Override
 			public void onItemSelected(FlyoutMenuView flyoutMenuView, FlyoutMenuView.MenuItem item) {
 				toolFlyoutMenuSelectionId = item.getId();
-				ToolFlyoutMenuItem toolMenuItem = (ToolFlyoutMenuItem) item;
+				DoodleActivityTools.ToolFlyoutMenuItem toolMenuItem = (DoodleActivityTools.ToolFlyoutMenuItem) item;
 
 				toolButtonRenderer.setSize(toolMenuItem.getSize());
 				toolButtonRenderer.setIsEraser(toolMenuItem.isEraser());
@@ -530,7 +619,7 @@ public class DoodleActivity extends BaseActivity {
 
 		paletteFlyoutMenu.setLayout(new FlyoutMenuView.GridLayout(cols, FlyoutMenuView.GridLayout.UNSPECIFIED));
 
-		List<PaletteFlyoutMenuItem> items = new ArrayList<>();
+		List<DoodleActivityTools.PaletteFlyoutMenuItem> items = new ArrayList<>();
 		for (int r = 0; r < rows; r++) {
 			float hue = 360f * ((float) r / (float) rows);
 			hsl[0] = hue;
@@ -544,21 +633,21 @@ public class DoodleActivity extends BaseActivity {
 					hsl[1] = 1;
 					hsl[2] = lightness;
 				}
-				items.add(new PaletteFlyoutMenuItem(items.size(), ColorUtils.HSLToColor(hsl), cornerRadius));
+				items.add(new DoodleActivityTools.PaletteFlyoutMenuItem(items.size(), ColorUtils.HSLToColor(hsl), cornerRadius));
 			}
 		}
 
 		paletteFlyoutMenu.setAdapter(new FlyoutMenuView.ArrayAdapter<>(items));
 
 		float insetPx = dp2px(0);
-		final PaletteFlyoutButtonRenderer renderer = new PaletteFlyoutButtonRenderer(insetPx);
+		final DoodleActivityTools.PaletteFlyoutButtonRenderer renderer = new DoodleActivityTools.PaletteFlyoutButtonRenderer(insetPx);
 		paletteFlyoutMenu.setButtonRenderer(renderer);
 
 		paletteFlyoutMenu.setSelectionListener(new FlyoutMenuView.SelectionListener() {
 			@Override
 			public void onItemSelected(FlyoutMenuView flyoutMenuView, FlyoutMenuView.MenuItem item) {
 				paletteFlyoutMenuSelectionId = item.getId();
-				int color = ((PaletteFlyoutMenuItem) item).color;
+				int color = ((DoodleActivityTools.PaletteFlyoutMenuItem) item).color;
 				renderer.setCurrentColor(color);
 				setBrushColor(color);
 			}
@@ -569,260 +658,34 @@ public class DoodleActivity extends BaseActivity {
 		});
 	}
 
-
-	private static final class PaletteFlyoutButtonRenderer extends FlyoutMenuView.ButtonRenderer {
-
-		Paint paint;
-		RectF insetButtonBounds = new RectF();
-		float inset;
-		@ColorInt
-		int currentColor;
-		double currentColorLuminance;
-
-		public PaletteFlyoutButtonRenderer(float inset) {
-			paint = new Paint();
-			paint.setAntiAlias(true);
-			this.inset = inset;
-		}
-
-		@SuppressWarnings("unused")
-		public int getCurrentColor() {
-			return currentColor;
-		}
-
-		public void setCurrentColor(int currentColor) {
-			this.currentColor = currentColor;
-			currentColorLuminance = ColorUtils.calculateLuminance(this.currentColor);
-		}
-
-
-		@Override
-		public void onDrawButtonContent(Canvas canvas, RectF buttonBounds, @ColorInt int buttonColor, float alpha) {
-			insetButtonBounds.left = buttonBounds.left + inset;
-			insetButtonBounds.top = buttonBounds.top + inset;
-			insetButtonBounds.right = buttonBounds.right - inset;
-			insetButtonBounds.bottom = buttonBounds.bottom - inset;
-
-			paint.setAlpha((int) (alpha * 255f));
-			paint.setStyle(Paint.Style.FILL);
-			paint.setColor(currentColor);
-			canvas.drawOval(insetButtonBounds, paint);
-
-			if (inset > 0 && currentColorLuminance > 0.7) {
-				paint.setStyle(Paint.Style.STROKE);
-				paint.setColor(0x33000000);
-				canvas.drawOval(insetButtonBounds, paint);
-			}
+	@Subscribe
+	public void onLockStateChanged(LockStateChangedEvent event) {
+		if (wantDocumentWriteLock && event.isUnlocked(document.getUuid())) {
+			Log.i(TAG, "onLockStateChanged: currently want write lock, and document is available, so requesting lock...");
+			requestDocumentWriteLock();
 		}
 	}
 
-	private static final class ToolFlyoutButtonRenderer extends FlyoutMenuView.ButtonRenderer {
+	@Subscribe
+	public void onSyncServerConnectionStatusChanged(SyncServerConnectionStatusEvent event) {
 
-		ToolRenderer toolRenderer;
-		Paint paint;
-		RectF insetButtonBounds = new RectF();
-		float inset;
+		// if user connects, we now have to play by the rules: request a write lock.
 
-		public ToolFlyoutButtonRenderer(float inset, float size, boolean isEraser, float alphaCheckerSize, @ColorInt int fillColor) {
-			this.inset = inset;
-			toolRenderer = new ToolRenderer(size, isEraser, alphaCheckerSize, fillColor);
-			paint = new Paint();
-			paint.setAntiAlias(true);
-		}
-
-		@SuppressWarnings("unused")
-		@ColorInt
-		public int getFillColor() {
-			return toolRenderer.getFillColor();
-		}
-
-		@SuppressWarnings("unused")
-		public void setFillColor(@ColorInt int fillColor) {
-			toolRenderer.setFillColor(fillColor);
-		}
-
-		public float getSize() {
-			return toolRenderer.getSize();
-		}
-
-		public void setSize(float size) {
-			toolRenderer.setSize(size);
-		}
-
-		@SuppressWarnings("unused")
-		public boolean isEraser() {
-			return toolRenderer.isEraser();
-		}
-
-		public void setIsEraser(boolean isEraser) {
-			toolRenderer.setIsEraser(isEraser);
-		}
-
-		@Override
-		public void onDrawButtonContent(Canvas canvas, RectF buttonBounds, @ColorInt int buttonColor, float alpha) {
-			insetButtonBounds.left = buttonBounds.left + inset;
-			insetButtonBounds.top = buttonBounds.top + inset;
-			insetButtonBounds.right = buttonBounds.right - inset;
-			insetButtonBounds.bottom = buttonBounds.bottom - inset;
-
-			paint.setAlpha((int) (alpha * 255f));
-			paint.setColor(buttonColor);
-			paint.setStyle(Paint.Style.FILL);
-			toolRenderer.draw(canvas, insetButtonBounds);
-		}
-	}
-
-
-	private static final class ToolFlyoutMenuItem extends FlyoutMenuView.MenuItem {
-
-		ToolRenderer toolRenderer;
-
-		public ToolFlyoutMenuItem(int id, float size, boolean isEraser, float alphaCheckerSize, @ColorInt int fillColor) {
-			super(id);
-			toolRenderer = new ToolRenderer(size, isEraser, alphaCheckerSize, fillColor);
-		}
-
-		public float getSize() {
-			return toolRenderer.getSize();
-		}
-
-		public boolean isEraser() {
-			return toolRenderer.isEraser();
-		}
-
-		@Override
-		public void onDraw(Canvas canvas, RectF bounds, float degreeSelected) {
-			toolRenderer.draw(canvas, bounds);
-		}
-	}
-
-	private static final class PaletteFlyoutMenuItem extends FlyoutMenuView.MenuItem {
-
-		@ColorInt
-		int color;
-
-		Paint paint;
-		float cornerRadius;
-
-		public PaletteFlyoutMenuItem(int id, @ColorInt int color, float cornerRadius) {
-			super(id);
-			this.color = ColorUtils.setAlphaComponent(color, 255);
-			this.cornerRadius = cornerRadius;
-			paint = new Paint();
-			paint.setAntiAlias(true);
-			paint.setStyle(Paint.Style.FILL);
-			paint.setColor(color);
-		}
-
-		@Override
-		public void onDraw(Canvas canvas, RectF bounds, float degreeSelected) {
-			if (cornerRadius > 0) {
-				canvas.drawRoundRect(bounds, cornerRadius, cornerRadius, paint);
+		if (event.isConnected()) {
+			Log.i(TAG, "onSyncServerConnectionStatusChanged: CONNECTED.");
+			if (wantDocumentWriteLock) {
+				requestDocumentWriteLock();
 			} else {
-				canvas.drawRect(bounds, paint);
+				releaseDocumentWriteLock();
 			}
 		}
+
+		// I have considered the case of disconnecting. I think we should simply leave
+		// the lock state as-is. A document being edited will still be edited, and its
+		// changes recorded in the journal. A document being viewed read-only will stay
+		// that way. User can back out and in to get a write lock if they want.
+
 	}
 
-	/**
-	 * Convenience class for rendering the tool state in the ToolFlyoutMenuItem and ToolFlyoutButtonRenderer
-	 */
-	private static final class ToolRenderer {
-
-		float size;
-		float radius;
-		float alphaCheckerSize;
-		boolean isEraser;
-		Path clipPath;
-		Paint paint;
-		RectF previousBounds;
-		@ColorInt
-		int fillColor;
-
-		public ToolRenderer(float size, boolean isEraser, float alphaCheckerSize, @ColorInt int fillColor) {
-			this.alphaCheckerSize = alphaCheckerSize;
-			paint = new Paint();
-			paint.setAntiAlias(true);
-
-			setSize(size);
-			setIsEraser(isEraser);
-			setFillColor(fillColor);
-		}
-
-		public float getSize() {
-			return size;
-		}
-
-		public void setSize(float size) {
-			this.size = Math.min(Math.max(size, 0), 1);
-			clipPath = null;
-		}
-
-		public void setIsEraser(boolean isEraser) {
-			this.isEraser = isEraser;
-		}
-
-		public boolean isEraser() {
-			return isEraser;
-		}
-
-		public int getFillColor() {
-			return fillColor;
-		}
-
-		public void setFillColor(int fillColor) {
-			this.fillColor = fillColor;
-		}
-
-		public void draw(Canvas canvas, RectF bounds) {
-			float maxRadius = Math.min(bounds.width(), bounds.height()) / 2;
-			radius = size * maxRadius;
-
-			if (isEraser) {
-				buildEraserFillClipPath(bounds);
-
-				canvas.save();
-				canvas.clipPath(clipPath);
-
-				int left = (int) bounds.left;
-				int top = (int) bounds.top;
-				int right = (int) bounds.right;
-				int bottom = (int) bounds.bottom;
-
-				paint.setStyle(Paint.Style.FILL);
-				paint.setColor(0xFFFFFFFF);
-				canvas.drawRect(left, top, right, bottom, paint);
-
-				paint.setColor(ALPHA_CHECKER_COLOR);
-				for (int y = top, j = 0; y < bottom; y += (int) alphaCheckerSize, j++) {
-					for (int x = left, k = 0; x < right; x += alphaCheckerSize, k++) {
-						if ((j + k) % 2 == 0) {
-							canvas.drawRect(x, y, x + alphaCheckerSize, y + alphaCheckerSize, paint);
-						}
-					}
-				}
-
-				canvas.restore();
-
-				paint.setStyle(Paint.Style.STROKE);
-				canvas.drawCircle(bounds.centerX(), bounds.centerY(), radius, paint);
-
-			} else {
-				paint.setStyle(Paint.Style.FILL);
-				paint.setColor(fillColor);
-				canvas.drawCircle(bounds.centerX(), bounds.centerY(), radius, paint);
-			}
-		}
-
-		void buildEraserFillClipPath(RectF bounds) {
-			if (previousBounds == null || clipPath == null || !bounds.equals(previousBounds)) {
-				previousBounds = new RectF(bounds);
-
-				clipPath = new Path();
-				clipPath.addCircle(bounds.centerX(), bounds.centerY(), radius, Path.Direction.CW);
-			}
-		}
-
-	}
 
 }
