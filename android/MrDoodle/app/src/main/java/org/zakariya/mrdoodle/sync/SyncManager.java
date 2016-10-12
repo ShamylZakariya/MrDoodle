@@ -9,6 +9,7 @@ import com.squareup.otto.Subscribe;
 
 import org.zakariya.mrdoodle.net.SyncApi;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
+import org.zakariya.mrdoodle.net.exceptions.SyncException;
 import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.net.transport.RemoteLockStatus;
 import org.zakariya.mrdoodle.net.transport.RemoteStatus;
@@ -257,6 +258,11 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 */
 	private SyncReport performSync() throws Exception {
 
+		if (!isConnected()) {
+			throw new SyncException("Not connected to sync server");
+		}
+
+
 		// notify listeners that sync is starting
 		for (WeakReference<SyncStateListener> listenerWeakReference : syncStateListeners) {
 			SyncStateListener listener = listenerWeakReference.get();
@@ -433,6 +439,13 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	private void triggerBackgroundSyncForLocalStatusChange() {
+
+		// skip if not connected
+		if (!isConnected()) {
+			return;
+		}
+
+
 		if (!isSyncing()) {
 			Log.i(TAG, "triggerBackgroundSyncForLocalStatusChange:");
 			performBackgroundSync();
@@ -461,7 +474,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 				Log.i(TAG, "triggerBackgroundSyncForRemoteStatusChange: sync in progress, scheduling re-attempt...");
 				remoteStatusSyncTriggerDebouncer.send(remoteStatus);
 			}
-
 		}
 	}
 
@@ -586,7 +598,6 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		if (!getChangeJournal().isEmpty()) {
 			localChangeSyncTriggerDebouncer.send(null);
 		}
-
 	}
 
 	@Override
