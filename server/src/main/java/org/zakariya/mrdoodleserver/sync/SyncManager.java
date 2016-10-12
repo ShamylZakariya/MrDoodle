@@ -94,7 +94,10 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		this.storagePrefix = storagePrefix;
 		this.timestampRecord = new TimestampRecord(jedisPool, storagePrefix, accountId);
 		this.blobStore = new BlobStore(jedisPool, storagePrefix, accountId);
+
 		this.lockManager = new LockManager();
+		this.lockManager.addListener(this);
+
 
 		// TODO: Learn how to use dependency injection to make this smarter
 		List<String> deviceIds = configuration.getArray("syncManager/deviceIdManager/mock/deviceIds");
