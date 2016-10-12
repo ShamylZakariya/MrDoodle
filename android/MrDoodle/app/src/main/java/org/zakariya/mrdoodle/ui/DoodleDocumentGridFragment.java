@@ -96,8 +96,6 @@ public class DoodleDocumentGridFragment extends Fragment
 
 	@Override
 	public void onDestroy() {
-		Log.i(TAG, "onDestroy: ");
-
 		if (bottomSheetDialog != null) {
 			bottomSheetDialog.dismiss();
 		}
@@ -109,7 +107,6 @@ public class DoodleDocumentGridFragment extends Fragment
 
 	@Override
 	public void onResume() {
-		Log.i(TAG, "onResume: ");
 		super.onResume();
 		BusProvider.getMainThreadBus().register(this);
 		adapter.updateItems();
@@ -117,7 +114,6 @@ public class DoodleDocumentGridFragment extends Fragment
 
 	@Override
 	public void onPause() {
-		Log.i(TAG, "onPause: ");
 		BusProvider.getMainThreadBus().unregister(this);
 		super.onPause();
 	}
@@ -326,7 +322,6 @@ public class DoodleDocumentGridFragment extends Fragment
 	}
 
 	void editDoodleDocument(DoodleDocument doc) {
-		Log.i(TAG, "editDoodleDocument: UUID: " + doc.getUuid());
 		Intent intent = new Intent(getContext(), DoodleActivity.class);
 		intent.putExtra(DoodleActivity.EXTRA_DOODLE_DOCUMENT_UUID, doc.getUuid());
 		startActivityForResult(intent, REQUEST_EDIT_DOODLE);
