@@ -7,9 +7,10 @@ import android.util.Log;
 
 import com.squareup.otto.Subscribe;
 
-import org.zakariya.mrdoodle.net.SyncEngine;
+import org.zakariya.mrdoodle.net.SyncApi;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.model.SyncReport;
+import org.zakariya.mrdoodle.net.transport.RemoteLockStatus;
 import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
 import org.zakariya.mrdoodle.signin.SignInManager;
@@ -22,6 +23,7 @@ import org.zakariya.mrdoodle.util.Debouncer;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -42,7 +44,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private static final int REMOTE_STATUS_CHANGE_SYNC_TRIGGER_DEBOUNCE_MILLIS = 500;
 	private static final int LOCAL_UPDATE_SYNC_TRIGGER_DEBOUNCE_MILLIS = 1000;
 
-	public interface ModelDataAdapter extends SyncEngine.ModelObjectDataConsumer, SyncEngine.ModelObjectDataProvider, SyncEngine.ModelObjectDeleter {
+	public interface ModelDataAdapter extends SyncApi.ModelObjectDataConsumer, SyncApi.ModelObjectDataProvider, SyncApi.ModelObjectDeleter {
 	}
 
 	public interface SyncStateListener {
@@ -64,7 +66,9 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private SyncServerConnection syncServerConnection;
 	private ChangeJournal changeJournal;
 	private TimestampRecorder timestampRecorder;
-	private SyncEngine syncEngine;
+	private SyncApi syncApi;
+	private LockState lockState;
+
 	private ModelDataAdapter modelDataAdapter;
 	private List<WeakReference<SyncStateListener>> syncStateListeners = new ArrayList<>();
 	private Debouncer<RemoteStatus> remoteStatusSyncTriggerDebouncer;
@@ -95,7 +99,9 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 		changeJournal = new ChangeJournal(CHANGE_JOURNAL_PERSIST_PREFIX, true);
 		timestampRecorder = new TimestampRecorder();
-		syncEngine = new SyncEngine(context, syncConfiguration);
+		syncApi = new SyncApi(context, syncConfiguration);
+
+		lockState = new LockState();
 
 		remoteStatusSyncTriggerDebouncer = new Debouncer<>(REMOTE_STATUS_CHANGE_SYNC_TRIGGER_DEBOUNCE_MILLIS, new Action1<RemoteStatus>() {
 			@Override
@@ -138,8 +144,12 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		return timestampRecorder;
 	}
 
-	public SyncEngine getSyncEngine() {
-		return syncEngine;
+	public SyncApi getSyncApi() {
+		return syncApi;
+	}
+
+	public LockState getLockState() {
+		return lockState;
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -165,7 +175,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	public boolean isSyncing() {
-		return syncEngine.isSyncing();
+		return syncApi.isSyncing();
 	}
 
 	/**
@@ -192,6 +202,50 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 			@Override
 			public SyncReport call() throws Exception {
 				return resetAndPerformSync(deleter);
+			}
+		});
+	}
+
+	/**
+	 * Using Rx, request a lock for a given document id
+	 * The LockRequestResponse will note the lock status for the document. The `granted` boolean will
+	 * only be true if the lock was granted in response to the request. E.g., If the document was already
+	 * locked by this device, the document will be locked as requested, but `granted` will be false.
+	 *
+	 * @param documentId the id of the document to lock
+	 * @return LockRequestResponse which will describe if the resource is locked and if the request was granted.
+	 */
+	public Observable<RemoteLockStatus> requestLock(final String documentId) {
+		return Observable.fromCallable(new Callable<RemoteLockStatus>() {
+			@Override
+			public RemoteLockStatus call() throws Exception {
+				RemoteLockStatus response = syncApi.requestLock(userAccount, documentId);
+				if (response.lockHeldByRequestingDevice) {
+					getLockState().addGrantedLock(documentId);
+				}
+				return response;
+			}
+		});
+	}
+
+	/**
+	 * Using Rx, release the lock for a given document id
+	 * The LockRequestResponse will note the lock status for the document. The `granted` boolean will
+	 * only be true if the lock was released in response to the request. E.g., If the document was
+	 * already unlocked, the document's lock status didn't change, so `granted` will be false.
+	 *
+	 * @param documentId the id of the document to unlock
+	 * @return LockRequestResponse which will describe the document lock status
+	 */
+	public Observable<RemoteLockStatus> releaseLock(final String documentId) {
+		return Observable.fromCallable(new Callable<RemoteLockStatus>() {
+			@Override
+			public RemoteLockStatus call() throws Exception {
+				RemoteLockStatus response = syncApi.releaseLock(userAccount, documentId);
+				if (!response.lockHeldByRequestingDevice) {
+					getLockState().removeGrantedLock(documentId);
+				}
+				return response;
 			}
 		});
 	}
@@ -224,7 +278,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		changeJournal.clear(false);
 
 		try {
-			SyncReport syncReport = syncEngine.sync(userAccount,
+			SyncReport syncReport = syncApi.sync(userAccount,
 					syncState,
 					syncChangeJournal,
 					timestampRecorder,
@@ -424,7 +478,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 			userAccount.getAuthenticationToken(new AuthenticationTokenReceiver() {
 				@Override
 				public void onAuthenticationTokenAvailable(String idToken) {
-					syncEngine.setAuthorizationToken(idToken);
+					syncApi.setAuthorizationToken(idToken);
 				}
 
 				@Override
@@ -500,15 +554,22 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		// connection to server, and is nulled on disconnect.
 		String deviceId = remoteStatus.deviceId;
 		if (!TextUtils.isEmpty(deviceId)) {
-			if (TextUtils.isEmpty(syncEngine.getDeviceId())) {
-				Log.i(TAG, "onSyncServerRemoteStatusReceived: received a deviceId - assigning it to SyncEngine");
-				syncEngine.setDeviceId(deviceId);
-			} else {
-				Log.e(TAG, "onSyncServerRemoteStatusReceived: received a device id, but we already have one. This shouldn't happen." );
-				throw new IllegalStateException("Received a device id from server but we already have one for this session");
+			if (TextUtils.isEmpty(syncApi.getDeviceId())) {
+				Log.i(TAG, "onSyncServerRemoteStatusReceived: received deviceId " + deviceId + " - assigning it to SyncApi");
+				syncApi.setDeviceId(deviceId);
+			} else if (!deviceId.equals(syncApi.getDeviceId())){
+				Log.e(TAG, "onSyncServerRemoteStatusReceived: received a new device id: " + deviceId + ", but we already have one: " + syncApi.getDeviceId() + ". This shouldn't happen.");
+				throw new IllegalStateException("Received a new device id: " + deviceId + " from server but we already have one for this session: " + syncApi.getDeviceId());
 			}
 		}
 
+		// now update lock status
+		lockState.update(
+				Arrays.asList(remoteStatus.grantedLockedDocumentIds),
+				Arrays.asList(remoteStatus.foreignLockedDocumentIds));
+
+
+		// schedule a possible sync (sync will only run if needed)
 		remoteStatusSyncTriggerDebouncer.send(remoteStatus);
 	}
 
@@ -526,7 +587,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	public void onDisconnectedFromSyncServer() {
 		Log.i(TAG, "onConnectedAndAuthorizedToSyncServer: disconnected from sync server");
 		connected = false;
-		syncEngine.setDeviceId(null);
+		syncApi.setDeviceId(null);
 	}
 
 	///////////////////////////////////////////////////////////////////

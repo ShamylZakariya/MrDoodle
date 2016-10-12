@@ -16,6 +16,7 @@ import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
+import org.zakariya.mrdoodle.model.DoodleDocumentNotFoundException;
 import org.zakariya.mrdoodle.net.model.RemoteChangeReport;
 import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.signin.SignInManager;
@@ -25,6 +26,7 @@ import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
 
+import java.io.IOException;
 import java.util.List;
 
 import io.realm.Realm;
@@ -181,7 +183,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	private static class SyncModelAdapter implements SyncManager.ModelDataAdapter {
 
 		@Override
-		public Action setModelObjectData(String blobId, String blobType, byte[] blobData) throws Exception {
+		public Action setModelObjectData(String blobId, String blobType, byte[] blobData) throws IOException {
 			switch (blobType) {
 				case DoodleDocument.DOCUMENT_TYPE: {
 
@@ -205,7 +207,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 		@Nullable
 		@Override
-		public byte[] getModelObjectData(String blobId, String blobType) throws Exception {
+		public byte[] getModelObjectData(String blobId, String blobType) throws IOException {
 			switch (blobType) {
 				case DoodleDocument.DOCUMENT_TYPE: {
 
@@ -215,7 +217,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 						if (document != null) {
 							return document.serialize(MrDoodleApplication.getInstance().getApplicationContext());
 						} else {
-							throw new Exception("Unable to find DoodleDocument with UUID: " + blobId);
+							throw new DoodleDocumentNotFoundException("Unable to find DoodleDocument with UUID: " + blobId);
 						}
 					} finally {
 						realm.close();
@@ -226,7 +228,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		}
 
 		@Override
-		public boolean deleteModelObject(String modelId, String modelType) throws Exception {
+		public boolean deleteModelObject(String modelId, String modelType) throws IOException {
 			switch (modelType) {
 				case DoodleDocument.DOCUMENT_TYPE:
 					Realm realm = Realm.getDefaultInstance();

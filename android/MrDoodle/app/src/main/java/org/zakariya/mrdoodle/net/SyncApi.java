@@ -2,17 +2,20 @@ package org.zakariya.mrdoodle.net;
 
 import android.content.Context;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.util.Log;
 
-import org.zakariya.mrdoodle.net.api.SyncService;
+import org.zakariya.mrdoodle.net.api.SyncApiService;
+import org.zakariya.mrdoodle.net.exceptions.LockException;
+import org.zakariya.mrdoodle.net.exceptions.SyncException;
 import org.zakariya.mrdoodle.net.model.RemoteChangeReport;
 import org.zakariya.mrdoodle.net.model.SyncReport;
+import org.zakariya.mrdoodle.net.transport.RemoteLockStatus;
 import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.net.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.ChangeJournal;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
-import org.zakariya.mrdoodle.sync.SyncException;
 import org.zakariya.mrdoodle.sync.TimestampRecorder;
 import org.zakariya.mrdoodle.sync.model.ChangeJournalItem;
 import org.zakariya.mrdoodle.sync.model.ChangeType;
@@ -49,12 +52,13 @@ import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.PUSH_START;
 import static org.zakariya.mrdoodle.sync.model.SyncLogEntry.Phase.START;
 
 /**
- *
+ * SyncApi
+ * Performs the sync API calls synchronously. Do not call these directly, use SyncManager.
  */
 @SuppressWarnings("TryFinallyCanBeTryWithResources") // not for API 17 it can't
-public class SyncEngine {
+public class SyncApi {
 
-	private static final String TAG = SyncEngine.class.getSimpleName();
+	private static final String TAG = SyncApi.class.getSimpleName();
 
 	private Context context;
 	private SyncConfiguration syncConfiguration;
@@ -62,10 +66,10 @@ public class SyncEngine {
 	private Retrofit retrofit;
 	private String authorizationToken;
 	private String deviceId;
-	private SyncService syncService;
+	private SyncApiService syncApiService;
 	private boolean syncing;
 
-	public SyncEngine(Context context, SyncConfiguration syncConfiguration) {
+	public SyncApi(Context context, SyncConfiguration syncConfiguration) {
 		this.context = context;
 		this.syncConfiguration = syncConfiguration;
 
@@ -75,12 +79,20 @@ public class SyncEngine {
 			@Override
 			public okhttp3.Response intercept(Chain chain) throws IOException {
 				Request original = chain.request();
-				Request request = original.newBuilder()
-						.header(SyncService.REQUEST_HEADER_USER_AGENT, "MrDoodle")
-						.header(SyncService.REQUEST_HEADER_AUTH, getAuthorizationToken())
-						.header(SyncService.REQUEST_HEADER_DEVICE_ID, getDeviceId())
-						.build();
+				Request.Builder builder = original.newBuilder()
+						.header(SyncApiService.REQUEST_HEADER_USER_AGENT, "MrDoodle");
 
+				String authToken = getAuthorizationToken();
+				if (!TextUtils.isEmpty(authToken)) {
+					builder.header(SyncApiService.REQUEST_HEADER_AUTH, authToken);
+				}
+
+				String deviceId = getDeviceId();
+				if (!TextUtils.isEmpty(deviceId)) {
+					builder.header(SyncApiService.REQUEST_HEADER_DEVICE_ID, getDeviceId());
+				}
+
+				Request request = builder.build();
 				return chain.proceed(request);
 			}
 		});
@@ -93,7 +105,7 @@ public class SyncEngine {
 				.client(httpClient)
 				.build();
 
-		syncService = retrofit.create(SyncService.class);
+		syncApiService = retrofit.create(SyncApiService.class);
 	}
 
 	public Context getContext() {
@@ -112,8 +124,8 @@ public class SyncEngine {
 		return retrofit;
 	}
 
-	public SyncService getSyncService() {
-		return syncService;
+	public SyncApiService getSyncApiService() {
+		return syncApiService;
 	}
 
 	@Nullable public String getAuthorizationToken() {
@@ -156,10 +168,10 @@ public class SyncEngine {
 		 * @param blobId   id of the model object
 		 * @param blobType the internal type/name/class of the model object for your reference
 		 * @return the referenced model object's byte[] serialized form, or null if no such item exists
-		 * @throws Exception
+		 * @throws IOException
 		 */
 		@Nullable
-		byte[] getModelObjectData(String blobId, String blobType) throws Exception;
+		byte[] getModelObjectData(String blobId, String blobType) throws IOException;
 	}
 
 
@@ -179,9 +191,9 @@ public class SyncEngine {
 		 * @param blobType the internal type/name/class of the model object for your reference
 		 * @param blobData the byte[] serialized form
 		 * @return Action.UPDATE if an existing model object was updated, Action.CREATE if a new one was created, or Action.NOTHING if the blobType was unrecognized
-		 * @throws Exception
+		 * @throws IOException
 		 */
-		Action setModelObjectData(String blobId, String blobType, byte[] blobData) throws Exception;
+		Action setModelObjectData(String blobId, String blobType, byte[] blobData) throws IOException;
 
 	}
 
@@ -192,9 +204,43 @@ public class SyncEngine {
 		 * @param modelId   the id of the model object
 		 * @param modelType internal name/class of model for your reference
 		 * @return true iff the referenced model existed and could be deleted
-		 * @throws Exception
+		 * @throws IOException
 		 */
-		boolean deleteModelObject(String modelId, String modelType) throws Exception;
+		boolean deleteModelObject(String modelId, String modelType) throws IOException;
+	}
+
+	/**
+	 * Request the server to grant a lock on a document.
+	 * @param account the account of the logged-in user
+	 * @param documentId the id of the document to lock
+	 * @return RemoteLockStatus describing resultant lock state
+	 * @throws IOException, LockException
+	 */
+	synchronized public RemoteLockStatus requestLock(SignInAccount account, String documentId) throws IOException,LockException {
+		Response<RemoteLockStatus> response = syncApiService.requestLock(account.getId(), documentId).execute();
+		if (response.isSuccessful()) {
+			return response.body();
+		} else {
+			throw new LockException(response.errorBody().string(), response);
+		}
+	}
+
+	/**
+	 * Request the server to release a lock on a document. The server will only release the lock
+	 * for a document which is locked by this device. If the document isn't locked, or is locked by
+	 * another device, the response will reflect the document's lock status.
+	 * @param account the account of the logged-in user
+	 * @param documentId the id of the document to lock
+	 * @return RemoteLockStatus describing resultant lock state
+	 * @throws IOException, LockException
+	 */
+	synchronized public RemoteLockStatus releaseLock(SignInAccount account, String documentId) throws IOException,LockException {
+		Response<RemoteLockStatus> response = syncApiService.releaseLock(account.getId(), documentId).execute();
+		if (response.isSuccessful()) {
+			return response.body();
+		} else {
+			throw new LockException(response.errorBody().string(), response);
+		}
 	}
 
 	/**
@@ -217,11 +263,11 @@ public class SyncEngine {
 			ModelObjectDataProvider modelObjectDataProvider,
 			ModelObjectDataConsumer modelObjectDataConsumer,
 			ModelObjectDeleter modelObjectDeleter)
-			throws Exception {
+			throws IOException, SyncException {
 
 
 		if (syncing) {
-			throw new IllegalStateException("Can't start a sync() when SyncEngine is currently syncing");
+			throw new IllegalStateException("Can't start a sync() when SyncApi is currently syncing");
 		}
 
 		// 1) if we have local changes we request a write token, and go to step 2. if not, go to step 5
@@ -272,7 +318,7 @@ public class SyncEngine {
 
 			return syncReport;
 
-		} catch (Exception e) {
+		} catch (IOException | SyncException e) {
 
 			// log & rethrow
 			log(log, FAILED, "Sync failed", e);
@@ -300,7 +346,7 @@ public class SyncEngine {
 			ChangeJournal changeJournal,
 			TimestampRecorder timestampRecorder,
 			ModelObjectDataProvider modelObjectDataProvider)
-			throws Exception {
+			throws IOException,SyncException {
 
 		Set<ChangeJournalItem> localChanges = changeJournal.getChangeJournalItems();
 
@@ -343,7 +389,7 @@ public class SyncEngine {
 				return remoteStatus;
 			}
 
-		} catch (Throwable t) {
+		} catch (IOException | SyncException t) {
 			// log and rethrow
 			log(log, PUSH_COMPLETE, "Failed push", t);
 			throw t;
@@ -357,7 +403,7 @@ public class SyncEngine {
 			if (writeSessionToken != null) {
 				log(log, PUSH_COMPLETE, "After failed PUSH phase, attempting to close write session: \"" + writeSessionToken + "\"");
 				try {
-					syncService.commitWriteSession(accountId, writeSessionToken).execute();
+					syncApiService.commitWriteSession(accountId, writeSessionToken).execute();
 					log(log, PUSH_COMPLETE, "Write session closed.");
 				} catch (Exception e) {
 					log(log, PUSH_COMPLETE, "Unable to close write session", e);
@@ -369,7 +415,7 @@ public class SyncEngine {
 	}
 
 	private String startWriteSession(String accountId) throws IOException, SyncException {
-		Response<String> writeTokenResponse = syncService.getWriteSessionToken(accountId).execute();
+		Response<String> writeTokenResponse = syncApiService.getWriteSessionToken(accountId).execute();
 		if (!writeTokenResponse.isSuccessful()) {
 			throw new SyncException("Unable to request write session token", writeTokenResponse);
 		}
@@ -378,7 +424,7 @@ public class SyncEngine {
 	}
 
 	private RemoteStatus commitWriteSession(String accountId, String writeToken) throws IOException, SyncException {
-		Response<RemoteStatus> remoteStatusResponse = syncService.commitWriteSession(accountId, writeToken).execute();
+		Response<RemoteStatus> remoteStatusResponse = syncApiService.commitWriteSession(accountId, writeToken).execute();
 		if (!remoteStatusResponse.isSuccessful()) {
 			throw new SyncException("Unable to commit write session", remoteStatusResponse);
 		} else {
@@ -386,7 +432,7 @@ public class SyncEngine {
 		}
 	}
 
-	private void pushLocalChange(SyncLogEntry log, TimestampRecorder timestampRecorder, ModelObjectDataProvider modelObjectDataProvider, String accountId, String writeToken, ChangeJournalItem change) throws Exception {
+	private void pushLocalChange(SyncLogEntry log, TimestampRecorder timestampRecorder, ModelObjectDataProvider modelObjectDataProvider, String accountId, String writeToken, ChangeJournalItem change) throws IOException,SyncException {
 		String id = change.getModelObjectId();
 		String modelClass = change.getModelObjectClass();
 		ChangeType type = ChangeType.values()[change.getChangeType()];
@@ -403,8 +449,8 @@ public class SyncEngine {
 					throw new SyncException("Unable to serialize object id: " + id + " class: " + modelClass);
 				}
 
-				RequestBody body = RequestBody.create(SyncService.BLOB_MEDIA_TYPE, bytes);
-				Response<TimestampRecordEntry> timestampResponse = syncService.putBlob(
+				RequestBody body = RequestBody.create(SyncApiService.BLOB_MEDIA_TYPE, bytes);
+				Response<TimestampRecordEntry> timestampResponse = syncApiService.putBlob(
 						accountId,
 						id,
 						writeToken,
@@ -420,7 +466,7 @@ public class SyncEngine {
 			}
 
 			case DELETE: {
-				Response<TimestampRecordEntry> timestampResponse = syncService.deleteBlob(
+				Response<TimestampRecordEntry> timestampResponse = syncApiService.deleteBlob(
 						accountId,
 						id,
 						writeToken).execute();
@@ -467,7 +513,7 @@ public class SyncEngine {
 			TimestampRecorder timestampRecorder,
 			ModelObjectDataConsumer modelObjectDataConsumer,
 			ModelObjectDeleter modelObjectDeleter)
-			throws Exception {
+			throws IOException, SyncException {
 
 		String accountId = account.getId();
 		List<RemoteChangeReport> remoteChangeReports = new ArrayList<>();
@@ -504,7 +550,7 @@ public class SyncEngine {
 
 			// we're done
 			return new SyncReport(remoteChangeReports, remoteStatus.timestampHeadSeconds);
-		} catch (Exception e) {
+		} catch (IOException | SyncException e) {
 			// log and rethrow
 			log(log, PULL_COMPLETE, "Failed pull", e);
 			throw e;
@@ -512,7 +558,7 @@ public class SyncEngine {
 	}
 
 	@Nullable
-	private RemoteChangeReport pullRemoteChange(SyncLogEntry log, TimestampRecorder timestampRecorder, ModelObjectDataConsumer modelObjectDataConsumer, ModelObjectDeleter modelObjectDeleter, String accountId, TimestampRecordEntry remoteChange) throws Exception {
+	private RemoteChangeReport pullRemoteChange(SyncLogEntry log, TimestampRecorder timestampRecorder, ModelObjectDataConsumer modelObjectDataConsumer, ModelObjectDeleter modelObjectDeleter, String accountId, TimestampRecordEntry remoteChange) throws IOException, SyncException {
 		final ChangeType changeType = ChangeType.values()[remoteChange.action];
 		final String documentId = remoteChange.documentId;
 		final String documentType = remoteChange.documentType;
@@ -530,7 +576,7 @@ public class SyncEngine {
 				log(log, PULL_ITEM, "MODIFY Downloading updated data item " + documentId);
 
 				// get the blob data
-				Response<ResponseBody> blobResponse = syncService.getBlob(accountId, documentId).execute();
+				Response<ResponseBody> blobResponse = syncApiService.getBlob(accountId, documentId).execute();
 				if (!blobResponse.isSuccessful()) {
 					throw new SyncException("Unable to download blob data for id: " + documentId, blobResponse);
 				}
@@ -563,7 +609,7 @@ public class SyncEngine {
 	}
 
 	private Map<String, TimestampRecordEntry> getRemoteChanges(SyncState syncState, String accountId) throws IOException, SyncException {
-		Response<Map<String, TimestampRecordEntry>> remoteChanges = syncService.getChanges(accountId, syncState.getTimestampHeadSeconds()).execute();
+		Response<Map<String, TimestampRecordEntry>> remoteChanges = syncApiService.getChanges(accountId, syncState.getTimestampHeadSeconds()).execute();
 
 		if (!remoteChanges.isSuccessful()) {
 			throw new SyncException("Unable to get remote change set", remoteChanges);
@@ -573,7 +619,7 @@ public class SyncEngine {
 	}
 
 	private RemoteStatus getStatus(String accountId) throws IOException, SyncException {
-		Response<RemoteStatus> statusResponse = syncService.getRemoteStatus(accountId).execute();
+		Response<RemoteStatus> statusResponse = syncApiService.getRemoteStatus(accountId).execute();
 		if (!statusResponse.isSuccessful()) {
 			throw new SyncException("Unable to get remote status", statusResponse);
 		} else {

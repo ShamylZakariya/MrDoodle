@@ -23,11 +23,11 @@ import com.squareup.otto.Subscribe;
 import com.squareup.picasso.Picasso;
 
 import org.zakariya.mrdoodle.R;
-import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.api.SyncApiService;
+import org.zakariya.mrdoodle.net.events.SyncServerConnectionStatusEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
-import org.zakariya.mrdoodle.net.SyncEngine;
+import org.zakariya.mrdoodle.net.SyncApi;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
-import org.zakariya.mrdoodle.net.api.SyncService;
 import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.signin.SignInManager;
@@ -78,6 +78,9 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	@Bind(R.id.userIdTextView)
 	TextView userIdTextView;
+
+	@Bind(R.id.deviceIdTextView)
+	TextView deviceIdTextView;
 
 	@Bind(R.id.userNameTextView)
 	TextView userNameTextView;
@@ -208,8 +211,8 @@ public class SyncSettingsActivity extends BaseActivity {
 		Log.i(TAG, "remoteStatus: getting remoteStatus from sync server");
 
 		SyncManager syncManager = SyncManager.getInstance();
-		SyncEngine syncEngine = syncManager.getSyncEngine();
-		final SyncService service = syncEngine.getSyncService();
+		SyncApi syncApi = syncManager.getSyncApi();
+		final SyncApiService service = syncApi.getSyncApiService();
 		final SignInAccount account = SignInManager.getInstance().getAccount();
 
 		if (account != null) {
@@ -416,7 +419,10 @@ public class SyncSettingsActivity extends BaseActivity {
 		Picasso.with(this).load(account.getPhotoUrl()).into(avatarImageView);
 		userEmailTextView.setText(account.getEmail());
 		userNameTextView.setText(account.getDisplayName());
-		userIdTextView.setText(account.getId());
+		userIdTextView.setText(getString(R.string.user_id_text_view, account.getId()));
+
+		String deviceId = SyncManager.getInstance().getSyncApi().getDeviceId();
+		deviceIdTextView.setText(getString(R.string.device_id_text_view, deviceId));
 	}
 
 	void showSyncLogEntryDetail(SyncLogEntry entry) {

@@ -95,11 +95,19 @@
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
 						style="@style/Body1"
-						tools:text="XXXYYY"
+						tools:text="UserId"
 						/>
 
-				</LinearLayout>
+					<TextView
+						android:id="@+id/deviceIdTextView"
+						android:layout_width="match_parent"
+						android:layout_height="wrap_content"
+						style="@style/Body1"
+						tools:text="DeviceId"
+						/>
 
+
+				</LinearLayout>
 
 			</LinearLayout>
 

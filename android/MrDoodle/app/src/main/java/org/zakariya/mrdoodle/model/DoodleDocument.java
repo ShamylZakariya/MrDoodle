@@ -157,9 +157,9 @@ public class DoodleDocument extends RealmObject {
 	 * @param realm           a realm where doodle documents should live
 	 * @param serializedBytes the serialized form of a doodle document
 	 * @return true iff an existing document was modified, false if a new document was created
-	 * @throws Exception
+	 * @throws IOException
 	 */
-	public static boolean createOrUpdate(Context context, Realm realm, byte[] serializedBytes) throws Exception {
+	public static boolean createOrUpdate(Context context, Realm realm, byte[] serializedBytes) throws IOException {
 		ByteArrayInputStream inputStream = new ByteArrayInputStream(serializedBytes);
 		Input input = new Input(inputStream);
 		Kryo kryo = new Kryo();
@@ -201,7 +201,7 @@ public class DoodleDocument extends RealmObject {
 
 			return wasModified;
 		} else {
-			throw new InvalidObjectException("Missing COOKIE header (0x" + Integer.toString(COOKIE, 16) + ")");
+			throw new MalformedDoodleDocumentException("Missing COOKIE header (0x" + Integer.toString(COOKIE, 16) + ")");
 		}
 	}
 

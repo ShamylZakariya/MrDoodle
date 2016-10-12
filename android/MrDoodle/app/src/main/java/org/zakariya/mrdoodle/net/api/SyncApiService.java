@@ -1,5 +1,6 @@
 package org.zakariya.mrdoodle.net.api;
 
+import org.zakariya.mrdoodle.net.transport.RemoteLockStatus;
 import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.net.transport.TimestampRecordEntry;
 
@@ -21,7 +22,7 @@ import retrofit2.http.Query;
 /**
  * Defines the REST API endpoints for Sync
  */
-public interface SyncService {
+public interface SyncApiService {
 
 	String REQUEST_HEADER_AUTH = "Authorization";
 	String REQUEST_HEADER_USER_AGENT = "User-Agent";
@@ -55,7 +56,7 @@ public interface SyncService {
 	/**
 	 * Get a token for performing a writing sync session. Syncs which only pull down remote data don't need to start
 	 * a write session, but data can only be pushed upstream if the request includes the write token as a header
-	 * SyncService.REQUEST_HEADER_WRITE_TOKEN. A write session must be committed by calling commitWriteSession(), else
+	 * SyncApiService.REQUEST_HEADER_WRITE_TOKEN. A write session must be committed by calling commitWriteSession(), else
 	 * the data pushed upstream will not be committed and made visible to other clients.
 	 *
 	 * @param accountId the account id of the signed in user
@@ -92,7 +93,7 @@ public interface SyncService {
 	 * @param blobId     the id of the blob to upload
 	 * @param writeToken the write token. Can't push changes without first requesting a write token via getWriteSessionToken()
 	 * @param modelClass the "class" of the data. this will be visible to clients via the getChanges() call
-	 * @param blob       the blob to upload. Create via RequestBody.create(SyncService.BLOB_MEDIA_TYPE, myBlobBytes)
+	 * @param blob       the blob to upload. Create via RequestBody.create(SyncApiService.BLOB_MEDIA_TYPE, myBlobBytes)
 	 * @return a TimestampRecordEntry to mark the timestamp of the deletion
 	 */
 	@Multipart
@@ -118,4 +119,42 @@ public interface SyncService {
 			@Path("accountId") String accountId,
 			@Path("blobId") String blobId,
 			@Header(REQUEST_HEADER_WRITE_TOKEN) String writeToken);
+
+
+	/**
+	 * Request a lock on a document
+	 * @param accountId the account of the signed in user
+	 * @param documentId the id a document to attempt to lock
+	 * @return RemoteLockStatus describing document lock state
+	 *
+	 * If another device is holding a lock on a document, LockState::locked will be false.
+	 */
+	@PUT("sync/{accountId}/locks/{documentId}")
+	Call<RemoteLockStatus> requestLock(
+			@Path("accountId") String accountId,
+	        @Path("documentId") String documentId);
+
+
+	/**
+	 * Check if a given document is locked
+	 * @param accountId the account of the signed-in user
+	 * @param documentId the id of a document to check lock status
+	 * @return RemoteLockStatus describing document lock state
+	 */
+	@GET("sync/{accountId}/locks/{documentId}")
+	Call<RemoteLockStatus> isLocked(
+			@Path("accountId") String accountId,
+			@Path("documentId") String documentId);
+
+	/**
+	 * Release the lock on a given document
+	 * @param accountId the account of the signed-in user
+	 * @param documentId the id of a locked document to release lock
+	 * @return RemoteLockStatus describing document lock state
+	 */
+	@DELETE("sync/{accountId}/locks/{documentId}")
+	Call<RemoteLockStatus> releaseLock(
+			@Path("accountId") String accountId,
+			@Path("documentId") String documentId);
+
 }

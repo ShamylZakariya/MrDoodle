@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.sync;
+package org.zakariya.mrdoodle.net.exceptions;
 
 import retrofit2.Response;
 

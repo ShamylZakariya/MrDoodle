@@ -16,11 +16,14 @@ public class RemoteStatus {
 	// the timestamp, in seconds, of the most recent change pushed to the server
 	public long timestampHeadSeconds = 0;
 
-	// list of ids of locked documents
-	public String[] lockedDocumentIds;
+	// list of ids of documents locked by this device
+	public String[] grantedLockedDocumentIds;
+
+	// list of ids of documents locked by other devices
+	public String[] foreignLockedDocumentIds;
 
 	@Override
 	public String toString() {
-		return "[RemoteStatus deviceId: " + deviceId + " timestampHeadSeconds: " + timestampHeadSeconds + " lockedDocumentIds: [" + TextUtils.join(", ", lockedDocumentIds) + "]]";
+		return "[RemoteStatus deviceId: " + deviceId + " timestampHeadSeconds: " + timestampHeadSeconds + " grantedLockedDocumentIds: [" + TextUtils.join(", ", grantedLockedDocumentIds) + "] foreignLockedDocumentIds: [" + TextUtils.join(", ", foreignLockedDocumentIds) + "]]";
 	}
 }

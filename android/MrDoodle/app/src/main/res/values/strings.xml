@@ -71,6 +71,9 @@
 	<string name="sync_server_connection_status_authorizing">Authorizing…</string>
 	<string name="sync_server_connection_status_connected">Connected</string>
 
+	<string name="user_id_text_view">User: %1$s</string>
+	<string name="device_id_text_view">Device: %1$s</string>
+
 	<string name="sync_log_entry_success">Success</string>
 	<string name="sync_log_entry_failure">Failure</string>
 	<string name="sync_log_entry_detail_transcript">Transcript</string>

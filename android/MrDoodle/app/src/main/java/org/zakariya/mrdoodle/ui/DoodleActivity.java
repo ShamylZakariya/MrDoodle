@@ -17,6 +17,7 @@ import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -292,7 +293,16 @@ public class DoodleActivity extends BaseActivity {
 	}
 
 	@Override
+	protected void onResume() {
+		// TODO: Request lock on our document
+		Log.i(TAG, "onResume: ");
+		super.onResume();
+	}
+
+	@Override
 	protected void onPause() {
+		// TODO Release lock on our document
+		Log.i(TAG, "onPause: ");
 		saveDoodleIfEdited();
 		super.onPause();
 	}

@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.events;
+package org.zakariya.mrdoodle.sync.events;
 
 import org.zakariya.mrdoodle.sync.ChangeJournal;
 

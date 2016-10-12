@@ -9,7 +9,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.neovisionaries.ws.client.WebSocket;
 
-import org.zakariya.mrdoodle.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.events.SyncServerConnectionStatusEvent;
 import org.zakariya.mrdoodle.net.transport.AuthorizationPayload;
 import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;

@@ -6,7 +6,7 @@ import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
 
-import org.zakariya.mrdoodle.events.ChangeJournalUpdatedEvent;
+import org.zakariya.mrdoodle.sync.events.ChangeJournalUpdatedEvent;
 import org.zakariya.mrdoodle.sync.model.ChangeJournalItem;
 import org.zakariya.mrdoodle.sync.model.ChangeType;
 import org.zakariya.mrdoodle.util.BusProvider;

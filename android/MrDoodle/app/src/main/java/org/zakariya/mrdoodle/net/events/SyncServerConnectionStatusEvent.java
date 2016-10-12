@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.events;
+package org.zakariya.mrdoodle.net.events;
 
 /**
  * Created by shamyl on 8/10/16.
