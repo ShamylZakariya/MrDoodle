@@ -11,6 +11,7 @@ import android.support.v4.graphics.ColorUtils;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.view.ViewPropertyAnimatorCompat;
 import android.support.v7.app.ActionBar;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -296,6 +297,13 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		animateVisibility(lockIconImageView, false, false);
 		animateVisibility(toolSelectorFlyoutMenu, false, false);
 		animateVisibility(paletteFlyoutMenu, false, false);
+
+		lockIconImageView.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				showLockedDocumentExplanation();
+			}
+		});
 	}
 
 	@Override
@@ -754,5 +762,13 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			fitDoodleCanvasContents();
 			firstDisplayOfDoodle = false;
 		}
+	}
+
+	private void showLockedDocumentExplanation() {
+		new AlertDialog.Builder(this)
+				.setTitle(R.string.locked_document_explanation_dialog_title)
+				.setMessage(R.string.locked_document_explanation_dialog_message)
+				.setPositiveButton(android.R.string.ok, null)
+				.show();
 	}
 }

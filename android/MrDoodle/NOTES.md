@@ -1,5 +1,8 @@
 #Currently
 
+- when locked, the name text field should be disabled
+- clear and undo menu items should be hidden or disabled
+
 #BUGS
 
 Drawings done on other devices seem to have odd offsets saved in the document. This means a document drawn on one device can be weirdly transformed when viewed on another. Trouble is, how do we handle this?
