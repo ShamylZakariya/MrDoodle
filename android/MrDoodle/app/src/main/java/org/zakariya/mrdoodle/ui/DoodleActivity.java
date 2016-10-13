@@ -304,6 +304,8 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 				showLockedDocumentExplanation();
 			}
 		});
+
+		goFullscreen();
 	}
 
 	@Override
