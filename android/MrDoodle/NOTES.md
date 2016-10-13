@@ -1,7 +1,7 @@
 #Currently
 
-- when locked, the name text field should be disabled
-- clear and undo menu items should be hidden or disabled
+- How to handle panning while locked? Right now the pan gesture is blocked.
+- Test offline stuff. Turn off server while at least two apps run. Make various edits. Turn server back on.
 
 #BUGS
 

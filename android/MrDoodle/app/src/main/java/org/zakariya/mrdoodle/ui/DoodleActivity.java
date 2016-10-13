@@ -784,7 +784,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	private void updateMenuItems() {
-		clearMenuItem.setVisible(!readOnly);
-		undoMenuItem.setVisible(!readOnly);
+		if (clearMenuItem != null && undoMenuItem != null) {
+			clearMenuItem.setVisible(!readOnly);
+			undoMenuItem.setVisible(!readOnly);
+		}
 	}
 }
