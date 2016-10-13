@@ -127,6 +127,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	DoodleDocument document;
 	StrokeDoodle doodle;
 
+	MenuItem clearMenuItem;
+	MenuItem undoMenuItem;
+
 	// when true, the document is in a read-only state and can't be edited
 	boolean readOnly;
 
@@ -294,9 +297,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 		// hide controls, they'll be shown or hidden appropriately after onResume
 		// then the document is locked (or not)
-		animateVisibility(lockIconImageView, false, false);
-		animateVisibility(toolSelectorFlyoutMenu, false, false);
-		animateVisibility(paletteFlyoutMenu, false, false);
+		setViewVisibility(lockIconImageView, false, false);
+		setViewVisibility(toolSelectorFlyoutMenu, false, false);
+		setViewVisibility(paletteFlyoutMenu, false, false);
 
 		lockIconImageView.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -336,32 +339,12 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	public boolean onCreateOptionsMenu(Menu menu) {
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.menu_doodle, menu);
+
+		clearMenuItem = menu.findItem(R.id.menuItemClear);
+		undoMenuItem = menu.findItem(R.id.menuItemUndo);
+		updateMenuItems();
+
 		return true;
-	}
-
-	@Override
-	protected void onResume() {
-		requestDocumentWriteLock();
-		super.onResume();
-	}
-
-	@Override
-	protected void onPause() {
-		releaseDocumentWriteLock();
-		saveDoodleIfEdited();
-		super.onPause();
-	}
-
-	@Override
-	public void onBackPressed() {
-
-		if (titleEditText.hasFocus()) {
-			titleEditText.clearFocus();
-			return;
-		}
-
-		saveAndSetActivityResult();
-		super.onBackPressed();
 	}
 
 	@Override
@@ -394,10 +377,72 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	@Override
+	protected void onResume() {
+		requestDocumentWriteLock();
+		super.onResume();
+	}
+
+	@Override
+	protected void onPause() {
+		releaseDocumentWriteLock();
+		saveDoodleIfEdited();
+		super.onPause();
+	}
+
+	@Override
+	public void onBackPressed() {
+
+		if (titleEditText.hasFocus()) {
+			titleEditText.clearFocus();
+			return;
+		}
+
+		saveAndSetActivityResult();
+		super.onBackPressed();
+	}
+
+	@Override
 	public void onWindowFocusChanged(boolean hasFocus) {
 		super.onWindowFocusChanged(hasFocus);
 		if (hasFocus) {
 			goFullscreen();
+		}
+	}
+
+	@Subscribe
+	public void onLockStateChanged(LockStateChangedEvent event) {
+		if (wantDocumentWriteLock && event.isUnlocked(document.getUuid())) {
+			Log.i(TAG, "onLockStateChanged: currently want write lock, and document is available, so requesting lock...");
+			requestDocumentWriteLock();
+		}
+	}
+
+	@Subscribe
+	public void onSyncServerConnectionStatusChanged(SyncServerConnectionStatusEvent event) {
+
+		// if user connects, we now have to play by the rules: request a write lock.
+
+		if (event.isConnected()) {
+			Log.i(TAG, "onSyncServerConnectionStatusChanged: CONNECTED.");
+			if (wantDocumentWriteLock) {
+				requestDocumentWriteLock();
+			} else {
+				releaseDocumentWriteLock();
+			}
+		}
+
+		// I have considered the case of disconnecting. I think we should simply leave
+		// the lock state as-is. A document being edited will still be edited, and its
+		// changes recorded in the journal. A document being viewed read-only will stay
+		// that way. User can back out and in to get a write lock if they want.
+
+	}
+
+	@Override
+	public void onDoodleViewResized(DoodleView doodleView, int width, int height) {
+		if (firstDisplayOfDoodle) {
+			fitDoodleCanvasContents();
+			firstDisplayOfDoodle = false;
 		}
 	}
 
@@ -439,132 +484,12 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 		this.readOnly = readOnly;
 		doodleView.setReadOnly(this.readOnly);
+		titleEditText.setEnabled(!this.readOnly);
 
-		animateVisibility(toolSelectorFlyoutMenu, !readOnly, animate);
-		animateVisibility(paletteFlyoutMenu, !readOnly, animate);
-		animateVisibility(lockIconImageView, readOnly, animate);
-	}
-
-	void animateVisibility(final View v, boolean visible, boolean animate) {
-		if (animate) {
-			if (visible) {
-				v.setVisibility(View.VISIBLE);
-			}
-
-			float scale = visible ? 1 : 0;
-			float alpha = visible ? 1 : 0;
-
-			ViewPropertyAnimatorCompat animator = ViewCompat.animate(v)
-					.scaleX(scale)
-					.scaleY(scale)
-					.alpha(alpha)
-					.setDuration(ANIMATION_DURATION_MILLIS);
-
-			if (!visible) {
-				animator.withEndAction(new Runnable() {
-					@Override
-					public void run() {
-						v.setVisibility(View.GONE);
-					}
-				});
-			}
-		} else {
-			if (visible) {
-				v.setScaleX(1);
-				v.setScaleY(1);
-				v.setAlpha(1);
-				v.setVisibility(View.VISIBLE);
-			} else {
-				v.setScaleX(0);
-				v.setScaleY(0);
-				v.setAlpha(0);
-				v.setVisibility(View.GONE);
-			}
-		}
-	}
-
-
-	private void requestDocumentWriteLock() {
-
-		wantDocumentWriteLock = true;
-		SyncManager syncManager = SyncManager.getInstance();
-
-		if (syncManager.isConnected()) {
-			Log.i(TAG, "requestDocumentWriteLock: ");
-
-			lockSubscription = SyncManager.getInstance().requestLock(document.getUuid())
-					.subscribeOn(Schedulers.io())
-					.observeOn(AndroidSchedulers.mainThread())
-					.subscribe(new Observer<RemoteLockStatus>() {
-						@Override
-						public void onCompleted() {
-						}
-
-						@Override
-						public void onError(Throwable e) {
-							Log.e(TAG, "requestDocumentWriteLock - onError: ", e);
-						}
-
-						@Override
-						public void onNext(RemoteLockStatus remoteLockStatus) {
-							setReadOnly(!remoteLockStatus.lockHeldByRequestingDevice, true);
-						}
-					});
-		} else {
-			setReadOnly(false, true);
-		}
-	}
-
-	private void releaseDocumentWriteLock() {
-
-		wantDocumentWriteLock = false;
-		SyncManager syncManager = SyncManager.getInstance();
-		if (syncManager.isConnected()) {
-			Log.i(TAG, "releaseDocumentWriteLock: ");
-			lockSubscription = SyncManager.getInstance().releaseLock(document.getUuid())
-					.subscribeOn(Schedulers.io())
-					.observeOn(AndroidSchedulers.mainThread())
-					.subscribe(new Observer<RemoteLockStatus>() {
-						@Override
-						public void onCompleted() {
-						}
-
-						@Override
-						public void onError(Throwable e) {
-							Log.e(TAG, "releaseDocumentWriteLock - onError: ", e);
-						}
-
-						@Override
-						public void onNext(RemoteLockStatus remoteLockStatus) {
-							setReadOnly(true, true);
-						}
-					});
-		} else {
-			setReadOnly(true, true);
-		}
-
-	}
-
-	private void markDocumentModified() {
-		realm.beginTransaction();
-		document.markModified();
-		realm.commitTransaction();
-		BusProvider.getMainThreadBus().post(new DoodleDocumentEditedEvent(document.getUuid()));
-	}
-
-	private void saveAndSetActivityResult() {
-		if (document == null) {
-			return;
-		}
-
-		saveDoodleIfEdited();
-
-		boolean edited = document.getModificationDate().getTime() > documentModificationTime;
-
-		Intent resultData = new Intent();
-		resultData.putExtra(RESULT_DID_EDIT_DOODLE, edited);
-		resultData.putExtra(RESULT_DOODLE_DOCUMENT_UUID, document.getUuid());
-		setResult(RESULT_OK, resultData);
+		setViewVisibility(toolSelectorFlyoutMenu, !readOnly, animate);
+		setViewVisibility(paletteFlyoutMenu, !readOnly, animate);
+		setViewVisibility(lockIconImageView, readOnly, animate);
+		updateMenuItems();
 	}
 
 	public void setDocumentName(String documentName) {
@@ -729,48 +654,137 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		});
 	}
 
-	@Subscribe
-	public void onLockStateChanged(LockStateChangedEvent event) {
-		if (wantDocumentWriteLock && event.isUnlocked(document.getUuid())) {
-			Log.i(TAG, "onLockStateChanged: currently want write lock, and document is available, so requesting lock...");
-			requestDocumentWriteLock();
-		}
-	}
-
-	@Subscribe
-	public void onSyncServerConnectionStatusChanged(SyncServerConnectionStatusEvent event) {
-
-		// if user connects, we now have to play by the rules: request a write lock.
-
-		if (event.isConnected()) {
-			Log.i(TAG, "onSyncServerConnectionStatusChanged: CONNECTED.");
-			if (wantDocumentWriteLock) {
-				requestDocumentWriteLock();
-			} else {
-				releaseDocumentWriteLock();
-			}
-		}
-
-		// I have considered the case of disconnecting. I think we should simply leave
-		// the lock state as-is. A document being edited will still be edited, and its
-		// changes recorded in the journal. A document being viewed read-only will stay
-		// that way. User can back out and in to get a write lock if they want.
-
-	}
-
-	@Override
-	public void onDoodleViewResized(DoodleView doodleView, int width, int height) {
-		if (firstDisplayOfDoodle) {
-			fitDoodleCanvasContents();
-			firstDisplayOfDoodle = false;
-		}
-	}
-
 	private void showLockedDocumentExplanation() {
 		new AlertDialog.Builder(this)
 				.setTitle(R.string.locked_document_explanation_dialog_title)
 				.setMessage(R.string.locked_document_explanation_dialog_message)
 				.setPositiveButton(android.R.string.ok, null)
 				.show();
+	}
+
+	private void setViewVisibility(final View v, boolean visible, boolean animate) {
+		if (animate) {
+			if (visible) {
+				v.setVisibility(View.VISIBLE);
+			}
+
+			float scale = visible ? 1 : 0;
+			float alpha = visible ? 1 : 0;
+
+			ViewPropertyAnimatorCompat animator = ViewCompat.animate(v)
+					.scaleX(scale)
+					.scaleY(scale)
+					.alpha(alpha)
+					.setDuration(ANIMATION_DURATION_MILLIS);
+
+			if (!visible) {
+				animator.withEndAction(new Runnable() {
+					@Override
+					public void run() {
+						v.setVisibility(View.GONE);
+					}
+				});
+			}
+		} else {
+			if (visible) {
+				v.setScaleX(1);
+				v.setScaleY(1);
+				v.setAlpha(1);
+				v.setVisibility(View.VISIBLE);
+			} else {
+				v.setScaleX(0);
+				v.setScaleY(0);
+				v.setAlpha(0);
+				v.setVisibility(View.GONE);
+			}
+		}
+	}
+
+	private void requestDocumentWriteLock() {
+
+		wantDocumentWriteLock = true;
+		SyncManager syncManager = SyncManager.getInstance();
+
+		if (syncManager.isConnected()) {
+			Log.i(TAG, "requestDocumentWriteLock: ");
+
+			lockSubscription = SyncManager.getInstance().requestLock(document.getUuid())
+					.subscribeOn(Schedulers.io())
+					.observeOn(AndroidSchedulers.mainThread())
+					.subscribe(new Observer<RemoteLockStatus>() {
+						@Override
+						public void onCompleted() {
+						}
+
+						@Override
+						public void onError(Throwable e) {
+							Log.e(TAG, "requestDocumentWriteLock - onError: ", e);
+						}
+
+						@Override
+						public void onNext(RemoteLockStatus remoteLockStatus) {
+							setReadOnly(!remoteLockStatus.lockHeldByRequestingDevice, true);
+						}
+					});
+		} else {
+			setReadOnly(false, true);
+		}
+	}
+
+	private void releaseDocumentWriteLock() {
+
+		wantDocumentWriteLock = false;
+		SyncManager syncManager = SyncManager.getInstance();
+		if (syncManager.isConnected()) {
+			Log.i(TAG, "releaseDocumentWriteLock: ");
+			lockSubscription = SyncManager.getInstance().releaseLock(document.getUuid())
+					.subscribeOn(Schedulers.io())
+					.observeOn(AndroidSchedulers.mainThread())
+					.subscribe(new Observer<RemoteLockStatus>() {
+						@Override
+						public void onCompleted() {
+						}
+
+						@Override
+						public void onError(Throwable e) {
+							Log.e(TAG, "releaseDocumentWriteLock - onError: ", e);
+						}
+
+						@Override
+						public void onNext(RemoteLockStatus remoteLockStatus) {
+							setReadOnly(true, true);
+						}
+					});
+		} else {
+			setReadOnly(true, true);
+		}
+
+	}
+
+	private void markDocumentModified() {
+		realm.beginTransaction();
+		document.markModified();
+		realm.commitTransaction();
+		BusProvider.getMainThreadBus().post(new DoodleDocumentEditedEvent(document.getUuid()));
+	}
+
+	private void saveAndSetActivityResult() {
+		if (document == null) {
+			return;
+		}
+
+		saveDoodleIfEdited();
+
+		boolean edited = document.getModificationDate().getTime() > documentModificationTime;
+
+		Intent resultData = new Intent();
+		resultData.putExtra(RESULT_DID_EDIT_DOODLE, edited);
+		resultData.putExtra(RESULT_DOODLE_DOCUMENT_UUID, document.getUuid());
+		setResult(RESULT_OK, resultData);
+	}
+
+	private void updateMenuItems() {
+		clearMenuItem.setVisible(!readOnly);
+		undoMenuItem.setVisible(!readOnly);
 	}
 }
