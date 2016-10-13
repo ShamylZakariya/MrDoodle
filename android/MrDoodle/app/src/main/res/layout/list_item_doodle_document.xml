@@ -30,9 +30,9 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:src="@drawable/ic_pencil_lock"
-		android:layout_marginTop="16dp"
+		android:layout_marginBottom="16dp"
 		android:layout_marginRight="16dp"
-		android:layout_gravity="top|right"
+		android:layout_gravity="bottom|right"
 		android:contentDescription="@string/locked_for_editing_by_another_device"/>
 
 	<LinearLayout
