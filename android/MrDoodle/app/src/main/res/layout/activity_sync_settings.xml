@@ -1,16 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:orientation="vertical">
 
-	<android.support.v7.widget.Toolbar
-		android:id="@+id/toolbar"
-		style="@style/DefaultToolbarStyle"
-		/>
+	<android.support.design.widget.AppBarLayout
+		android:id="@+id/appbar"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:theme="@style/AppTheme.AppBarOverlay">
+
+		<android.support.v7.widget.Toolbar
+			android:id="@+id/toolbar"
+			style="@style/DefaultToolbarStyle"
+			/>
+
+	</android.support.design.widget.AppBarLayout>
 
 	<FrameLayout android:id="@+id/container"
 	             xmlns:android="http://schemas.android.com/apk/res/android"
@@ -29,11 +36,11 @@
 			tools:visibility="gone">
 
 			<TextView
+				style="@style/Body1"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
-				style="@style/Body1"
-				android:gravity="center_horizontal"
 				android:layout_margin="24dp"
+				android:gravity="center_horizontal"
 				android:text="@string/sign_in_message"/>
 
 			<com.google.android.gms.common.SignInButton
@@ -55,12 +62,12 @@
 			<LinearLayout
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
+				android:layout_marginBottom="24dp"
 				android:orientation="horizontal"
+				android:paddingBottom="@dimen/activity_vertical_margin"
 				android:paddingLeft="@dimen/activity_horizontal_margin"
 				android:paddingRight="@dimen/activity_horizontal_margin"
-				android:paddingTop="@dimen/activity_vertical_margin"
-				android:paddingBottom="@dimen/activity_vertical_margin"
-				android:layout_marginBottom="24dp">
+				android:paddingTop="@dimen/activity_vertical_margin">
 
 				<org.zakariya.mrdoodle.ui.view.CircularImageView
 					android:id="@+id/avatarImageView"
@@ -70,31 +77,31 @@
 				<LinearLayout
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
-					android:layout_weight="1"
+					android:layout_gravity="start|center_vertical"
 					android:layout_marginStart="8dp"
-					android:orientation="vertical"
-					android:layout_gravity="start|center_vertical">
+					android:layout_weight="1"
+					android:orientation="vertical">
 
 					<TextView
 						android:id="@+id/userNameTextView"
+						style="@style/Display1"
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
-						style="@style/Display1"
 						android:textSize="18sp"
 						tools:text="Shamyl Zakariya"/>
 
 					<TextView
 						android:id="@+id/userEmailTextView"
+						style="@style/Body1"
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
-						style="@style/Body1"
 						tools:text="shamyl@gmail.com"/>
 
 					<TextView
 						android:id="@+id/userIdTextView"
+						style="@style/Body1"
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
-						style="@style/Body1"
 						tools:text="UserId"
 						/>
 
@@ -104,69 +111,69 @@
 
 			<TextView
 				android:id="@+id/connectedTextView"
+				style="@style/Body1"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical"
 				android:paddingLeft="@dimen/activity_horizontal_margin"
 				android:paddingRight="@dimen/activity_horizontal_margin"
 				tools:text="Connected"
-				style="@style/Body1"
-				android:layout_gravity="center_vertical"
 				/>
 
 			<LinearLayout
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
+				android:orientation="horizontal"
+				android:paddingBottom="@dimen/activity_vertical_margin"
 				android:paddingLeft="@dimen/activity_horizontal_margin"
 				android:paddingRight="@dimen/activity_horizontal_margin"
-				android:paddingTop="@dimen/activity_vertical_margin"
-				android:paddingBottom="@dimen/activity_vertical_margin"
-				android:orientation="horizontal">
+				android:paddingTop="@dimen/activity_vertical_margin">
 
 				<Button
 					android:id="@+id/connectButton"
+					style="@style/Widget.AppCompat.Button"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					style="@style/Widget.AppCompat.Button"
-					android:visibility="gone"
-					android:text="Connect"/>
+					android:text="Connect"
+					android:visibility="gone"/>
 
 				<Button
 					android:id="@+id/disconnectButton"
+					style="@style/Widget.AppCompat.Button"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					style="@style/Widget.AppCompat.Button"
-					android:visibility="gone"
-					android:text="Disconnect"/>
+					android:text="Disconnect"
+					android:visibility="gone"/>
 
 				<Button
 					android:id="@+id/statusButton"
+					style="@style/Widget.AppCompat.Button"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					style="@style/Widget.AppCompat.Button"
-					android:visibility="visible"
-					android:text="Status"/>
+					android:text="Status"
+					android:visibility="visible"/>
 
 				<Button
 					android:id="@+id/modelOverviewButton"
+					style="@style/Widget.AppCompat.Button"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					style="@style/Widget.AppCompat.Button"
-					android:visibility="visible"
-					android:text="Model"/>
+					android:text="Model"
+					android:visibility="visible"/>
 
 				<Button
 					android:id="@+id/syncNowButton"
+					style="@style/Widget.AppCompat.Button"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					style="@style/Widget.AppCompat.Button"
 					android:text="@string/sync_now_button"
 					android:visibility="visible"/>
 
 				<Button
 					android:id="@+id/resetAndSyncButton"
+					style="@style/Widget.AppCompat.Button"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					style="@style/Widget.AppCompat.Button"
 					android:text="@string/sync_reset_button"
 					android:visibility="visible"/>
 
@@ -180,23 +187,23 @@
 				android:paddingRight="@dimen/activity_horizontal_margin">
 
 				<TextView
+					style="@style/Body2"
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
-					android:layout_weight="1"
 					android:layout_gravity="center_vertical"
+					android:layout_weight="1"
 					android:gravity="left"
+					android:paddingRight="@dimen/activity_horizontal_margin"
 					android:text="@string/sync_history"
-					style="@style/Body2"
 					android:textAllCaps="true"
-					android:textColor="@color/primaryLight"
-					android:paddingRight="@dimen/activity_horizontal_margin"/>
+					android:textColor="@color/primaryDark"/>
 
 				<Button
 					android:id="@+id/clearSyncHistoryButton"
+					style="@style/Widget.AppCompat.Button.Borderless"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
 					android:layout_gravity="center_vertical"
-					style="@style/Widget.AppCompat.Button.Borderless"
 					android:text="@string/sync_history_clear"
 					android:visibility="visible"/>
 
@@ -208,8 +215,8 @@
 				android:layout_width="match_parent"
 				android:layout_height="0dp"
 				android:layout_weight="1"
-				android:scrollbars="vertical"
-				android:scrollbarStyle="insideOverlay"/>
+				android:scrollbarStyle="insideOverlay"
+				android:scrollbars="vertical"/>
 
 
 		</LinearLayout>

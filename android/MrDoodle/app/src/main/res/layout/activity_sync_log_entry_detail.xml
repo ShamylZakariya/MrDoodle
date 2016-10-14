@@ -29,7 +29,7 @@
 			android:layout_width="match_parent"
 			style="@style/Body2"
 			android:textAllCaps="true"
-			android:textColor="@color/primaryLight"
+			android:textColor="@color/primaryDark"
 			android:layout_height="wrap_content"
 			android:layout_marginTop="0dp"/>
 

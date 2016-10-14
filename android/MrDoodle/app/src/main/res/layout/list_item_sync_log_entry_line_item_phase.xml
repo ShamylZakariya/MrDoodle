@@ -25,7 +25,7 @@
 		android:paddingEnd="16dp"
 		android:paddingStart="16dp"
 		android:textAllCaps="true"
-		android:textColor="@color/primaryLight"
+		android:textColor="@color/primaryDark"
 		tools:text="Medium Text"
 		/>
 

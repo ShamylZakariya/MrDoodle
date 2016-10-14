@@ -55,7 +55,7 @@
 	<string name="doodle_document_grid_empty_text">Oh no!\nYou really ought to get doodling.</string>
 	<string name="doodle_document_grid_info_text">%1$s\n%2$s\n%3$s\n%4$s</string>
 
-	<string name="about_attributions">https://github.com/ShamylZakariya/PhotoDoodle</string>
+	<string name="about_attributions">https://github.com/ShamylZakariya/MrDoodle</string>
 	<string name="about_version_version_and_build">%1$s build %2$d</string>
 	<string name="about_version_build">build %1$d</string>
 
