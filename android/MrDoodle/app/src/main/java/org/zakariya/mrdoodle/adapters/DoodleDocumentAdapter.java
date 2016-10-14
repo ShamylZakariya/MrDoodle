@@ -359,11 +359,23 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		SyncManager syncManager = SyncManager.getInstance();
 		LockState lockState = syncManager.getLockState();
 
+		Map<String,Item> previouslyHiddenItems = new HashMap<>(this.hiddenItems);
+
 		this.items.clear();
+		this.hiddenItems.clear();
+
 		for (DoodleDocument doc : DoodleDocument.all(realm)) {
-			boolean isLocked = syncManager.isConnected() && lockState.isLockedByAnotherDevice(doc.getUuid());
-			this.items.add(new Item(doc, isLocked));
+			String documentUuid = doc.getUuid();
+			boolean isLocked = syncManager.isConnected() && lockState.isLockedByAnotherDevice(documentUuid);
+			Item item = new Item(doc, isLocked);
+
+			if (previouslyHiddenItems.containsKey(documentUuid)) {
+				this.hiddenItems.put(documentUuid, item);
+			} else {
+				this.items.add(item);
+			}
 		}
+
 
 		sortDocuments();
 		updateEmptyView();

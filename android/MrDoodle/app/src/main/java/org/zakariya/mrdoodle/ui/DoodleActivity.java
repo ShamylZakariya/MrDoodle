@@ -1,6 +1,8 @@
 package org.zakariya.mrdoodle.ui;
 
 import android.annotation.TargetApi;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -62,8 +64,13 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	private static final String TAG = "DoodleActivity";
 
 	public static final String EXTRA_DOODLE_DOCUMENT_UUID = "DoodleActivity.EXTRA_DOODLE_DOCUMENT_UUID";
-	public static final String RESULT_DID_EDIT_DOODLE = "DoodleActivity.RESULT_DID_EDIT_DOODLE";
 	public static final String RESULT_DOODLE_DOCUMENT_UUID = "DoodleActivity.RESULT_DOODLE_DOCUMENT_UUID";
+
+	// result code if doodle was edited while this activity was active
+	public static final String RESULT_DID_EDIT_DOODLE = "DoodleActivity.RESULT_DID_EDIT_DOODLE";
+
+	// result code if user requested to delete this doodle
+	public static final String RESULT_SHOULD_DELETE_DOODLE = "DoodleActivity.RESULT_SHOULD_DELETE_DOODLE";
 
 	private static final String STATE_DOODLE = "DoodleActivity.STATE_DOODLE";
 
@@ -136,6 +143,17 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	// when true, it means the user wants write access
 	boolean wantDocumentWriteLock;
 
+	/**
+	 * Get an intent to view a given doodle document by its id
+	 * @param context the context that should launch the intent
+	 * @param documentUuid the id of the doodle document to view/edit
+	 * @return a suitable Intent
+	 */
+	public static Intent getIntent(Context context, String documentUuid) {
+		Intent intent = new Intent(context, DoodleActivity.class);
+		intent.putExtra(DoodleActivity.EXTRA_DOODLE_DOCUMENT_UUID, documentUuid);
+		return intent;
+	}
 
 	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
 	@Override
@@ -364,6 +382,10 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 			case R.id.menuItemClear:
 				doodle.clear();
+				return true;
+
+			case R.id.menuItemDelete:
+				queryDeleteDoodle();
 				return true;
 
 			case android.R.id.home:
@@ -654,14 +676,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		});
 	}
 
-	private void showLockedDocumentExplanation() {
-		new AlertDialog.Builder(this)
-				.setTitle(R.string.locked_document_explanation_dialog_title)
-				.setMessage(R.string.locked_document_explanation_dialog_message)
-				.setPositiveButton(android.R.string.ok, null)
-				.show();
-	}
-
 	private void setViewVisibility(final View v, boolean visible, boolean animate) {
 		if (animate) {
 			if (visible) {
@@ -788,5 +802,36 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			clearMenuItem.setVisible(!readOnly);
 			undoMenuItem.setVisible(!readOnly);
 		}
+	}
+
+	private void showLockedDocumentExplanation() {
+		new AlertDialog.Builder(this)
+				.setTitle(R.string.locked_document_explanation_dialog_title)
+				.setMessage(R.string.locked_document_explanation_dialog_message)
+				.setPositiveButton(android.R.string.ok, null)
+				.show();
+	}
+
+	private void queryDeleteDoodle() {
+		new AlertDialog.Builder(this)
+				.setTitle(R.string.dialog_delete_doodle_title)
+				.setMessage(R.string.dialog_delete_doodle_message)
+				.setPositiveButton(R.string.dialog_delete_doodle_positive_button_title, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						deleteDoodleAndExit();
+					}
+				})
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
+	}
+
+	private void deleteDoodleAndExit() {
+		Intent resultData = new Intent();
+		resultData.putExtra(RESULT_DOODLE_DOCUMENT_UUID, document.getUuid());
+		resultData.putExtra(RESULT_SHOULD_DELETE_DOODLE, true);
+		setResult(RESULT_OK, resultData);
+
+		NavUtils.navigateUpFromSameTask(this);
 	}
 }

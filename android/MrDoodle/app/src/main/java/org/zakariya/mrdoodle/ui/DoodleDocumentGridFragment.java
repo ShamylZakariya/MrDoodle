@@ -51,6 +51,10 @@ import icepick.Icepick;
 import icepick.State;
 import io.realm.Realm;
 
+import static android.app.Activity.RESULT_OK;
+import static org.zakariya.mrdoodle.ui.DoodleActivity.RESULT_DOODLE_DOCUMENT_UUID;
+import static org.zakariya.mrdoodle.ui.DoodleActivity.RESULT_SHOULD_DELETE_DOODLE;
+
 /**
  * Shows a grid view of doodle documents
  */
@@ -198,9 +202,16 @@ public class DoodleDocumentGridFragment extends Fragment
 
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
-		switch (requestCode) {
-			case REQUEST_EDIT_DOODLE:
-				break;
+		if (resultCode == RESULT_OK) {
+			switch (requestCode) {
+				case REQUEST_EDIT_DOODLE:
+					if (data.getBooleanExtra(RESULT_SHOULD_DELETE_DOODLE, false)) {
+						String documentUuid = data.getStringExtra(RESULT_DOODLE_DOCUMENT_UUID);
+						deleteDoodleDocument(documentUuid);
+					}
+
+					break;
+			}
 		}
 
 		super.onActivityResult(requestCode, resultCode, data);
@@ -275,6 +286,13 @@ public class DoodleDocumentGridFragment extends Fragment
 		DoodleShareHelper.share(getActivity(), doc);
 	}
 
+	void deleteDoodleDocument(String documentUuid) {
+		DoodleDocument doc = DoodleDocument.byUUID(realm, documentUuid);
+		if (doc != null) {
+			deleteDoodleDocument(doc);
+		}
+	}
+
 	void deleteDoodleDocument(DoodleDocument doc) {
 
 		View rootView = getView();
@@ -323,9 +341,7 @@ public class DoodleDocumentGridFragment extends Fragment
 	}
 
 	void editDoodleDocument(DoodleDocument doc) {
-		Intent intent = new Intent(getContext(), DoodleActivity.class);
-		intent.putExtra(DoodleActivity.EXTRA_DOODLE_DOCUMENT_UUID, doc.getUuid());
-		startActivityForResult(intent, REQUEST_EDIT_DOODLE);
+		startActivityForResult(DoodleActivity.getIntent(getContext(), doc.getUuid()), REQUEST_EDIT_DOODLE);
 	}
 
 	void showAbout() {
