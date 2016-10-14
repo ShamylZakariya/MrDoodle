@@ -20,13 +20,11 @@
 
 	<style name="MrDoodle.DoodleActivity">
 		<item name="actionBarStyle">@style/ImmersiveToolbarStyle</item>
-		<item name="colorPrimary">@color/windowBackground</item>
-		<item name="colorPrimaryDark">@color/primaryLight</item>
 	</style>
 
 	<style name="DefaultToolbarStyle" parent="Widget.AppCompat.Toolbar">
 		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
-		<item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
+		<item name="android:theme">@style/ThemeOverlay.AppCompat.Light</item>
 		<item name="android:background">@color/primary</item>
 		<item name="android:layout_width">match_parent</item>
 		<item name="android:layout_height">wrap_content</item>
@@ -80,7 +78,7 @@
 
 	<style name="ImmersiveTitleTextStyle"
 	       parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
-		<item name="android:textColor">@color/primary</item>
+		<item name="android:textColor">@color/textColor</item>
 	</style>
 
 	<style name="EmptyDoodleGridText" parent="Base.TextAppearance.AppCompat.Large">
@@ -90,7 +88,7 @@
 	</style>
 
 	<style name="AlertDialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
-		<item name="colorAccent">@color/primary</item>
+		<item name="colorAccent">@color/primaryDark</item>
 		<item name="android:textColorPrimary">@color/textColor</item>
 	</style>
 

@@ -9,6 +9,7 @@
 		<item name="android:colorPrimaryDark">@color/primaryDark</item>
 		<item name="android:colorAccent">@color/accent</item>
 
+		<item name="android:statusBarColor">@color/primary</item>
 		<item name="android:windowBackground">@color/windowBackground</item>
 		<item name="android:textColor">@color/textColor</item>
 	</style>
@@ -21,9 +22,6 @@
 
 	<style name="MrDoodle.DoodleActivity">
 		<item name="actionBarStyle">@style/ImmersiveToolbarStyle</item>
-		<item name="android:colorPrimary">@color/windowBackground</item>
-		<item name="android:colorPrimaryDark">@color/primaryDark</item>
-		<item name="android:statusBarColor">@color/primary</item>
 	</style>
 
 	<style name="ImmersiveAppBarEditText" parent="Widget.AppCompat.EditText">

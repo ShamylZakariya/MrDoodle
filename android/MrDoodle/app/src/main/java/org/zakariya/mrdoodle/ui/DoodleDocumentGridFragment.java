@@ -253,7 +253,7 @@ public class DoodleDocumentGridFragment extends Fragment
 				.setAppBarLayout(appBarLayout)
 				.setMenu(R.menu.menu_doodle_action)
 				.expandOnStart(true)
-				.setIconTintColorResource(R.color.primary)
+				.setIconTintColorResource(R.color.primaryDark)
 				.setItemClickListener(new BottomSheetItemClickListener() {
 					@Override
 					public void onBottomSheetItemClick(MenuItem item) {

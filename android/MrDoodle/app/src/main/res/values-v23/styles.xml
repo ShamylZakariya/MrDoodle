@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+	<style name="MrDoodle" parent="Theme.AppCompat.Light.NoActionBar">
+		<item name="actionBarStyle">@style/DefaultToolbarStyle</item>
+		<item name="alertDialogTheme">@style/AlertDialogStyle</item>
+
+		<item name="android:colorPrimary">@color/primary</item>
+		<item name="android:colorPrimaryDark">@color/primaryDark</item>
+		<item name="android:colorAccent">@color/accent</item>
+
+		<item name="android:statusBarColor">@color/primary</item>
+		<item name="android:windowBackground">@color/windowBackground</item>
+		<item name="android:textColor">@color/textColor</item>
+		<item name="android:windowLightStatusBar">true</item>
+	</style>
+
+	<style name="MrDoodle.DoodleActivity">
+		<item name="actionBarStyle">@style/ImmersiveToolbarStyle</item>
+	</style>
+
+</resources>

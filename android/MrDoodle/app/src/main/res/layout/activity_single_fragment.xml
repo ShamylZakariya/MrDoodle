@@ -17,6 +17,7 @@
 			android:id="@+id/toolbar"
 			style="@style/DefaultToolbarStyle"
 			/>
+
 	</android.support.design.widget.AppBarLayout>
 
 	<FrameLayout

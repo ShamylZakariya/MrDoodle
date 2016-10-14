@@ -6,7 +6,7 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:orientation="vertical"
-    android:paddingTop="24dp"
+	android:paddingTop="24dp"
 	>
 	<!-- TODO: Simplify this layout - can likely be one frame layout now -->
 
@@ -18,54 +18,63 @@
 		android:focusableInTouchMode="true"
 		tools:ignore="UselessLeaf"/>
 
-	<FrameLayout
+	<android.support.design.widget.AppBarLayout
+		android:id="@+id/appbar"
 		android:layout_width="match_parent"
-		android:layout_height="wrap_content">
+		android:layout_height="wrap_content"
+		android:theme="@style/AppTheme.AppBarOverlay">
 
-		<android.support.v7.widget.Toolbar
-			android:id="@+id/toolbar"
-			style="@style/ImmersiveToolbarStyle"
-			/>
-
-		<LinearLayout
+		<FrameLayout
 			android:layout_width="match_parent"
-			android:layout_height="?attr/actionBarSize"
-			android:layout_marginEnd="48dp"
-			android:layout_marginStart="60dp"
-			android:orientation="horizontal"
-			android:baselineAligned="false">
+			android:layout_height="wrap_content">
 
-			<android.support.design.widget.TextInputLayout
-				android:id="@+id/titleEditTextLayout"
-				android:layout_width="0dp"
-				android:layout_height="wrap_content"
-				android:layout_gravity="start|center_vertical"
-				android:layout_weight="1"
-				app:errorEnabled="false"
-				android:translationY="-4dp"
-				>
+			<android.support.v7.widget.Toolbar
+				android:id="@+id/toolbar"
+				style="@style/DefaultToolbarStyle"
+				/>
 
-				<android.support.design.widget.TextInputEditText
-					android:id="@+id/titleEditText"
-					style="@style/ImmersiveTitleTextStyle"
-					android:theme="@style/ImmersiveAppBarEditText"
-					android:layout_width="match_parent"
+			<LinearLayout
+				android:layout_width="match_parent"
+				android:layout_height="?attr/actionBarSize"
+				android:layout_marginEnd="48dp"
+				android:layout_marginStart="60dp"
+				android:baselineAligned="false"
+				android:orientation="horizontal">
+
+				<android.support.design.widget.TextInputLayout
+					android:id="@+id/titleEditTextLayout"
+					android:layout_width="0dp"
 					android:layout_height="wrap_content"
-					android:ellipsize="end"
-					android:imeOptions="actionDone"
-					android:inputType="textCapWords|textNoSuggestions"
-					android:lines="1"
-					android:maxLines="1"
-					android:selectAllOnFocus="true"
-					tools:text="Title Text"
-					/>
+					android:layout_gravity="start|center_vertical"
+					android:layout_weight="1"
+					android:translationY="-4dp"
+					app:errorEnabled="false"
+					>
 
-			</android.support.design.widget.TextInputLayout>
+					<android.support.design.widget.TextInputEditText
+						android:id="@+id/titleEditText"
+						style="@style/ImmersiveTitleTextStyle"
+						android:layout_width="match_parent"
+						android:layout_height="wrap_content"
+						android:ellipsize="end"
+						android:imeOptions="actionDone"
+						android:inputType="textCapWords|textNoSuggestions"
+						android:lines="1"
+						android:maxLines="1"
+						android:selectAllOnFocus="true"
+						android:theme="@style/ImmersiveAppBarEditText"
+						tools:text="Title Text"
+						/>
 
-		</LinearLayout>
+				</android.support.design.widget.TextInputLayout>
+
+			</LinearLayout>
 
 
-	</FrameLayout>
+		</FrameLayout>
+
+	</android.support.design.widget.AppBarLayout>
+
 
 	<FrameLayout
 		android:layout_width="match_parent"
@@ -77,34 +86,34 @@
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:clickable="true"
-		    android:focusable="true"
-		    android:focusableInTouchMode="true"
+			android:focusable="true"
+			android:focusableInTouchMode="true"
 			/>
 
 		<ImageView
 			android:id="@+id/lockIconImageView"
-			android:scaleType="center"
 			android:layout_width="@dimen/doodle_drawing_tool_button_size"
 			android:layout_height="@dimen/doodle_drawing_tool_button_size"
-			android:src="@drawable/ic_pencil_lock"
+			android:layout_gravity="bottom|right"
 			android:layout_marginBottom="@dimen/doodle_drawing_tool_button_margin"
 			android:layout_marginRight="@dimen/doodle_drawing_tool_button_margin"
-			android:layout_gravity="bottom|right"
-			android:contentDescription="@string/locked_for_editing_by_another_device"/>
+			android:contentDescription="@string/locked_for_editing_by_another_device"
+			android:scaleType="center"
+			android:src="@drawable/ic_pencil_lock"/>
 
 		<LinearLayout
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:orientation="vertical"
-			android:layout_gravity="end|bottom">
+			android:layout_gravity="end|bottom"
+			android:orientation="vertical">
 
 			<org.zakariya.flyoutmenu.FlyoutMenuView
 				android:id="@+id/toolSelectorFlyoutMenu"
 				android:layout_width="@dimen/doodle_drawing_tool_button_size"
 				android:layout_height="@dimen/doodle_drawing_tool_button_size"
-				android:layout_marginTop="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginLeft="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginRight="@dimen/doodle_drawing_tool_button_margin"
+				android:layout_marginTop="@dimen/doodle_drawing_tool_button_margin"
 				app:fmMenuAnchor="left"
 				/>
 
@@ -112,14 +121,14 @@
 				android:id="@+id/paletteFlyoutMenu"
 				android:layout_width="@dimen/doodle_drawing_tool_button_size"
 				android:layout_height="@dimen/doodle_drawing_tool_button_size"
-				android:layout_marginTop="@dimen/doodle_drawing_tool_button_margin"
+				android:layout_marginBottom="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginLeft="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginRight="@dimen/doodle_drawing_tool_button_margin"
-				android:layout_marginBottom="@dimen/doodle_drawing_tool_button_margin"
-				app:fmMenuAnchor="left"
+				android:layout_marginTop="@dimen/doodle_drawing_tool_button_margin"
 				app:fmItemHeight="32dp"
-				app:fmItemWidth="32dp"
 				app:fmItemMargin="0dp"
+				app:fmItemWidth="32dp"
+				app:fmMenuAnchor="left"
 				/>
 
 		</LinearLayout>
