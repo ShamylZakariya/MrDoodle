@@ -21,6 +21,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import org.zakariya.mrdoodle.BuildConfig;
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
@@ -185,7 +186,7 @@ public class SyncLogEntryDetailActivity extends AppCompatActivity {
 		String versionInfo = null;
 		try {
 			PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
-			versionInfo = info.versionName + ":" + info.versionCode;
+			versionInfo = info.versionName + " : " + info.versionCode + " : " + BuildConfig.GitBranch + " : " + BuildConfig.GitHash;
 		} catch (Exception e) {
 			Log.e(TAG, "Unable to extract package info: " + e);
 			versionInfo = "Unable to determine MrDoodle version";
