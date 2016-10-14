@@ -4,18 +4,19 @@
       tools:context=".ui.MainActivity">
 
 	<item android:id="@+id/menuItemCenterCanvasContent"
-	      android:icon="@drawable/ic_center_focus_weak_black_24dp"
+	      android:icon="@drawable/ic_center_focus"
 	      android:title="@string/doodle_menu_center"
 	      android:orderInCategory="98"
 	      app:showAsAction="never"/>
 
 	<item android:id="@+id/menuItemFitCanvasContent"
-	      android:icon="@drawable/ic_crop_original_black_24dp"
+	      android:icon="@drawable/ic_crop"
 	      android:title="@string/doodle_menu_scale_to_fit"
 	      android:orderInCategory="99"
 	      app:showAsAction="never"/>
 
 	<item android:id="@+id/menuItemUndo"
+	      android:icon="@drawable/ic_undo"
 	      android:title="@string/doodle_menu_undo"
 	      android:orderInCategory="100"
 	      app:showAsAction="never"/>
@@ -24,4 +25,18 @@
 	      android:title="@string/doodle_menu_clear"
 	      android:orderInCategory="100"
 	      app:showAsAction="never"/>
+
+	<item android:id="@+id/menuItemShare"
+	      android:title="@string/doodle_menu_share"
+	      android:icon="@drawable/ic_share"
+	      android:orderInCategory="100"
+	      app:showAsAction="never"/>
+
+	<item android:id="@+id/menuItemDelete"
+	      android:title="@string/doodle_menu_delete"
+	      android:icon="@drawable/ic_delete"
+	      android:orderInCategory="100"
+	      app:showAsAction="never"/>
+
+
 </menu>

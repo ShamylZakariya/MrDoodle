@@ -88,5 +88,7 @@
 	<string name="locked_for_editing_by_another_device">Locked for editing by another device</string>
 	<string name="locked_document_explanation_dialog_title">Locked</string>
 	<string name="locked_document_explanation_dialog_message">This doodle is currently locked while it is being edited on another device</string>
+	<string name="doodle_menu_share">Share</string>
+	<string name="doodle_menu_delete">Delete</string>
 
 </resources>

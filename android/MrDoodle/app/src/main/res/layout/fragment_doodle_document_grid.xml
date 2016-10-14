@@ -30,7 +30,7 @@
 				android:layout_width="wrap_content"
 				android:layout_height="wrap_content"
 				android:layout_gravity="center_horizontal"
-				android:src="@drawable/icon_tab_draw"
+				android:src="@drawable/placeholder_empty_doodle_grid"
 				android:tint="@color/placeholderIconTint"/>
 
 			<TextView
@@ -49,7 +49,7 @@
 		android:layout_height="wrap_content"
 		android:layout_gravity="end|bottom"
 		android:layout_margin="@dimen/fab_margin"
-		android:src="@drawable/ic_action_add"
+		android:src="@drawable/ic_add"
 		app:backgroundTint="@color/accent"
 		app:elevation="4dp"
 		app:pressedTranslationZ="12dp"/>

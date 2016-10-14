@@ -490,10 +490,10 @@ public class SyncSettingsActivity extends BaseActivity {
 			holder.syncDateTextView.setText(dateFormatter.format(entry.getDate()));
 			if (entry.getFailure() == null) {
 				holder.syncSuccessTextView.setText(R.string.sync_log_entry_success);
-				holder.syncSuccessIndicatorImageView.setImageResource(R.drawable.icon_sync_success_black_24dp);
+				holder.syncSuccessIndicatorImageView.setImageResource(R.drawable.ic_sync_success);
 			} else {
 				holder.syncSuccessTextView.setText(R.string.sync_log_entry_failure);
-				holder.syncSuccessIndicatorImageView.setImageResource(R.drawable.icon_sync_failure_black_24dp);
+				holder.syncSuccessIndicatorImageView.setImageResource(R.drawable.ic_sync_failure);
 			}
 		}
 
