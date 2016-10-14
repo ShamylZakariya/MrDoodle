@@ -114,7 +114,7 @@ public class DoodleDocumentGridFragment extends Fragment
 	public void onResume() {
 		super.onResume();
 		BusProvider.getMainThreadBus().register(this);
-		adapter.updateItems();
+		adapter.reload();
 	}
 
 	@Override
@@ -138,7 +138,7 @@ public class DoodleDocumentGridFragment extends Fragment
 
 		// if user was viewing action sheet for a document when state was destroyed, show action sheet again
 		if (!TextUtils.isEmpty(selectedDocumentUuid)) {
-			DoodleDocument document = DoodleDocument.byUUID(realm, selectedDocumentUuid);
+			DoodleDocument document = DoodleDocument.byUuid(realm, selectedDocumentUuid);
 			selectedDocumentUuid = null;
 			if (document != null) {
 				queryDoodleDocumentAction(document);
@@ -287,7 +287,7 @@ public class DoodleDocumentGridFragment extends Fragment
 	}
 
 	void deleteDoodleDocument(String documentUuid) {
-		DoodleDocument doc = DoodleDocument.byUUID(realm, documentUuid);
+		DoodleDocument doc = DoodleDocument.byUuid(realm, documentUuid);
 		if (doc != null) {
 			deleteDoodleDocument(doc);
 		}
@@ -316,7 +316,7 @@ public class DoodleDocumentGridFragment extends Fragment
 			@Override
 			public void onDismissed(Snackbar snackbar, int event) {
 				super.onDismissed(snackbar, event);
-				DoodleDocument doc = DoodleDocument.byUUID(realm, docUuid);
+				DoodleDocument doc = DoodleDocument.byUuid(realm, docUuid);
 				if (doc != null && adapter.isDocumentHidden(doc)) {
 					DoodleDocument.delete(getContext(), realm, doc);
 					BusProvider.getMainThreadBus().post(new DoodleDocumentWasDeletedEvent(docUuid));
@@ -327,7 +327,7 @@ public class DoodleDocumentGridFragment extends Fragment
 		snackbar.setAction(R.string.snackbar_document_deleted_undo, new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				DoodleDocument doc = DoodleDocument.byUUID(realm, docUuid);
+				DoodleDocument doc = DoodleDocument.byUuid(realm, docUuid);
 				if (doc != null && adapter.isDocumentHidden(doc)) {
 					adapter.setDocumentHidden(doc, false);
 				}
@@ -361,7 +361,7 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Subscribe
 	public void onDoodleDocumentCreated(DoodleDocumentCreatedEvent event) {
 		Log.i(TAG, "onDoodleDocumentCreated: uuid: " + event.getUuid());
-		DoodleDocument document = DoodleDocument.byUUID(realm, event.getUuid());
+		DoodleDocument document = DoodleDocument.byUuid(realm, event.getUuid());
 		adapter.onItemAdded(document);
 	}
 
@@ -374,7 +374,7 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Subscribe
 	public void onDoodleDocumentEditedEvent(DoodleDocumentEditedEvent event) {
 		Log.i(TAG, "onDoodleDocumentEditedEvent: uuid: " + event.getUuid());
-		DoodleDocument document = DoodleDocument.byUUID(realm, event.getUuid());
+		DoodleDocument document = DoodleDocument.byUuid(realm, event.getUuid());
 		adapter.onItemUpdated(document);
 	}
 

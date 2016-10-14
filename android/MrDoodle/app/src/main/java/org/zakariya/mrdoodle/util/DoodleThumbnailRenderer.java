@@ -225,7 +225,7 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 
 			Realm realm = Realm.getDefaultInstance();
 			Context context = MrDoodleApplication.getInstance().getApplicationContext();
-			DoodleDocument document = DoodleDocument.byUUID(realm, documentUuid);
+			DoodleDocument document = DoodleDocument.byUuid(realm, documentUuid);
 
 			if (document != null) {
 				StrokeDoodle doodle = document.loadDoodle(context);

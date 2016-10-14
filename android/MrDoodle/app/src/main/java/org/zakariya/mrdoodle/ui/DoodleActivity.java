@@ -182,7 +182,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 			if (!TextUtils.isEmpty(documentUuid)) {
 
-				document = DoodleDocument.byUUID(realm, documentUuid);
+				document = DoodleDocument.byUuid(realm, documentUuid);
 				if (document == null) {
 					throw new IllegalArgumentException("Document UUID didn't refer to an existing DoodleDocument");
 				}
@@ -192,7 +192,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		} else {
 			Icepick.restoreInstanceState(this, savedInstanceState);
 			if (!TextUtils.isEmpty(documentUuid)) {
-				document = DoodleDocument.byUUID(realm, documentUuid);
+				document = DoodleDocument.byUuid(realm, documentUuid);
 				if (document == null) {
 					throw new IllegalArgumentException("Document UUID didn't refer to an existing DoodleDocument");
 				}

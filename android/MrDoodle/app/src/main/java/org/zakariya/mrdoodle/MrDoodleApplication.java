@@ -213,7 +213,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 					Realm realm = Realm.getDefaultInstance();
 					try {
-						DoodleDocument document = DoodleDocument.byUUID(realm, blobId);
+						DoodleDocument document = DoodleDocument.byUuid(realm, blobId);
 						if (document != null) {
 							return document.serialize(MrDoodleApplication.getInstance().getApplicationContext());
 						} else {
@@ -233,7 +233,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 				case DoodleDocument.DOCUMENT_TYPE:
 					Realm realm = Realm.getDefaultInstance();
 					try {
-						DoodleDocument doc = DoodleDocument.byUUID(realm, modelId);
+						DoodleDocument doc = DoodleDocument.byUuid(realm, modelId);
 						if (doc != null) {
 							DoodleDocument.delete(MrDoodleApplication.getInstance().getApplicationContext(), realm, doc);
 							return true;

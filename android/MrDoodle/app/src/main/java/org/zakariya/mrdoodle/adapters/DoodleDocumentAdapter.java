@@ -129,7 +129,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		crossFadeDuration = context.getResources().getInteger(android.R.integer.config_shortAnimTime);
 		this.thumbnailPadding = thumbnailPadding;
 
-		updateItems();
+		reload();
 	}
 
 	public void onDestroy() {
@@ -354,7 +354,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		return items.size();
 	}
 
-	public void updateItems() {
+	public void reload() {
 
 		SyncManager syncManager = SyncManager.getInstance();
 		LockState lockState = syncManager.getLockState();

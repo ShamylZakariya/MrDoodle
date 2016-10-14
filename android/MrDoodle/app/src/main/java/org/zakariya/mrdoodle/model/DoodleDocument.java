@@ -18,7 +18,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InvalidObjectException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.UUID;
@@ -127,7 +126,7 @@ public class DoodleDocument extends RealmObject {
 	}
 
 	@Nullable
-	public static DoodleDocument byUUID(Realm realm, String uuid) {
+	public static DoodleDocument byUuid(Realm realm, String uuid) {
 		return realm.where(DoodleDocument.class).equalTo("uuid", uuid).findFirst();
 	}
 
@@ -176,7 +175,7 @@ public class DoodleDocument extends RealmObject {
 			boolean wasModified = false;
 
 			// now if we already have a DoodleDocument with this documentId, update it. otherwise, make a new one
-			DoodleDocument document = byUUID(realm, uuid);
+			DoodleDocument document = byUuid(realm, uuid);
 			if (document != null) {
 				wasModified = true;
 				realm.beginTransaction();

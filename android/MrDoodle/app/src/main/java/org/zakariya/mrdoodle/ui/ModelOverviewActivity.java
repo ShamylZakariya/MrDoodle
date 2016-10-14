@@ -162,7 +162,7 @@ public class ModelOverviewActivity extends AppCompatActivity {
 		}
 
 		String getModelObjectName(String uuid) {
-			DoodleDocument doc = DoodleDocument.byUUID(realm, uuid);
+			DoodleDocument doc = DoodleDocument.byUuid(realm, uuid);
 			if (doc != null) {
 				return doc.getName();
 			}
