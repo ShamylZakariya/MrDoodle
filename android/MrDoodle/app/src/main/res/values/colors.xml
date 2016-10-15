@@ -10,6 +10,7 @@
 	<color name="textColorLight">#464A43</color>
 	<color name="placeholderIconTint">#999999</color>
 	<color name="doodleGridThumbnailBorder">#F0F0F0</color>
+	<color name="doodleGridEdgeColor">@color/primaryDark</color>
 
 	<color name="actionbarEditText_colorControlNormal">@color/primaryDark</color>
 	<color name="actionbarEditText_colorControlActivated">@color/textColor</color>
