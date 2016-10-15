@@ -1,7 +1,10 @@
 #Currently
 
 - How to handle panning while locked? Right now the pan gesture is blocked.
-- Test offline stuff. Turn off server while at least two apps run. Make various edits. Turn server back on.
+	- option 1: Don't. Just keep content fit/centered
+	- option 2: Somehow support a local concept of zoom/translate which isn't synced
+
+	Scale/Translation is perissted via icepick for rotations, but not kryo for saving
 
 #BUGS
 
@@ -24,8 +27,6 @@ We need to do something like detect if a delete is requested while another delet
 
 #TODO
 
-- Divide brush radius by current zoom level. this will allow for delicate hairlines when zoomed in.
-
 - Alpha Blending
 	Will require 3 new full-screen bitmaps.
 	Since this is expensive, should only be active when alpha < 255
@@ -34,7 +35,6 @@ We need to do something like detect if a delete is requested while another delet
 	- pathCompositeBitmap - livePathBitmap and staticPathBitmap are drawn at full alpha, then, pathCompositeBitmap is drawn to screen (later to backing store when stroke is complete) at the stroke's alpha.
 
 - Chunking
-
 	Line caps cause overlap-darkening at chunk intersections when drawing in partial alpha. this should not be a surprise.
 	- Possible solution: Have 2 bitmaps. A backing store, and a bitmap for the current stroke? The current stroke is rendered live on screen, static paths into the current stroke bitmap. When stroke is finished, that bitmap is rendered into the backing store.
 		-- this won't fix the overlaps
