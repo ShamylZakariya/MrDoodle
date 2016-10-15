@@ -1,9 +1,5 @@
 #Currently
 
-- EdgeItemDecoration
-	- Dashed lines make for shitty scroll performance
-    - If the grid isn't filled, we get weird empty spots!
-
 - How to handle panning while locked? Right now the pan gesture is blocked.
 - Test offline stuff. Turn off server while at least two apps run. Make various edits. Turn server back on.
 
