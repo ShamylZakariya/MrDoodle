@@ -36,7 +36,7 @@ import java.util.ArrayList;
 import icepick.Icepick;
 import icepick.State;
 
-@SuppressWarnings("TryFinallyCanBeTryWithResources")
+@SuppressWarnings("TryFinallyCanBeTryWithResources WeakerAccess")
 public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessellator.Listener {
 	private static final String TAG = "StrokeDoodle";
 
@@ -178,6 +178,10 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 
 	@Override
 	public void clear() {
+		if (isReadOnly()) {
+			return;
+		}
+
 		canvasContentBoundingRect = new RectF(); // mark empty
 		incrementalInputStrokeTessellator = null;
 		drawingSteps.clear();
@@ -189,6 +193,11 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 
 	@Override
 	public void undo() {
+		if (isReadOnly()) {
+			return;
+		}
+
+
 		if (!drawingSteps.isEmpty()) {
 			drawingSteps.remove(drawingSteps.size() - 1);
 		}
@@ -529,6 +538,11 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 
 		if (event.getPointerCount() == 1 && !performingPinchOperations) {
 
+			// single-touch is a draw event - discar iff readonly
+			if (isReadOnly()) {
+				return;
+			}
+
 			if (incrementalInputStrokeTessellator == null) {
 
 				screenToCanvasMatrix.mapPoints(strokeTouchPoint);
@@ -625,7 +639,7 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 		}
 
 
-		if (incrementalInputStrokeTessellator != null) {
+		if (!isReadOnly() && incrementalInputStrokeTessellator != null) {
 			incrementalInputStrokeTessellator.finish();
 			if (!incrementalInputStrokeTessellator.getStaticPaths().isEmpty()) {
 				IntermediateDrawingStep step = new IntermediateDrawingStep(getBrush().copy(), incrementalInputStrokeTessellator.getInputStrokes());

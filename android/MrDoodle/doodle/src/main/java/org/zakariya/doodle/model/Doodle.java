@@ -51,6 +51,9 @@ public abstract class Doodle {
 	@State
 	PointF canvasTranslation = new PointF(0, 0);
 
+	@State
+	boolean readOnly = false;
+
 	private Brush brush;
 	private int width, height;
 	private int backgroundColor = 0xFFFFFFFF;
@@ -148,6 +151,14 @@ public abstract class Doodle {
 	public void setBrush(Brush brush) {
 		this.brush = brush;
 		this.brush.setScale(1/getCanvasScale());
+	}
+
+	public boolean isReadOnly() {
+		return readOnly;
+	}
+
+	public void setReadOnly(boolean readOnly) {
+		this.readOnly = readOnly;
 	}
 
 	public Brush getBrush() {
