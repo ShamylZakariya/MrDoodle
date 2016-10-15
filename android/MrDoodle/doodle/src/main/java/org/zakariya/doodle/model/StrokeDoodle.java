@@ -419,7 +419,7 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 
 	@Override
 	public float getInputStrokeOptimizationThreshold() {
-		return 1.5f;
+		return 1.5f * getBrush().getScale();
 	}
 
 	@Override
