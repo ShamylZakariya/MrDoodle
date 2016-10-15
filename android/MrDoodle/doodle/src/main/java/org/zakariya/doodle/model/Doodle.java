@@ -147,6 +147,7 @@ public abstract class Doodle {
 
 	public void setBrush(Brush brush) {
 		this.brush = brush;
+		this.brush.setScale(1/getCanvasScale());
 	}
 
 	public Brush getBrush() {
@@ -437,6 +438,8 @@ public abstract class Doodle {
 		canvasToScreenMatrix.reset();
 		canvasToScreenMatrix.preTranslate(canvasTranslation.x, canvasTranslation.y);
 		canvasToScreenMatrix.preScale(canvasScale, canvasScale);
+
+		getBrush().setScale(1/canvasScale);
 
 		screenToCanvasMatrix.reset();
 		if (!canvasToScreenMatrix.invert(screenToCanvasMatrix)) {

@@ -22,16 +22,22 @@ public class Brush implements Parcelable, KryoSerializable {
 	private float maxWidthDpPs;
 	private boolean eraser;
 	private Paint paint;
+	float scale = 1;
 
 	public Brush() {
 	}
 
 	public Brush(int color, float minWidth, float maxWidth, float maxWidthDpPs, boolean eraser) {
+		this(color,minWidth, maxWidth, maxWidthDpPs, eraser, 1);
+	}
+
+	public Brush(int color, float minWidth, float maxWidth, float maxWidthDpPs, boolean eraser, float scale) {
 		this.color = color;
 		this.minWidth = minWidth;
 		this.maxWidth = maxWidth;
 		this.maxWidthDpPs = maxWidthDpPs;
 		this.eraser = eraser;
+		this.scale = scale;
 	}
 
 	public int getColor() {
@@ -39,11 +45,11 @@ public class Brush implements Parcelable, KryoSerializable {
 	}
 
 	public float getMinWidth() {
-		return minWidth;
+		return minWidth * scale;
 	}
 
 	public float getMaxWidth() {
-		return maxWidth;
+		return maxWidth * scale;
 	}
 
 	public float getMaxWidthDpPs() {
@@ -52,6 +58,14 @@ public class Brush implements Parcelable, KryoSerializable {
 
 	public boolean isEraser() {
 		return eraser;
+	}
+
+	public float getScale() {
+		return scale;
+	}
+
+	public void setScale(float scale) {
+		this.scale = scale;
 	}
 
 	public Paint getPaint() {
@@ -66,7 +80,7 @@ public class Brush implements Parcelable, KryoSerializable {
 	}
 
 	public Brush copy() {
-		return new Brush(color, minWidth, maxWidth, maxWidthDpPs, eraser);
+		return new Brush(color, minWidth, maxWidth, maxWidthDpPs, eraser, scale);
 	}
 
 	// Parcelable
@@ -83,6 +97,7 @@ public class Brush implements Parcelable, KryoSerializable {
 		dest.writeFloat(maxWidth);
 		dest.writeFloat(maxWidthDpPs);
 		dest.writeInt(eraser ? 1 : 0);
+		dest.writeFloat(scale);
 	}
 
 	public static final Parcelable.Creator<Brush> CREATOR = new Parcelable.Creator<Brush>() {
@@ -101,6 +116,7 @@ public class Brush implements Parcelable, KryoSerializable {
 		maxWidth = in.readFloat();
 		maxWidthDpPs = in.readFloat();
 		eraser = in.readInt() == 1;
+		scale = in.readFloat();
 	}
 
 	// KryoSerializable
@@ -115,6 +131,7 @@ public class Brush implements Parcelable, KryoSerializable {
 		output.writeFloat(maxWidth);
 		output.writeFloat(maxWidthDpPs);
 		output.writeBoolean(eraser);
+		output.writeFloat(scale);
 	}
 
 	@Override
@@ -127,6 +144,7 @@ public class Brush implements Parcelable, KryoSerializable {
 				maxWidth = input.readFloat();
 				maxWidthDpPs = input.readFloat();
 				eraser = input.readBoolean();
+				scale = input.readFloat();
 				break;
 			default:
 				throw new IllegalArgumentException("Unsupported " + this.getClass().getName() + " serialization version: " + serializationVersion);
