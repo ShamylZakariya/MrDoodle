@@ -123,6 +123,11 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 		inflate(serializedForm);
 	}
 
+	public StrokeDoodle(Context context, StrokeDoodle src) {
+		this(context);
+		this.drawingSteps = (ArrayList<IntermediateDrawingStep>) src.drawingSteps.clone();
+	}
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -559,6 +564,8 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 				incrementalInputStrokeTessellator.add(strokeTouchPoint[0], strokeTouchPoint[1]);
 			}
 
+			markDirty();
+
 		} else if (event.getPointerCount() >= 2) {
 			// null this to flag that user has intentionally transformed canvas
 			// and as such, re-centering in resize() should be ignored.
@@ -653,6 +660,8 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 
 			// mark redraw needed
 			needsUpdateBackingStore = true;
+
+			markDirty();
 		}
 	}
 
@@ -698,7 +707,7 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 		}
 	}
 
-	public static final class IntermediateDrawingStep implements Parcelable, KryoSerializable {
+	public static final class IntermediateDrawingStep implements Cloneable, Parcelable, KryoSerializable {
 		Brush brush;
 		ArrayList<InputStroke> inputStrokes;
 
@@ -728,6 +737,14 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 			}
 
 			return bounds;
+		}
+
+		@Override
+		protected Object clone() throws CloneNotSupportedException {
+			IntermediateDrawingStep clone = (IntermediateDrawingStep)super.clone();
+			clone.brush = this.brush.copy();
+			clone.inputStrokes = (ArrayList<InputStroke>) this.inputStrokes.clone();
+			return clone;
 		}
 
 		// Parcelable

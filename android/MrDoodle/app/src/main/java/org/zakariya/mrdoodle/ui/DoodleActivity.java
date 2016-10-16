@@ -34,6 +34,7 @@ import android.widget.TextView;
 import com.squareup.otto.Subscribe;
 
 import org.zakariya.doodle.model.Brush;
+import org.zakariya.doodle.model.Doodle;
 import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.doodle.view.DoodleView;
 import org.zakariya.flyoutmenu.FlyoutMenuView;
@@ -45,21 +46,26 @@ import org.zakariya.mrdoodle.net.transport.RemoteLockStatus;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
+import org.zakariya.mrdoodle.util.Debouncer;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import icepick.Icepick;
 import icepick.State;
 import io.realm.Realm;
+import rx.Observable;
 import rx.Observer;
 import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
-public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener {
+public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener, Doodle.EditListener {
 
 	private static final String TAG = "DoodleActivity";
 
@@ -143,9 +149,14 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	// when true, it means the user wants write access
 	boolean wantDocumentWriteLock;
 
+	private Subscription doodleSaveSubscription;
+
+	private Debouncer<Void> doodleEditSaveDebouncer;
+
 	/**
 	 * Get an intent to view a given doodle document by its id
-	 * @param context the context that should launch the intent
+	 *
+	 * @param context      the context that should launch the intent
 	 * @param documentUuid the id of the doodle document to view/edit
 	 * @return a suitable Intent
 	 */
@@ -159,6 +170,8 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		goFullscreen();
 
 		BusProvider.getMainThreadBus().register(this);
 
@@ -279,9 +292,11 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		}
 
 		doodle.setBackgroundColor(ContextCompat.getColor(this, R.color.doodleBackground));
+		doodle.addChangeListener(this);
 
 		doodleView.setDoodle(doodle);
 		doodleView.addSizeListener(this);
+
 
 		updateBrush();
 
@@ -326,11 +341,24 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			}
 		});
 
-		goFullscreen();
+		doodleEditSaveDebouncer = new Debouncer<Void>(1000, new Action1<Void>() {
+			@Override
+			public void call(Void o) {
+				saveDoodleIfEdited();
+			}
+		});
 	}
 
 	@Override
 	protected void onDestroy() {
+
+		doodleEditSaveDebouncer.destroy();
+
+		if (doodleSaveSubscription != null && !doodleSaveSubscription.isUnsubscribed()) {
+			doodleSaveSubscription.unsubscribe();
+		}
+
+		doodle.removeChangeListener(this);
 		doodleView.removeSizeListener(this);
 		BusProvider.getMainThreadBus().unregister(this);
 
@@ -468,6 +496,12 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		}
 	}
 
+	@Override
+	public void onDoodleEdited(Doodle doodle) {
+		// debounce a save
+		doodleEditSaveDebouncer.send(null);
+	}
+
 	public void fitDoodleCanvasContents() {
 		doodle.fitCanvasContent(getResources().getDimensionPixelSize(R.dimen.doodle_fit_canvas_contents_padding));
 	}
@@ -478,23 +512,50 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	 * @return true if the doodle had edits and needed to be saved
 	 */
 	public boolean saveDoodleIfEdited() {
-		if (document == null) {
+
+		// if nothing to do, bail
+		if (document == null || !doodle.isDirty()) {
 			return false;
 		}
 
-		if (doodle.isDirty()) {
-			realm.beginTransaction();
-			document.saveDoodle(this, doodle);
-			realm.commitTransaction();
-			doodle.setDirty(false);
+		// create a copy of the doodle in its current state
+		final StrokeDoodle doodleCopy = new StrokeDoodle(this, doodle);
 
-			// mark that the document was modified
-			markDocumentModified();
+		// serialize it to byte[] in an io thread, and then on main thread commit to store
+		doodleSaveSubscription = Observable.fromCallable(
+				new Callable<byte[]>() {
+					@Override
+					public byte[] call() throws Exception {
+						// save it to a byte stream
+						ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+						doodleCopy.serialize(byteStream);
+						return byteStream.toByteArray();
+					}
+				})
+				.subscribeOn(Schedulers.io())
+				.observeOn(AndroidSchedulers.mainThread())
+				.subscribe(new Observer<byte[]>() {
+					@Override
+					public void onCompleted() {
+					}
 
-			return true;
-		} else {
-			return false;
-		}
+					@Override
+					public void onError(Throwable e) {
+						Log.e(TAG, "saveDoodleIfEdited - onError: e: ", e);
+						e.printStackTrace();
+					}
+
+					@Override
+					public void onNext(byte[] serializedCopy) {
+						// persist
+						realm.beginTransaction();
+						document.setDoodleBytes(serializedCopy);
+						realm.commitTransaction();
+						markDocumentModified();
+					}
+				});
+
+		return true;
 	}
 
 	boolean isReadOnly() {
