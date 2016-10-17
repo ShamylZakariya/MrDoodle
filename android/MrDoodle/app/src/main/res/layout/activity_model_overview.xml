@@ -12,10 +12,7 @@
 		android:layout_height="wrap_content"
 		android:theme="@style/AppTheme.AppBarOverlay">
 
-		<android.support.v7.widget.Toolbar
-			android:id="@+id/toolbar"
-			style="@style/DefaultToolbarStyle"
-			/>
+		<include layout="@layout/toolbar"/>
 
 		<android.support.design.widget.TabLayout
 			android:id="@+id/tabs"
@@ -29,7 +26,7 @@
 			app:tabPaddingEnd="@dimen/activity_horizontal_margin"
 			app:tabPaddingStart="@dimen/activity_horizontal_margin"
 			app:tabSelectedTextColor="@color/textColor"
-			app:tabTextColor="@color/toolbarTextColor"
+			app:tabTextColor="@color/textColorLight"
 			/>
 
 	</android.support.design.widget.AppBarLayout>

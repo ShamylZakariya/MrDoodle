@@ -6,6 +6,8 @@
 	android:layout_height="wrap_content"
 	android:background="@color/windowBackground"
 	android:orientation="vertical"
+	android:paddingLeft="@dimen/activity_horizontal_margin"
+	android:paddingRight="@dimen/activity_horizontal_margin"
 	android:paddingBottom="8dp"
 	android:paddingTop="8dp">
 
@@ -15,8 +17,6 @@
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:layout_gravity="start|center_vertical"
-		android:paddingEnd="16dp"
-		android:paddingStart="16dp"
 		android:textAllCaps="true"
 		android:textColor="@color/primaryDark"
 		tools:text="Medium Text"
