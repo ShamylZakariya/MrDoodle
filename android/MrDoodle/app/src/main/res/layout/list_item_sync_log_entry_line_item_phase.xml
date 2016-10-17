@@ -9,13 +9,6 @@
 	android:paddingBottom="8dp"
 	android:paddingTop="8dp">
 
-	<View
-		android:layout_width="match_parent"
-		android:layout_height="1dp"
-		android:background="@color/rule"
-		android:visibility="gone"
-		/>
-
 	<TextView
 		android:id="@+id/titleTextView"
 		style="@style/Base.TextAppearance.AppCompat.Body2"

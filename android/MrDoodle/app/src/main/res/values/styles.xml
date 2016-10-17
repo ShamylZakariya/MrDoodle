@@ -24,11 +24,14 @@
 
 	<style name="DefaultToolbarStyle" parent="Widget.AppCompat.Toolbar">
 		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
-		<item name="android:theme">@style/ThemeOverlay.AppCompat.Light</item>
+		<item name="android:theme">@style/ThemeOverlay.AppCompat.Dark.ActionBar</item>
 		<item name="android:background">@color/primary</item>
 		<item name="android:layout_width">match_parent</item>
 		<item name="android:layout_height">wrap_content</item>
 		<item name="android:minHeight">?attr/actionBarSize</item>
+		<item name="android:textColorPrimary">@color/toolbarTextColor</item>
+		<item name="android:actionMenuTextColor">@color/toolbarTextColor</item>
+		<item name="android:textColorSecondary">@color/toolbarTextColor</item>
 	</style>
 
 	<style name="ImmersiveToolbarTheme" parent="@style/ThemeOverlay.AppCompat.Light">
@@ -70,15 +73,14 @@
 	</style>
 
 	<style name="ImmersiveAppBarEditText" parent="Widget.AppCompat.EditText">
-		<item name="android:textColor">@color/primary</item>
-		<item name="colorControlNormal">@color/actionbarEditText_colorControlNormal</item>
-		<item name="colorControlActivated">@color/actionbarEditText_colorControlActivated</item>
-		<item name="colorControlHighlight">@color/actionbarEditText_colorControlHighlight</item>
+		<item name="colorControlNormal">#66FFFFFF</item>
+		<item name="colorControlActivated">@color/primaryDark</item>
+		<item name="colorControlHighlight">@color/primaryDark</item>
 	</style>
 
 	<style name="ImmersiveTitleTextStyle"
 	       parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
-		<item name="android:textColor">@color/textColor</item>
+		<item name="android:textColor">@color/toolbarTextColor</item>
 	</style>
 
 	<style name="EmptyDoodleGridText" parent="Base.TextAppearance.AppCompat.Large">

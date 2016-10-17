@@ -190,7 +190,7 @@ public class DoodleDocumentGridFragment extends Fragment
 		recyclerView.addItemDecoration(new EdgeItemDecoration(
 				getResources().getDimension(R.dimen.doodle_grid_item_edge_width),
 				getResources().getDimension(R.dimen.doodle_grid_item_edge_dash_length),
-				ContextCompat.getColor(getContext(), R.color.doodleGridEdgeColor)
+				ContextCompat.getColor(getContext(), R.color.doodleGridBackgroundColor)
 		));
 
 		adapter = new DoodleDocumentAdapter(recyclerView, getContext(), columns, getResources().getDimension(R.dimen.doodle_grid_item_thumbnail_padding), emptyView);
