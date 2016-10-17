@@ -3,9 +3,7 @@ package org.zakariya.mrdoodle.ui;
 import android.annotation.TargetApi;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Paint;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -40,6 +38,7 @@ import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
+import org.zakariya.mrdoodle.ui.itemdecorators.EdgeItemDecoration;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleShareHelper;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
@@ -188,13 +187,13 @@ public class DoodleDocumentGridFragment extends Fragment
 		recyclerView.setLayoutManager(layoutManager);
 		recyclerView.addOnItemTouchListener(new RecyclerItemClickListener(getContext(), recyclerView, this));
 
-		recyclerView.addItemDecoration(new DividerItemDecoration(
-				getResources().getDimension(R.dimen.doodle_grid_item_border_width),
-				ContextCompat.getColor(getContext(), R.color.doodleGridThumbnailBorder)
+		recyclerView.addItemDecoration(new EdgeItemDecoration(
+				getResources().getDimension(R.dimen.doodle_grid_item_edge_width),
+				getResources().getDimension(R.dimen.doodle_grid_item_edge_dash_length),
+				ContextCompat.getColor(getContext(), R.color.doodleGridEdgeColor)
 		));
 
 		adapter = new DoodleDocumentAdapter(recyclerView, getContext(), columns, getResources().getDimension(R.dimen.doodle_grid_item_thumbnail_padding), emptyView);
-
 		recyclerView.setAdapter(adapter);
 
 		return v;
@@ -389,70 +388,5 @@ public class DoodleDocumentGridFragment extends Fragment
 	}
 
 	///////////////////////////////////////////////////////////////////
-
-	class DividerItemDecoration extends RecyclerView.ItemDecoration {
-
-		float thickness;
-		private Paint paint;
-
-		public DividerItemDecoration(float thickness, int color) {
-			this.thickness = thickness;
-
-			paint = new Paint();
-			paint.setAntiAlias(true);
-			paint.setColor(color);
-			paint.setStyle(Paint.Style.FILL);
-		}
-
-		@Override
-		public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) {
-			super.onDrawOver(c, parent, state);
-
-			GridLayoutManager glm = (GridLayoutManager) parent.getLayoutManager();
-			DoodleDocumentAdapter adapter = (DoodleDocumentAdapter) parent.getAdapter();
-
-			int columns = glm.getSpanCount();
-			int rows = (int) Math.ceil((double) adapter.getItemCount() / (double) columns);
-
-			int childCount = parent.getChildCount();
-			for (int i = 0; i < childCount; i++) {
-				View child = parent.getChildAt(i);
-				int adapterPos = parent.getChildAdapterPosition(child);
-				int row = (int) Math.floor((double) adapterPos / (double) columns);
-				int col = adapterPos % columns;
-
-				float leftBorderWidth = thickness;
-				float topBorderWidth = thickness;
-				float rightBorderWidth = thickness;
-				float bottomBorderWidth = thickness;
-
-				if (row > 0) {
-					topBorderWidth *= 0.5;
-				}
-
-				if (row < rows - 1) {
-					bottomBorderWidth *= 0.5;
-				}
-
-				if (col > 0) {
-					leftBorderWidth *= 0.5;
-				}
-
-				if (col < columns - 1) {
-					rightBorderWidth *= 0.5;
-				}
-
-				float left = child.getLeft();
-				float top = child.getTop();
-				float right = child.getRight();
-				float bottom = child.getBottom();
-
-				c.drawRect(left, top, right, top + topBorderWidth, paint);
-				c.drawRect(left, bottom - bottomBorderWidth, right, bottom, paint);
-				c.drawRect(left, top + topBorderWidth, left + leftBorderWidth, bottom - bottomBorderWidth, paint);
-				c.drawRect(right - rightBorderWidth, top + topBorderWidth, right, bottom - bottomBorderWidth, paint);
-			}
-		}
-	}
 
 }

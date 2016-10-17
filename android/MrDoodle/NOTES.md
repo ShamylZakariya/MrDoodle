@@ -1,7 +1,21 @@
 #Currently
 
+- If you edit a doodle that's been remotely deleted before the dialog shows, the deletion doesn't happen!
+	- it doesn't crash, either, so that's good
+	- thoughts:
+		- should server broadcast when a document is deleted?
+		- lock manager shouldn't grant locks to deleted document ids, but this still has race condition issues
+
 - How to handle panning while locked? Right now the pan gesture is blocked.
-- Test offline stuff. Turn off server while at least two apps run. Make various edits. Turn server back on.
+	- option 1: Don't. Just keep content fit/centered
+	- option 2: Somehow support a local concept of zoom/translate which isn't synced
+
+When assigning new doodle to doodle view we lose current transform
+	- thinking that the doodle's transform should be stored not in the doodle but in the doodle view
+	- can't use DoodleView to store transform, since we still need to be able to transform a doodle for thumbnail rendering
+	- consider an object between Doodle & DoodleView, DoodlePresenter. DoodlePresenter has the transform and the viewport. DoodleView is assigned a DoodlePresenter. The DoodlePresenter is assigned a Doodle
+
+
 
 #BUGS
 
@@ -24,8 +38,6 @@ We need to do something like detect if a delete is requested while another delet
 
 #TODO
 
-- Divide brush radius by current zoom level. this will allow for delicate hairlines when zoomed in.
-
 - Alpha Blending
 	Will require 3 new full-screen bitmaps.
 	Since this is expensive, should only be active when alpha < 255
@@ -34,7 +46,6 @@ We need to do something like detect if a delete is requested while another delet
 	- pathCompositeBitmap - livePathBitmap and staticPathBitmap are drawn at full alpha, then, pathCompositeBitmap is drawn to screen (later to backing store when stroke is complete) at the stroke's alpha.
 
 - Chunking
-
 	Line caps cause overlap-darkening at chunk intersections when drawing in partial alpha. this should not be a surprise.
 	- Possible solution: Have 2 bitmaps. A backing store, and a bitmap for the current stroke? The current stroke is rendered live on screen, static paths into the current stroke bitmap. When stroke is finished, that bitmap is rendered into the backing store.
 		-- this won't fix the overlaps

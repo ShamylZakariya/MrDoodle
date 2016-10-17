@@ -16,7 +16,6 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
-import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
@@ -34,6 +33,7 @@ import android.widget.TextView;
 import com.squareup.otto.Subscribe;
 
 import org.zakariya.doodle.model.Brush;
+import org.zakariya.doodle.model.Doodle;
 import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.doodle.view.DoodleView;
 import org.zakariya.flyoutmenu.FlyoutMenuView;
@@ -41,25 +41,31 @@ import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.net.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.model.RemoteChangeReport;
 import org.zakariya.mrdoodle.net.transport.RemoteLockStatus;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
+import org.zakariya.mrdoodle.sync.events.RemoteChangeEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
+import org.zakariya.mrdoodle.util.Debouncer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import icepick.Icepick;
 import icepick.State;
 import io.realm.Realm;
+import rx.Observable;
 import rx.Observer;
 import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
-public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener {
+public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener, Doodle.EditListener {
 
 	private static final String TAG = "DoodleActivity";
 
@@ -72,9 +78,11 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	// result code if user requested to delete this doodle
 	public static final String RESULT_SHOULD_DELETE_DOODLE = "DoodleActivity.RESULT_SHOULD_DELETE_DOODLE";
 
+	// the doodle object persists too, this is the name we'll use in onSaveInstanceState
 	private static final String STATE_DOODLE = "DoodleActivity.STATE_DOODLE";
 
 	private static final int ANIMATION_DURATION_MILLIS = 300;
+	private static final int DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS = 250;
 	private static final float DEFAULT_ZOOM_LEVEL = 1;
 	private static final boolean DEBUG_DRAW_DOODLE = false;
 
@@ -136,6 +144,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	MenuItem clearMenuItem;
 	MenuItem undoMenuItem;
+	MenuItem deleteMenuItem;
 
 	// when true, the document is in a read-only state and can't be edited
 	boolean readOnly;
@@ -143,9 +152,13 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	// when true, it means the user wants write access
 	boolean wantDocumentWriteLock;
 
+	private Subscription doodleSaveSubscription;
+	private Debouncer<Void> doodleEditSaveDebouncer;
+
 	/**
 	 * Get an intent to view a given doodle document by its id
-	 * @param context the context that should launch the intent
+	 *
+	 * @param context      the context that should launch the intent
 	 * @param documentUuid the id of the doodle document to view/edit
 	 * @return a suitable Intent
 	 */
@@ -160,128 +173,107 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+		// set fullscreen flags
+		goFullscreen();
+
 		BusProvider.getMainThreadBus().register(this);
 
 		setContentView(R.layout.activity_doodle);
 		ButterKnife.bind(this);
 
+
 		//
 		// setup the toolbar - note: we are providing our own titleTextView so we'll hide the built-in title later
+		//  Show the up button, and hide the default title. We're going to place
+		//  an edittext over where the title would normally go
 		//
 
 		setSupportActionBar(toolbar);
 		ActionBar actionBar = getSupportActionBar();
+		assert actionBar != null;
+		actionBar.setDisplayHomeAsUpEnabled(true);
+		actionBar.setDisplayShowTitleEnabled(false);
+
+
+
+		doodleView.addSizeListener(this);
 
 		//
 		//  Load the DoodleDocument
 		//
 
+		StrokeDoodle doodle;
 		realm = Realm.getDefaultInstance();
 		if (savedInstanceState == null) {
 			documentUuid = getIntent().getStringExtra(EXTRA_DOODLE_DOCUMENT_UUID);
-
-			if (!TextUtils.isEmpty(documentUuid)) {
-
-				document = DoodleDocument.byUuid(realm, documentUuid);
-				if (document == null) {
-					throw new IllegalArgumentException("Document UUID didn't refer to an existing DoodleDocument");
-				}
-
-				documentModificationTime = document.getModificationDate().getTime();
+			document = DoodleDocument.byUuid(realm, documentUuid);
+			if (document == null) {
+				document = DoodleDocument.create(realm, getString(R.string.untitled_document));
+				documentUuid = document.getUuid();
 			}
+
+			doodle = document.loadDoodle(this);
+
 		} else {
 			Icepick.restoreInstanceState(this, savedInstanceState);
-			if (!TextUtils.isEmpty(documentUuid)) {
-				document = DoodleDocument.byUuid(realm, documentUuid);
-				if (document == null) {
-					throw new IllegalArgumentException("Document UUID didn't refer to an existing DoodleDocument");
-				}
-			}
-		}
+			document = DoodleDocument.byUuid(realm, documentUuid);
 
-		if (document != null) {
-
-			// show the up button
-			if (actionBar != null) {
-				actionBar.setDisplayHomeAsUpEnabled(true);
-			}
-
-			// hide default title
-			if (actionBar != null) {
-				actionBar.setDisplayShowTitleEnabled(false);
-			}
-
-			// update title
-			titleEditText.setText(document.getName());
-			titleEditText.addTextChangedListener(new TextWatcher() {
-				@Override
-				public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-				}
-
-				@Override
-				public void onTextChanged(CharSequence s, int start, int before, int count) {
-				}
-
-				@Override
-				public void afterTextChanged(Editable s) {
-					setDocumentName(s.toString());
-				}
-			});
-
-			titleEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-				@Override
-				public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-					if (actionId == EditorInfo.IME_ACTION_DONE) {
-						v.clearFocus();
-						goFullscreen();
-						return true;
-					} else {
-						return false;
-					}
-				}
-			});
-
-			titleEditText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-				@Override
-				public void onFocusChange(View v, boolean hasFocus) {
-					if (!hasFocus) {
-						hideKeyboard(v);
-						goFullscreen();
-					}
-				}
-			});
-		} else {
-
-			// we don't have a document, this means we're running in a test harness where
-			// DoodleActivity was launched directly.
-			titleEditText.setVisibility(View.GONE);
-		}
-
-		//
-		//  Create the PhotoDoodle. If this is result of a state restoration
-		//  load from the saved instance state, otherwise, load from the saved document.
-		//
-
-		if (savedInstanceState != null) {
+			// this is a state restoration so load doodle from state
 			doodle = new StrokeDoodle(this);
-
 			Bundle doodleState = savedInstanceState.getBundle(STATE_DOODLE);
 			if (doodleState != null) {
 				doodle.onCreate(doodleState);
 			}
-		} else {
-			if (document != null) {
-				doodle = document.loadDoodle(this);
-			} else {
-				// DoodleActivity was launched directly for testing, create a blank document
-				doodle = new StrokeDoodle(this);
-			}
 		}
 
-		doodle.setBackgroundColor(ContextCompat.getColor(this, R.color.doodleBackground));
+		assert document != null;
+		documentModificationTime = document.getModificationDate().getTime();
+		setDoodle(doodle);
 
-		doodleView.setDoodle(doodle);
-		doodleView.addSizeListener(this);
+		//
+		// set up the document title edit text
+		//
+
+		titleEditText.setText(document.getName());
+		titleEditText.addTextChangedListener(new TextWatcher() {
+			@Override
+			public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+			}
+
+			@Override
+			public void onTextChanged(CharSequence s, int start, int before, int count) {
+			}
+
+			@Override
+			public void afterTextChanged(Editable s) {
+				setDocumentName(s.toString());
+			}
+		});
+
+		titleEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+			@Override
+			public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+				if (actionId == EditorInfo.IME_ACTION_DONE) {
+					v.clearFocus();
+					goFullscreen();
+					return true;
+				} else {
+					return false;
+				}
+			}
+		});
+
+		titleEditText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+			@Override
+			public void onFocusChange(View v, boolean hasFocus) {
+				if (!hasFocus) {
+					hideKeyboard(v);
+					goFullscreen();
+				}
+			}
+		});
+
+
 
 		updateBrush();
 
@@ -296,22 +288,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			doodle.setCanvasScale(DEFAULT_ZOOM_LEVEL);
 		}
 
-		doodle.setCoordinateGridSize(dp2px(100));
-		if (DEBUG_DRAW_DOODLE) {
-			doodle.setDrawCoordinateGrid(true);
-			doodle.setDrawInvalidationRect(true);
-			doodle.setDrawViewport(true);
-			doodle.setDrawCanvasContentBoundingRect(true);
-		}
-
-		doodle.setTwoFingerTapListener(new StrokeDoodle.TwoFingerTapListener() {
-			@Override
-			public void onTwoFingerTap(int tapCount) {
-				if (tapCount > 1) {
-					fitDoodleCanvasContents();
-				}
-			}
-		});
 
 		// hide controls, they'll be shown or hidden appropriately after onResume
 		// then the document is locked (or not)
@@ -325,14 +301,25 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 				showLockedDocumentExplanation();
 			}
 		});
-
-		goFullscreen();
 	}
 
 	@Override
 	protected void onDestroy() {
-		doodleView.removeSizeListener(this);
 		BusProvider.getMainThreadBus().unregister(this);
+
+		if (doodleEditSaveDebouncer != null) {
+			doodleEditSaveDebouncer.destroy();
+		}
+
+		if (doodleSaveSubscription != null && !doodleSaveSubscription.isUnsubscribed()) {
+			doodleSaveSubscription.unsubscribe();
+		}
+
+		if (doodle != null) {
+			doodle.removeChangeListener(this);
+		}
+
+		doodleView.removeSizeListener(this);
 
 		if (lockSubscription != null && !lockSubscription.isUnsubscribed()) {
 			lockSubscription.unsubscribe();
@@ -360,6 +347,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 		clearMenuItem = menu.findItem(R.id.menuItemClear);
 		undoMenuItem = menu.findItem(R.id.menuItemUndo);
+		deleteMenuItem = menu.findItem(R.id.menuItemDelete);
 		updateMenuItems();
 
 		return true;
@@ -431,11 +419,71 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		}
 	}
 
+	@Override
+	public void onDoodleViewResized(DoodleView doodleView, int width, int height) {
+		if (firstDisplayOfDoodle) {
+			fitDoodleCanvasContents();
+			firstDisplayOfDoodle = false;
+		}
+	}
+
+	@Override
+	public void onDoodleEdited(Doodle doodle) {
+
+		if (doodleEditSaveDebouncer == null) {
+			doodleEditSaveDebouncer = new Debouncer<Void>(DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS, new Action1<Void>() {
+				@Override
+				public void call(Void o) {
+					saveDoodleIfEdited();
+				}
+			});
+		}
+
+		// debounce save
+		doodleEditSaveDebouncer.send(null);
+	}
+
+	///////////////////////////////////////////////////////////////////
+
 	@Subscribe
 	public void onLockStateChanged(LockStateChangedEvent event) {
 		if (wantDocumentWriteLock && event.isUnlocked(document.getUuid())) {
 			Log.i(TAG, "onLockStateChanged: currently want write lock, and document is available, so requesting lock...");
 			requestDocumentWriteLock();
+		}
+	}
+
+	@Subscribe
+	public void onRemoteChange(RemoteChangeEvent event) {
+
+		// we could listen to DoodleDocumentWasEdited or DoodleDocumentWasDeleted,
+		// but those aren't dispatched until after a sync completes. There's a potential
+		// race condition where a document has been remotely deleted, and a viewing
+		// device may get a lock on it, and make some changes while the document's realm
+		// object has been deleted in a background thread. Boom! RemoteChangeEvent
+		// is fired immediately (well, on the main thread)
+
+		RemoteChangeReport report = event.getReport();
+		Log.i(TAG, "onRemoteChange: report: " + report);
+
+		if (report.getDocumentId().equals(documentUuid)) {
+			switch (report.getAction()) {
+				case UPDATE:
+					if (readOnly) {
+						Log.i(TAG, "onRemoteChange: UPDATE - updating the doodle");
+						titleEditText.setText(document.getName());
+						setDoodle(document.loadDoodle(this));
+					}
+					break;
+				case DELETE:
+					// flag that the document is deleted by nulling it
+					Log.i(TAG, "onRemoteChange: DELETE: nulling doodle and document");
+					doodle = null;
+					document = null;
+					documentUuid = null;
+					showDeletedDocumentExplanationAndExit();
+					break;
+			}
 		}
 	}
 
@@ -460,15 +508,13 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	}
 
-	@Override
-	public void onDoodleViewResized(DoodleView doodleView, int width, int height) {
-		if (firstDisplayOfDoodle) {
-			fitDoodleCanvasContents();
-			firstDisplayOfDoodle = false;
-		}
-	}
+	///////////////////////////////////////////////////////////////////
 
 	public void fitDoodleCanvasContents() {
+		if (document == null) {
+			return;
+		}
+
 		doodle.fitCanvasContent(getResources().getDimensionPixelSize(R.dimen.doodle_fit_canvas_contents_padding));
 	}
 
@@ -478,23 +524,47 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	 * @return true if the doodle had edits and needed to be saved
 	 */
 	public boolean saveDoodleIfEdited() {
-		if (document == null) {
+
+		// if nothing to do, bail
+		if (document == null || !doodle.isDirty()) {
 			return false;
 		}
 
-		if (doodle.isDirty()) {
-			realm.beginTransaction();
-			document.saveDoodle(this, doodle);
-			realm.commitTransaction();
-			doodle.setDirty(false);
+		// create a copy of the doodle in its current state
+		final StrokeDoodle doodleCopy = new StrokeDoodle(this, doodle);
 
-			// mark that the document was modified
-			markDocumentModified();
+		// serialize it to byte[] in an io thread, and then on main thread commit to store
+		doodleSaveSubscription = Observable.fromCallable(
+				new Callable<byte[]>() {
+					@Override
+					public byte[] call() throws Exception {
+						return doodleCopy.serialize();
+					}
+				})
+				.subscribeOn(Schedulers.io())
+				.observeOn(AndroidSchedulers.mainThread())
+				.subscribe(new Observer<byte[]>() {
+					@Override
+					public void onCompleted() {
+					}
 
-			return true;
-		} else {
-			return false;
-		}
+					@Override
+					public void onError(Throwable e) {
+						Log.e(TAG, "saveDoodleIfEdited - onError: e: ", e);
+						e.printStackTrace();
+					}
+
+					@Override
+					public void onNext(byte[] serializedCopy) {
+						// persist
+						realm.beginTransaction();
+						document.setDoodleBytes(serializedCopy);
+						realm.commitTransaction();
+						markDocumentModified();
+					}
+				});
+
+		return true;
 	}
 
 	boolean isReadOnly() {
@@ -512,6 +582,32 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		setViewVisibility(paletteFlyoutMenu, !readOnly, animate);
 		setViewVisibility(lockIconImageView, readOnly, animate);
 		updateMenuItems();
+	}
+
+	void setDoodle(StrokeDoodle doodle) {
+		this.doodle = doodle;
+
+		this.doodle.setBackgroundColor(ContextCompat.getColor(this, R.color.doodleBackground));
+		this.doodle.addChangeListener(this);
+
+		doodleView.setDoodle(this.doodle);
+
+		doodle.setCoordinateGridSize(dp2px(100));
+		if (DEBUG_DRAW_DOODLE) {
+			doodle.setDrawCoordinateGrid(true);
+			doodle.setDrawInvalidationRect(true);
+			doodle.setDrawViewport(true);
+			doodle.setDrawCanvasContentBoundingRect(true);
+		}
+
+		doodle.setTwoFingerTapListener(new StrokeDoodle.TwoFingerTapListener() {
+			@Override
+			public void onTwoFingerTap(int tapCount) {
+				if (tapCount > 1) {
+					fitDoodleCanvasContents();
+				}
+			}
+		});
 	}
 
 	public void setDocumentName(String documentName) {
@@ -721,6 +817,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	private void requestDocumentWriteLock() {
+		if (document == null) {
+			return;
+		}
 
 		wantDocumentWriteLock = true;
 		SyncManager syncManager = SyncManager.getInstance();
@@ -752,6 +851,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	private void releaseDocumentWriteLock() {
+		if (document == null) {
+			return;
+		}
 
 		wantDocumentWriteLock = false;
 		SyncManager syncManager = SyncManager.getInstance();
@@ -793,9 +895,8 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			return;
 		}
 
-		saveDoodleIfEdited();
-
-		boolean edited = document.getModificationDate().getTime() > documentModificationTime;
+		// save doodle
+		boolean edited = saveDoodleIfEdited();
 
 		Intent resultData = new Intent();
 		resultData.putExtra(RESULT_DID_EDIT_DOODLE, edited);
@@ -807,7 +908,22 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		if (clearMenuItem != null && undoMenuItem != null) {
 			clearMenuItem.setVisible(!readOnly);
 			undoMenuItem.setVisible(!readOnly);
+			deleteMenuItem.setVisible(!readOnly);
 		}
+	}
+
+	private void showDeletedDocumentExplanationAndExit() {
+		new AlertDialog.Builder(this)
+				.setTitle(R.string.deleted_document_explanation_title)
+				.setMessage(R.string.deleted_document_explanation_message)
+				.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						NavUtils.navigateUpFromSameTask(DoodleActivity.this);
+					}
+				})
+				.setCancelable(false)
+				.show();
 	}
 
 	private void showLockedDocumentExplanation() {

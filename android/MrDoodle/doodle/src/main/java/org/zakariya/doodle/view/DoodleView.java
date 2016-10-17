@@ -42,7 +42,14 @@ public class DoodleView extends View {
 
 	public void setDoodle(Doodle doodle) {
 		this.doodle = doodle;
+		doodle.setReadOnly(this.isReadOnly());
 		doodle.setDoodleView(this);
+
+		if (getWidth() > 0 && getHeight() > 0) {
+			doodle.resize(getWidth(), getHeight());
+		}
+
+		invalidate();
 	}
 
 	public boolean isReadOnly() {
@@ -51,6 +58,9 @@ public class DoodleView extends View {
 
 	public void setReadOnly(boolean readOnly) {
 		this.readOnly = readOnly;
+		if (doodle != null) {
+			doodle.setReadOnly(readOnly);
+		}
 	}
 
 	@Override
@@ -93,7 +103,7 @@ public class DoodleView extends View {
 
 	@Override
 	public boolean onTouchEvent(@NonNull MotionEvent event) {
-		if (!readOnly && doodle != null) {
+		if (doodle != null) {
 			return doodle.onTouchEvent(event);
 		} else {
 			return super.onTouchEvent(event);
