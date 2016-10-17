@@ -1,8 +1,10 @@
 #Currently
 
-- got some weird cases where doodle edits aren't pushe dupstream. The doodle NAME is synced. But the drawing is not.
-
-
+- If you edit a doodle that's been remotely deleted before the dialog shows, the deletion doesn't happen!
+	- it doesn't crash, either, so that's good
+	- thoughts:
+		- should server broadcast when a document is deleted?
+		- lock manager shouldn't grant locks to deleted document ids, but this still has race condition issues
 
 - How to handle panning while locked? Right now the pan gesture is blocked.
 	- option 1: Don't. Just keep content fit/centered
