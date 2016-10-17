@@ -44,6 +44,12 @@ public class DoodleView extends View {
 		this.doodle = doodle;
 		doodle.setReadOnly(this.isReadOnly());
 		doodle.setDoodleView(this);
+
+		if (getWidth() > 0 && getHeight() > 0) {
+			doodle.resize(getWidth(), getHeight());
+		}
+
+		invalidate();
 	}
 
 	public boolean isReadOnly() {

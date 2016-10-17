@@ -19,6 +19,8 @@ import java.io.InputStream;
 import java.io.InvalidObjectException;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.util.HashSet;
+import java.util.Set;
 
 import icepick.Icepick;
 import icepick.State;
@@ -27,6 +29,10 @@ import icepick.State;
  * Created by shamyl on 8/11/15.
  */
 public abstract class Doodle {
+
+	public interface EditListener {
+		void onDoodleEdited(Doodle doodle);
+	}
 
 	private static final String TAG = "Doodle";
 
@@ -57,10 +63,19 @@ public abstract class Doodle {
 	private Brush brush;
 	private int width, height;
 	private int backgroundColor = 0xFFFFFFFF;
-	WeakReference<DoodleView> doodleViewWeakReference;
+	private WeakReference<DoodleView> doodleViewWeakReference;
+	private Set<EditListener> editListeners = new HashSet<>();
 
 	public void setDoodleView(DoodleView doodleView) {
 		doodleViewWeakReference = new WeakReference<>(doodleView);
+	}
+
+	public void addChangeListener(EditListener listener) {
+		editListeners.add(listener);
+	}
+
+	public void removeChangeListener(EditListener listener) {
+		editListeners.remove(listener);
 	}
 
 	@Nullable
@@ -174,7 +189,6 @@ public abstract class Doodle {
 		Icepick.saveInstanceState(this, outState);
 	}
 
-
 	/**
 	 * Serialize the doodle drawing state
 	 *
@@ -216,23 +230,18 @@ public abstract class Doodle {
 		int action = MotionEventCompat.getActionMasked(event);
 		switch (action) {
 			case MotionEvent.ACTION_DOWN:
-				markDirty();
 				onTouchEventBegin(event);
 				return true;
 			case MotionEvent.ACTION_POINTER_DOWN:
-				markDirty();
 				onTouchEventBegin(event);
 				return true;
 			case MotionEvent.ACTION_POINTER_UP:
-				markDirty();
 				onTouchEventEnd(event);
 				return true;
 			case MotionEvent.ACTION_UP:
-				markDirty();
 				onTouchEventEnd(event);
 				return true;
 			case MotionEvent.ACTION_MOVE:
-				markDirty();
 				onTouchEventMove(event);
 				return true;
 		}
@@ -259,6 +268,9 @@ public abstract class Doodle {
 	 */
 	public void markDirty() {
 		dirty = true;
+		for (EditListener listener : editListeners) {
+			listener.onDoodleEdited(this);
+		}
 	}
 
 	/**

@@ -17,10 +17,12 @@ import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.ChangeJournal;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.TimestampRecorder;
+import org.zakariya.mrdoodle.sync.events.RemoteChangeEvent;
 import org.zakariya.mrdoodle.sync.model.ChangeJournalItem;
 import org.zakariya.mrdoodle.sync.model.ChangeType;
 import org.zakariya.mrdoodle.sync.model.SyncLogEntry;
 import org.zakariya.mrdoodle.sync.model.SyncState;
+import org.zakariya.mrdoodle.util.BusProvider;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -542,6 +544,7 @@ public class SyncApi {
 
 				if (report != null) {
 					remoteChangeReports.add(report);
+					BusProvider.postOnMainThread(new RemoteChangeEvent(report));
 					log(log, PULL_ITEM, "Pulled remote change - report: " + report);
 				} else {
 					log(log, PULL_ITEM, "Pulled remote change, no report");

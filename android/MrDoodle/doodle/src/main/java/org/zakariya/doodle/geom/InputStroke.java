@@ -18,7 +18,7 @@ import java.util.ArrayList;
 /**
  * Created by shamyl on 9/28/15.
  */
-public class InputStroke implements Parcelable, KryoSerializable {
+public class InputStroke implements Cloneable, Parcelable, KryoSerializable {
 
 	private static final String TAG = "InputStroke";
 
@@ -235,6 +235,7 @@ public class InputStroke implements Parcelable, KryoSerializable {
 		return TextUtils.join(",", points);
 	}
 
+	@SuppressWarnings("CloneDoesntCallSuperClone")
 	@Override
 	protected Object clone() throws CloneNotSupportedException {
 		return copy();
