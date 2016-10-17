@@ -1,10 +1,19 @@
 #Currently
 
+- got some weird cases where doodle edits aren't pushe dupstream. The doodle NAME is synced. But the drawing is not.
+
+
+
 - How to handle panning while locked? Right now the pan gesture is blocked.
 	- option 1: Don't. Just keep content fit/centered
 	- option 2: Somehow support a local concept of zoom/translate which isn't synced
 
-	Scale/Translation is perissted via icepick for rotations, but not kryo for saving
+When assigning new doodle to doodle view we lose current transform
+	- thinking that the doodle's transform should be stored not in the doodle but in the doodle view
+	- can't use DoodleView to store transform, since we still need to be able to transform a doodle for thumbnail rendering
+	- consider an object between Doodle & DoodleView, DoodlePresenter. DoodlePresenter has the transform and the viewport. DoodleView is assigned a DoodlePresenter. The DoodlePresenter is assigned a Doodle
+
+
 
 #BUGS
 
