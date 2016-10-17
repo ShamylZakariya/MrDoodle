@@ -24,12 +24,12 @@
 		<item name="actionBarStyle">@style/ImmersiveToolbarStyle</item>
 	</style>
 
-	<style name="ImmersiveAppBarEditText" parent="Widget.AppCompat.EditText">
-		<item name="android:textColor">@color/textColor</item>
-		<item name="android:colorControlNormal">@color/actionbarEditText_colorControlNormal</item>
-		<item name="android:colorControlActivated">@color/actionbarEditText_colorControlActivated</item>
-		<item name="android:colorControlHighlight">@color/actionbarEditText_colorControlHighlight</item>
-	</style>
+	<!--<style name="ImmersiveAppBarEditText" parent="Widget.AppCompat.EditText">-->
+		<!--<item name="android:textColor">@color/textColor</item>-->
+		<!--<item name="android:colorControlNormal">@color/actionbarEditText_colorControlNormal</item>-->
+		<!--<item name="android:colorControlActivated">@color/actionbarEditText_colorControlActivated</item>-->
+		<!--<item name="android:colorControlHighlight">@color/actionbarEditText_colorControlHighlight</item>-->
+	<!--</style>-->
 
 	<style name="ImmersiveActionBarTheme" parent="ThemeOverlay.AppCompat.ActionBar">
 		<item name="android:colorControlNormal">@color/primary</item>

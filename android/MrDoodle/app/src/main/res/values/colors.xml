@@ -1,23 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<color name="primary">#E2F7C8</color>
-	<color name="primaryDark">#B4C5A0</color>
-	<color name="primaryLight">#F4FFE6</color>
-	<color name="accent">#CBFDFF</color>
+	<color name="primary">#73E9E4</color>
+	<color name="primaryMiddleDark">#6CDDD8</color>
+	<color name="primaryDark">#66D1CC</color>
+	<color name="primaryLight">#F1FCFC</color>
+	<color name="accent">#F9E900</color>
 	<color name="windowBackground">#ffffff</color>
-	<color name="rule">#dddddd</color>
+	<color name="toolbarTextColor">#ffffff</color>
+	<color name="rule">#F1FCFC</color>
 	<color name="textColor">#464A43</color>
 	<color name="textColorLight">#464A43</color>
 	<color name="placeholderIconTint">#999999</color>
-	<color name="doodleGridThumbnailBorder">#F0F0F0</color>
-	<color name="doodleGridEdgeColor">#cddeb8</color>
-
-	<color name="actionbarEditText_colorControlNormal">@color/primaryDark</color>
-	<color name="actionbarEditText_colorControlActivated">@color/textColor</color>
-	<color name="actionbarEditText_colorControlHighlight">@color/textColor</color>
-
+	<color name="doodleGridBackgroundColor">@color/primaryLight</color>
 	<color name="doodleBackground">#FFFFFFFF</color>
-
 	<color name="trouble">#e24e2a</color>
 
 </resources>

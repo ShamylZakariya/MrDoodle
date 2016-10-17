@@ -23,12 +23,13 @@
 			android:layout_height="wrap_content"
 			android:background="@color/primary"
 			app:tabGravity="fill"
-			app:tabIndicatorColor="@color/primaryDark"
+			app:tabIndicatorColor="@color/textColor"
+			app:tabIndicatorHeight="@dimen/tab_indicator_height"
 			app:tabMode="scrollable"
 			app:tabPaddingEnd="@dimen/activity_horizontal_margin"
 			app:tabPaddingStart="@dimen/activity_horizontal_margin"
 			app:tabSelectedTextColor="@color/textColor"
-			app:tabTextColor="@color/primaryDark"
+			app:tabTextColor="@color/toolbarTextColor"
 			/>
 
 	</android.support.design.widget.AppBarLayout>

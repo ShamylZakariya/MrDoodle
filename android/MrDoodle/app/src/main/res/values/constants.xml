@@ -2,4 +2,5 @@
 <resources>
 	<integer name="doodle_share_image_size">2048</integer>
 	<integer name="doodle_share_image_padding">32</integer>
+	<bool name="light_status_bar">false</bool>
 </resources>

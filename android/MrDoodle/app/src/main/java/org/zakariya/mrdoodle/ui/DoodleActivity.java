@@ -669,7 +669,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		}
 
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-			flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+			if (getResources().getBoolean(R.bool.light_status_bar)) {
+				flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+			}
 		}
 
 		getWindow().getDecorView().setSystemUiVisibility(flags);
