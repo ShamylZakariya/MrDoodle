@@ -3,6 +3,7 @@ package org.zakariya.doodle.view;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -22,11 +23,9 @@ public class DoodleView extends View {
 		void onDoodleViewResized(DoodleView doodleView, int width, int height);
 	}
 
-	private static final String TAG = "DoodleView";
-	private Doodle doodle;
 	private ViewTreeObserver.OnGlobalLayoutListener layoutListener;
 	private List<SizeListener> sizeListeners = new ArrayList<>();
-	private boolean readOnly;
+	private DoodleCanvas doodleCanvas;
 
 	public DoodleView(Context context) {
 		super(context);
@@ -36,31 +35,27 @@ public class DoodleView extends View {
 		super(context, attrs);
 	}
 
+	@Nullable
 	public Doodle getDoodle() {
-		return doodle;
+		return doodleCanvas != null ? doodleCanvas.getDoodle() : null;
 	}
 
-	public void setDoodle(Doodle doodle) {
-		this.doodle = doodle;
-		doodle.setReadOnly(this.isReadOnly());
-		doodle.setDoodleView(this);
+	/**
+	 * Assigns a DoodleCanvas, which in turn manages a Doodle's viewport/scale, etc and
+	 * dispatches draw and touch events.
+	 * @param doodleCanvas a DoodleCanvas
+	 */
+	public void setDoodleCanvas(DoodleCanvas doodleCanvas) {
+		this.doodleCanvas = doodleCanvas;
+		this.doodleCanvas.setDoodleView(this);
 
 		if (getWidth() > 0 && getHeight() > 0) {
-			doodle.resize(getWidth(), getHeight());
+			this.doodleCanvas.resize(getWidth(), getHeight());
 		}
-
-		invalidate();
 	}
 
-	public boolean isReadOnly() {
-		return readOnly;
-	}
-
-	public void setReadOnly(boolean readOnly) {
-		this.readOnly = readOnly;
-		if (doodle != null) {
-			doodle.setReadOnly(readOnly);
-		}
+	public DoodleCanvas getDoodleCanvas() {
+		return doodleCanvas;
 	}
 
 	@Override
@@ -72,11 +67,11 @@ public class DoodleView extends View {
 			layoutListener = new ViewTreeObserver.OnGlobalLayoutListener() {
 				@Override
 				public void onGlobalLayout() {
-					if (getWidth() != doodle.getWidth() || getHeight() != doodle.getHeight()) {
-						doodle.resize(getWidth(), getHeight());
-						for (SizeListener listener : sizeListeners) {
-							listener.onDoodleViewResized(DoodleView.this, getWidth(), getHeight());
-						}
+					if (doodleCanvas != null) {
+						doodleCanvas.resize(getWidth(), getHeight());
+					}
+					for (SizeListener listener : sizeListeners) {
+						listener.onDoodleViewResized(DoodleView.this, getWidth(), getHeight());
 					}
 				}
 			};
@@ -96,20 +91,25 @@ public class DoodleView extends View {
 	@Override
 	public void draw(Canvas canvas) {
 		super.draw(canvas);
-		if (doodle != null) {
-			doodle.draw(canvas);
+		if (doodleCanvas != null) {
+			doodleCanvas.draw(canvas);
 		}
 	}
 
 	@Override
 	public boolean onTouchEvent(@NonNull MotionEvent event) {
-		if (doodle != null) {
-			return doodle.onTouchEvent(event);
+		DoodleCanvas canvas = doodleCanvas;
+		if (canvas != null) {
+			return canvas.onTouchEvent(event);
 		} else {
 			return super.onTouchEvent(event);
 		}
 	}
 
+	/**
+	 * Add a size listener, which will be notified when a doodle is resized
+	 * @param listener a listener to be notified of doodle size changes
+	 */
 	public void addSizeListener(SizeListener listener) {
 		sizeListeners.add(listener);
 	}

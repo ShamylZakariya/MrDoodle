@@ -35,6 +35,7 @@ import com.squareup.otto.Subscribe;
 import org.zakariya.doodle.model.Brush;
 import org.zakariya.doodle.model.Doodle;
 import org.zakariya.doodle.model.StrokeDoodle;
+import org.zakariya.doodle.view.DoodleCanvas;
 import org.zakariya.doodle.view.DoodleView;
 import org.zakariya.flyoutmenu.FlyoutMenuView;
 import org.zakariya.mrdoodle.R;
@@ -141,6 +142,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	DoodleDocument document;
 	StrokeDoodle doodle;
+	DoodleCanvas doodleCanvas;
 
 	MenuItem clearMenuItem;
 	MenuItem undoMenuItem;
@@ -197,6 +199,8 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 
 		doodleView.addSizeListener(this);
+		doodleCanvas = new DoodleCanvas(this);
+		doodleView.setDoodleCanvas(doodleCanvas);
 
 		//
 		//  Load the DoodleDocument
@@ -219,10 +223,10 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			document = DoodleDocument.byUuid(realm, documentUuid);
 
 			// this is a state restoration so load doodle from state
-			doodle = new StrokeDoodle(this);
+			doodle = new StrokeDoodle();
 			Bundle doodleState = savedInstanceState.getBundle(STATE_DOODLE);
 			if (doodleState != null) {
-				doodle.onCreate(doodleState);
+				doodle.onLoadInstanceState(doodleState);
 			}
 		}
 
@@ -285,7 +289,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		paletteFlyoutMenu.setSelectedMenuItemById(paletteFlyoutMenuSelectionId);
 
 		if (savedInstanceState == null) {
-			doodle.setCanvasScale(DEFAULT_ZOOM_LEVEL);
+			doodleCanvas.setCanvasScale(DEFAULT_ZOOM_LEVEL);
 		}
 
 
@@ -357,7 +361,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 			case R.id.menuItemCenterCanvasContent:
-				doodle.centerCanvasContent();
+				doodleCanvas.centerCanvasContent();
 				return true;
 
 			case R.id.menuItemFitCanvasContent:
@@ -515,7 +519,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			return;
 		}
 
-		doodle.fitCanvasContent(getResources().getDimensionPixelSize(R.dimen.doodle_fit_canvas_contents_padding));
+		doodleCanvas.fitCanvasContent(getResources().getDimensionPixelSize(R.dimen.doodle_fit_canvas_contents_padding));
 	}
 
 	/**
@@ -531,7 +535,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		}
 
 		// create a copy of the doodle in its current state
-		final StrokeDoodle doodleCopy = new StrokeDoodle(this, doodle);
+		final StrokeDoodle doodleCopy = new StrokeDoodle(doodle);
 
 		// serialize it to byte[] in an io thread, and then on main thread commit to store
 		doodleSaveSubscription = Observable.fromCallable(
@@ -575,7 +579,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		Log.i(TAG, "setReadOnly() called with: readOnly = [" + readOnly + "]");
 
 		this.readOnly = readOnly;
-		doodleView.setReadOnly(this.readOnly);
+		doodleCanvas.setReadOnly(this.readOnly);
 		titleEditText.setEnabled(!this.readOnly);
 
 		setViewVisibility(toolSelectorFlyoutMenu, !readOnly, animate);
@@ -590,17 +594,17 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		this.doodle.setBackgroundColor(ContextCompat.getColor(this, R.color.doodleBackground));
 		this.doodle.addChangeListener(this);
 
-		doodleView.setDoodle(this.doodle);
+		doodleCanvas.setDoodle(this.doodle);
 
-		doodle.setCoordinateGridSize(dp2px(100));
+		doodleCanvas.setCoordinateGridSize(dp2px(100));
 		if (DEBUG_DRAW_DOODLE) {
-			doodle.setDrawCoordinateGrid(true);
-			doodle.setDrawInvalidationRect(true);
-			doodle.setDrawViewport(true);
-			doodle.setDrawCanvasContentBoundingRect(true);
+			doodleCanvas.setDrawCoordinateGrid(true);
+			doodleCanvas.setDrawInvalidationRect(true);
+			doodleCanvas.setDrawViewport(true);
+			doodleCanvas.setDrawCanvasContentBoundingRect(true);
 		}
 
-		doodle.setTwoFingerTapListener(new StrokeDoodle.TwoFingerTapListener() {
+		doodleCanvas.setTwoFingerTapListener(new DoodleCanvas.TwoFingerTapListener() {
 			@Override
 			public void onTwoFingerTap(int tapCount) {
 				if (tapCount > 1) {
