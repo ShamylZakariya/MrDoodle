@@ -34,8 +34,8 @@ import com.squareup.otto.Subscribe;
 
 import org.zakariya.doodle.model.Brush;
 import org.zakariya.doodle.model.Doodle;
-import org.zakariya.doodle.view.DoodleCanvas;
 import org.zakariya.doodle.model.StrokeDoodle;
+import org.zakariya.doodle.view.DoodleCanvas;
 import org.zakariya.doodle.view.DoodleView;
 import org.zakariya.flyoutmenu.FlyoutMenuView;
 import org.zakariya.mrdoodle.R;
@@ -50,6 +50,7 @@ import org.zakariya.mrdoodle.sync.events.RemoteChangeEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.Debouncer;
 import org.zakariya.mrdoodle.util.DoodleShareHelper;
+import org.zakariya.mrdoodle.util.NavbarUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -225,12 +226,18 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			doodleCanvas.setMinPinchTranslationForTap(dp2px(TWO_FINGER_TAP_MIN_TRANSLATION_DP));
 			doodleCanvas.setMinPinchScalingForTap(TWO_FINGER_TAP_MIN_SCALING);
 			doodleCanvas.setDisabledEdgeWidth(getResources().getDimension(R.dimen.doodle_canvas_disabled_touch_edge_width));
-			doodleCanvas.setDisabledEdgeSwipeMask(DoodleCanvas.EDGE_BOTTOM);
 
 		} else {
 			Icepick.restoreInstanceState(this, savedInstanceState);
 			document = DoodleDocument.byUuid(realm, documentUuid);
 		}
+
+		// set a touch deadzone on the edge where the navigation bar is hidden,
+		// this prevents edge swipes which would reveal the navigation bar from
+		// drawing a line or panning/zooming
+		boolean navigationBarOnRight = isNavigationBarRightOfContent();
+		doodleCanvas.setDisabledEdgeSwipeMask(navigationBarOnRight ? DoodleCanvas.EDGE_RIGHT : DoodleCanvas.EDGE_BOTTOM);
+
 
 		doodleView.setDoodleCanvas(doodleCanvas);
 
@@ -976,5 +983,11 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		setResult(RESULT_OK, resultData);
 
 		NavUtils.navigateUpFromSameTask(this);
+	}
+
+	private boolean isNavigationBarRightOfContent() {
+		int navbarHeight = NavbarUtils.getNavigationBarHeight(getResources());
+		int navbarWidth = NavbarUtils.getNavigationBarWidth(getResources());
+		return navbarWidth > navbarHeight;
 	}
 }
