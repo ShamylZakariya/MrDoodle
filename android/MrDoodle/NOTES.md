@@ -1,6 +1,6 @@
 #Currently
 
-- make DoodleActivity's toolbar edittext a CHILD of the toolbar! not an overlay!
+- Menu overflow icon color is not tinted correctly
 
 #UX
 

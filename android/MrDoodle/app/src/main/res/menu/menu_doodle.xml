@@ -15,21 +15,22 @@
 	      android:orderInCategory="100"
 	      app:showAsAction="ifRoom"/>
 
-	<item android:id="@+id/menuItemClear"
-	      android:title="@string/doodle_menu_clear"
-	      android:orderInCategory="100"
-	      app:showAsAction="never"/>
-
 	<item android:id="@+id/menuItemShare"
 	      android:title="@string/doodle_menu_share"
 	      android:icon="@drawable/ic_share"
-	      android:orderInCategory="100"
+	      android:orderInCategory="101"
 	      app:showAsAction="ifRoom"/>
+
+	<item android:id="@+id/menuItemClear"
+	      android:title="@string/doodle_menu_clear"
+	      android:orderInCategory="102"
+	      app:showAsAction="never"/>
+
 
 	<item android:id="@+id/menuItemDelete"
 	      android:title="@string/doodle_menu_delete"
 	      android:icon="@drawable/ic_delete"
-	      android:orderInCategory="100"
+	      android:orderInCategory="103"
 	      app:showAsAction="never"/>
 
 
