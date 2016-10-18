@@ -13,18 +13,20 @@ import android.text.TextUtils;
 import android.util.LruCache;
 import android.util.Pair;
 
-import org.zakariya.doodle.view.DoodleCanvas;
 import org.zakariya.doodle.model.StrokeDoodle;
+import org.zakariya.doodle.view.DoodleCanvas;
 import org.zakariya.mrdoodle.MrDoodleApplication;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import io.realm.Realm;
+import rx.Observable;
 
 /**
  * Singleton for rendering thumbnails of DoodleDocument instances
@@ -161,6 +163,29 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 
 			return new Pair<>(thumbnail, thumbnailId);
 		}
+	}
+
+	/**
+	 * Get an observable for generating a thumbnail, where the doodle will be scaled to fit the available space
+	 * @param document the document to thumbnail
+	 * @param width the desired width
+	 * @param height the desired height
+	 * @param padding the padding between the edges and the doodle
+	 * @return an observable to consume
+	 */
+	Observable<Bitmap> renderThumbnail(DoodleDocument document, final int width, final int height, final int padding) {
+		final String uuid = document.getUuid();
+		return Observable.fromCallable(new Callable<Bitmap>() {
+			@Override
+			public Bitmap call() throws Exception {
+				Realm realm = Realm.getDefaultInstance();
+				DoodleDocument localDocument = DoodleDocument.byUuid(realm, uuid);
+				Context context = MrDoodleApplication.getInstance().getApplicationContext();
+				Bitmap thumbnail = renderThumbnail(context, localDocument, width, height, padding).first;
+				realm.close();
+				return thumbnail;
+			}
+		});
 	}
 
 	/**

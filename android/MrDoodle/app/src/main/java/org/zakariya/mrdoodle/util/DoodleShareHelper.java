@@ -15,6 +15,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import rx.Observer;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Func1;
+import rx.schedulers.Schedulers;
+
 /**
  * Simple helper for sharing a doodle's rendered image
  */
@@ -23,44 +28,53 @@ public class DoodleShareHelper {
 
 	private static final String TAG = "DoodleShareHelper";
 	private static final String SAVE_DIR = "images";
-	private static final String SAVE_FILE = "share.png";
+	private static final String SAVE_EXTENSION = ".png";
 
 	static public void share(final Activity activity, DoodleDocument document) {
 
 		int size = activity.getResources().getInteger(R.integer.doodle_share_image_size);
 		int padding = activity.getResources().getInteger(R.integer.doodle_share_image_padding);
 		final String title = document.getName();
-		DoodleThumbnailRenderer.getInstance().renderThumbnail(document, size, size, padding, new DoodleThumbnailRenderer.Callbacks() {
-			@Override
-			public void onThumbnailReady(Bitmap thumbnail) {
-				onRenderingAvailable(activity, thumbnail, title);
-			}
-		});
-	}
 
-	private static void onRenderingAvailable(Activity activity, Bitmap thumbnail, String title) {
+		DoodleThumbnailRenderer.getInstance().renderThumbnail(document, size, size, padding)
+				.map(new Func1<Bitmap, File>() {
+					@Override
+					public File call(Bitmap bitmap) {
+						Context context = activity.getApplicationContext();
+						File cachePath = new File(context.getCacheDir(), SAVE_DIR);
 
-		// TODO: We get a pretty big hit when saving this image to disk, I think. May want to use Rx and run this in background. If I do this, consider making DoodleThumbnailRender offer an observable!
+						//noinspection ResultOfMethodCallIgnored
+						cachePath.mkdirs();
 
-		try {
-			// save the thumbnail to cache dir
-			Context context = activity.getApplicationContext();
-			File cachePath = new File(context.getCacheDir(), SAVE_DIR);
+						try {
+							String fileName = title + SAVE_EXTENSION;
+							FileOutputStream stream = new FileOutputStream(cachePath + "/" + fileName);
+							bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+							stream.close();
+							return new File(cachePath, fileName);
+						} catch (IOException e) {
+							Log.e(TAG, "share::map::call onError:", e);
+						}
+						return null;
+					}
+				})
+				.subscribeOn(Schedulers.io())
+				.observeOn(AndroidSchedulers.mainThread())
+				.subscribe(new Observer<File>() {
+					@Override
+					public void onCompleted() {
+					}
 
-			//noinspection ResultOfMethodCallIgnored
-			cachePath.mkdirs();
+					@Override
+					public void onError(Throwable e) {
+						Log.e(TAG, "share::onError: ", e);
+					}
 
-			FileOutputStream stream = new FileOutputStream(cachePath + "/" + SAVE_FILE);
-			thumbnail.compress(Bitmap.CompressFormat.PNG, 100, stream);
-			stream.close();
-
-			File shareFile = new File(cachePath, SAVE_FILE);
-			showShare(activity, shareFile, title);
-
-		} catch (IOException e) {
-			Log.e(TAG, "onRenderingAvailable: ", e);
-			e.printStackTrace();
-		}
+					@Override
+					public void onNext(File file) {
+						showShare(activity, file, title);
+					}
+				});
 	}
 
 	private static void showShare(Activity activity, File shareFile, String title) {
