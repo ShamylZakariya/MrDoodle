@@ -3,7 +3,6 @@ package org.zakariya.doodle.model;
 import android.graphics.Canvas;
 import android.graphics.PointF;
 import android.graphics.RectF;
-import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.view.MotionEvent;
@@ -88,9 +87,6 @@ public abstract class Doodle {
 	public void canvasMatricesUpdated() {
 		this.brush.setScale(1 / getCanvasScale());
 	}
-
-	public abstract void onLoadInstanceState(Bundle savedInstanceState);
-	public abstract void onSaveInstanceState(Bundle outState);
 
 	public void setBrush(Brush brush) {
 		this.brush = brush;

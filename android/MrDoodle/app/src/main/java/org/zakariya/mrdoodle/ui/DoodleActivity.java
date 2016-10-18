@@ -49,6 +49,7 @@ import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
 import org.zakariya.mrdoodle.sync.events.RemoteChangeEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.Debouncer;
+import org.zakariya.mrdoodle.util.DoodleShareHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -79,17 +80,12 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	// result code if user requested to delete this doodle
 	public static final String RESULT_SHOULD_DELETE_DOODLE = "DoodleActivity.RESULT_SHOULD_DELETE_DOODLE";
 
-	// the doodle object persists too, this is the name we'll use in onSaveInstanceState
-	private static final String STATE_DOODLE = "DoodleActivity.STATE_DOODLE";
-
 	private static final int ANIMATION_DURATION_MILLIS = 300;
 	private static final int DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS = 250;
 	private static final float DEFAULT_ZOOM_LEVEL = 1;
-	private static final boolean DEBUG_DRAW_DOODLE = true;
+	private static final boolean DEBUG_DRAW_DOODLE = false;
 	private static final float TWO_FINGER_TAP_MIN_TRANSLATION_DP = 4;
 	private static final float TWO_FINGER_TAP_MIN_SCALING = 0.2f;
-
-
 
 	@ColorInt
 	private static final int TOOL_MENU_FILL_COLOR = 0xFF303030;
@@ -143,11 +139,13 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	@State
 	DoodleCanvas doodleCanvas;
 
+	@State
+	StrokeDoodle doodle;
+
 	private Realm realm;
 	private Subscription lockSubscription;
 
 	private DoodleDocument document;
-	private StrokeDoodle doodle;
 
 	private MenuItem clearMenuItem;
 	private MenuItem undoMenuItem;
@@ -202,14 +200,12 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		actionBar.setDisplayShowTitleEnabled(false);
 
 
-
 		doodleView.addSizeListener(this);
 
 		//
 		//  Load the DoodleDocument
 		//
 
-		StrokeDoodle doodle;
 		realm = Realm.getDefaultInstance();
 		if (savedInstanceState == null) {
 			documentUuid = getIntent().getStringExtra(EXTRA_DOODLE_DOCUMENT_UUID);
@@ -227,13 +223,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		} else {
 			Icepick.restoreInstanceState(this, savedInstanceState);
 			document = DoodleDocument.byUuid(realm, documentUuid);
-
-			// this is a state restoration so load doodle from state
-			doodle = new StrokeDoodle();
-			Bundle doodleState = savedInstanceState.getBundle(STATE_DOODLE);
-			if (doodleState != null) {
-				doodle.onLoadInstanceState(doodleState);
-			}
 		}
 
 		doodleView.setDoodleCanvas(doodleCanvas);
@@ -241,7 +230,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 		assert document != null;
 		documentModificationTime = document.getModificationDate().getTime();
-		setDoodle(doodle);
+
+		assert doodle != null;
+		setupDoodle(doodle);
 
 		//
 		// set up the document title edit text
@@ -285,7 +276,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 				}
 			}
 		});
-
 
 
 		updateBrush();
@@ -345,11 +335,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	@Override
 	protected void onSaveInstanceState(Bundle outState) {
 		Icepick.saveInstanceState(this, outState);
-
-		Bundle doodleState = new Bundle();
-		doodle.onSaveInstanceState(doodleState);
-		outState.putBundle(STATE_DOODLE, doodleState);
-
 		super.onSaveInstanceState(outState);
 	}
 
@@ -387,6 +372,10 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 			case R.id.menuItemDelete:
 				queryDeleteDoodle();
+				return true;
+
+			case R.id.menuItemShare:
+				DoodleShareHelper.share(this, document);
 				return true;
 
 			case android.R.id.home:
@@ -485,7 +474,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 					if (readOnly) {
 						Log.i(TAG, "onRemoteChange: UPDATE - updating the doodle");
 						titleEditText.setText(document.getName());
-						setDoodle(document.loadDoodle(this));
+						setupDoodle(document.loadDoodle(this));
 					}
 					break;
 				case DELETE:
@@ -605,7 +594,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		updateMenuItems();
 	}
 
-	void setDoodle(StrokeDoodle doodle) {
+	void setupDoodle(StrokeDoodle doodle) {
 		this.doodle = doodle;
 
 		this.doodle.setBackgroundColor(ContextCompat.getColor(this, R.color.doodleBackground));

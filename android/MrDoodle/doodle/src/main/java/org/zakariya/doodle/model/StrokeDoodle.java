@@ -9,7 +9,6 @@ import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
-import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
@@ -29,11 +28,8 @@ import java.io.InvalidObjectException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 
-import icepick.Icepick;
-import icepick.State;
-
 @SuppressWarnings("WeakerAccess")
-public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessellator.Listener {
+public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessellator.Listener, Parcelable {
 	private static final String TAG = "StrokeDoodle";
 
 	private static final int COOKIE = 0xD00D;
@@ -50,8 +46,7 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 	// one finger touch state
 	private float[] strokeTouchPoint = {0f, 0f};
 
-	@State
-	ArrayList<IntermediateDrawingStep> drawingSteps = new ArrayList<>();
+	private ArrayList<IntermediateDrawingStep> drawingSteps = new ArrayList<>();
 
 	public StrokeDoodle() {
 		backingStoreBitmapPaint = new Paint();
@@ -216,16 +211,6 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 	public void canvasMatricesUpdated() {
 		super.canvasMatricesUpdated();
 		needsUpdateBackingStore = true;
-	}
-
-	@Override
-	public void onLoadInstanceState(Bundle savedInstanceState) {
-		Icepick.restoreInstanceState(this, savedInstanceState);
-	}
-
-	@Override
-	public void onSaveInstanceState(Bundle outState) {
-		Icepick.saveInstanceState(this, outState);
 	}
 
 	@Override
@@ -482,4 +467,30 @@ public class StrokeDoodle extends Doodle implements IncrementalInputStrokeTessel
 			}
 		}
 	}
+
+	@Override
+	public int describeContents() {
+		return 0;
+	}
+
+	@Override
+	public void writeToParcel(Parcel dest, int flags) {
+		dest.writeTypedList(this.drawingSteps);
+	}
+
+	protected StrokeDoodle(Parcel in) {
+		this.drawingSteps = in.createTypedArrayList(IntermediateDrawingStep.CREATOR);
+	}
+
+	public static final Parcelable.Creator<StrokeDoodle> CREATOR = new Parcelable.Creator<StrokeDoodle>() {
+		@Override
+		public StrokeDoodle createFromParcel(Parcel source) {
+			return new StrokeDoodle(source);
+		}
+
+		@Override
+		public StrokeDoodle[] newArray(int size) {
+			return new StrokeDoodle[size];
+		}
+	};
 }
