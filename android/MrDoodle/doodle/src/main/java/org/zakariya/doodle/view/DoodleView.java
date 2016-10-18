@@ -7,6 +7,7 @@ import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -24,6 +25,7 @@ import java.util.List;
 @SuppressWarnings("unused")
 public class DoodleView extends View {
 
+	private static final String TAG = "DoodleView";
 	private static final long DOUBLE_TAP_DELAY_MILLIS = 350;
 
 	public interface SizeListener {
@@ -43,9 +45,9 @@ public class DoodleView extends View {
 	private List<SizeListener> sizeListeners = new ArrayList<>();
 	private DoodleCanvas doodleCanvas;
 	private DoodleView.TwoFingerTapListener twoFingerTapListener;
-	private int doubleTwoFingerTapCount;
-	private boolean doubleTwoFingerTapCandidacyTimerStarted;
-	private Handler doubleTwoFingerTapTimerHandler;
+	private int twoFingerTapCount;
+	private boolean twoFingerTapCandidacyTimerStarted;
+	private Handler twoFingerTapTimerHandler;
 
 
 	public DoodleView(Context context) {
@@ -167,25 +169,27 @@ public class DoodleView extends View {
 
 	void dispatchTwoFingerTap() {
 
-		if (doubleTwoFingerTapTimerHandler == null) {
-			doubleTwoFingerTapTimerHandler = new Handler(Looper.getMainLooper());
+		if (twoFingerTapTimerHandler == null) {
+			twoFingerTapTimerHandler = new Handler(Looper.getMainLooper());
 		}
 
-		doubleTwoFingerTapCount++;
+		Log.i(TAG, "dispatchTwoFingerTap: twoFingerTapCount: " + twoFingerTapCount);
+		twoFingerTapCount++;
 
-		if (!doubleTwoFingerTapCandidacyTimerStarted) {
-			doubleTwoFingerTapCandidacyTimerStarted = true;
-			doubleTwoFingerTapTimerHandler.postDelayed(new Runnable() {
+		if (!twoFingerTapCandidacyTimerStarted) {
+			twoFingerTapCandidacyTimerStarted = true;
+			twoFingerTapTimerHandler.postDelayed(new Runnable() {
 				@Override
 				public void run() {
 
 				TwoFingerTapListener listener = getTwoFingerTapListener();
 				if (listener != null) {
-					listener.onDoodleViewTwoFingerTap(DoodleView.this, doubleTwoFingerTapCount);
+					Log.i(TAG, "dispatchTwoFingerTap - DISPATCHING twoFingerTapCount: " + twoFingerTapCount);
+					listener.onDoodleViewTwoFingerTap(DoodleView.this, twoFingerTapCount);
 				}
 
-				doubleTwoFingerTapCount = 0;
-				doubleTwoFingerTapCandidacyTimerStarted = false;
+				twoFingerTapCount = 0;
+				twoFingerTapCandidacyTimerStarted = false;
 
 				}
 			}, DOUBLE_TAP_DELAY_MILLIS);

@@ -733,7 +733,7 @@ public class DoodleCanvas implements Parcelable {
 		// a two-finger pinch gesture ended
 		if (performingPinchOperations) {
 
-			if (totalPinchScaling < minPinchScalingForTap && totalPinchTranslation < minPinchTranslationForTap) {
+			if (event.getPointerCount() == 2 && totalPinchScaling < minPinchScalingForTap && totalPinchTranslation < minPinchTranslationForTap) {
 				DoodleView doodleView = getDoodleView();
 				if (doodleView != null) {
 					doodleView.dispatchTwoFingerTap();
