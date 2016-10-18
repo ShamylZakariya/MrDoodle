@@ -13,6 +13,7 @@ import android.text.TextUtils;
 import android.util.LruCache;
 import android.util.Pair;
 
+import org.zakariya.doodle.view.DoodleCanvas;
 import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.mrdoodle.MrDoodleApplication;
 import org.zakariya.mrdoodle.model.DoodleDocument;
@@ -152,10 +153,9 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 			thumbnail.eraseColor(0xFFFFFFFF);
 			Canvas bitmapCanvas = new Canvas(thumbnail);
 
-			Realm realm = Realm.getDefaultInstance();
 			StrokeDoodle doodle = document.loadDoodle(context);
-			doodle.draw(bitmapCanvas, width, height, true, padding);
-			realm.close();
+			DoodleCanvas canvas = new DoodleCanvas(doodle);
+			canvas.draw(bitmapCanvas, width, height, true, padding);
 
 			cache.put(thumbnailId, thumbnail);
 
@@ -229,10 +229,8 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 
 			if (document != null) {
 				StrokeDoodle doodle = document.loadDoodle(context);
-				boolean clampingEnabled = doodle.isTransformRangeClampingEnabled();
-				doodle.setTransformRangeClampingEnabled(false);
-				doodle.draw(bitmapCanvas, width, height, true, padding);
-				doodle.setTransformRangeClampingEnabled(clampingEnabled);
+				DoodleCanvas canvas = new DoodleCanvas(doodle);
+				canvas.draw(bitmapCanvas, width, height, true, padding);
 			}
 			realm.close();
 

@@ -241,7 +241,7 @@ public class DoodleDocument extends RealmObject {
 	}
 
 	public StrokeDoodle loadDoodle(Context context) {
-		StrokeDoodle doodle = new StrokeDoodle(context);
+		StrokeDoodle doodle = new StrokeDoodle();
 
 		byte[] doodleBytes = getDoodleBytes();
 		if (doodleBytes != null && doodleBytes.length > 0) {

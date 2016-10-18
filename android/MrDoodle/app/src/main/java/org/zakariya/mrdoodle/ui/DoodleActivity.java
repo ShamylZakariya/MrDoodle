@@ -34,6 +34,7 @@ import com.squareup.otto.Subscribe;
 
 import org.zakariya.doodle.model.Brush;
 import org.zakariya.doodle.model.Doodle;
+import org.zakariya.doodle.view.DoodleCanvas;
 import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.doodle.view.DoodleView;
 import org.zakariya.flyoutmenu.FlyoutMenuView;
@@ -48,6 +49,7 @@ import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
 import org.zakariya.mrdoodle.sync.events.RemoteChangeEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.Debouncer;
+import org.zakariya.mrdoodle.util.DoodleShareHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +67,8 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
-public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener, Doodle.EditListener {
+@SuppressWarnings("unused")
+public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener, DoodleView.TwoFingerTapListener, Doodle.EditListener {
 
 	private static final String TAG = "DoodleActivity";
 
@@ -78,13 +81,14 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	// result code if user requested to delete this doodle
 	public static final String RESULT_SHOULD_DELETE_DOODLE = "DoodleActivity.RESULT_SHOULD_DELETE_DOODLE";
 
-	// the doodle object persists too, this is the name we'll use in onSaveInstanceState
-	private static final String STATE_DOODLE = "DoodleActivity.STATE_DOODLE";
-
 	private static final int ANIMATION_DURATION_MILLIS = 300;
 	private static final int DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS = 250;
 	private static final float DEFAULT_ZOOM_LEVEL = 1;
 	private static final boolean DEBUG_DRAW_DOODLE = false;
+	private static final float TWO_FINGER_TAP_MIN_TRANSLATION_DP = 4;
+	private static final float TWO_FINGER_TAP_MIN_SCALING = 0.2f;
+	private static final float DOODLE_MIN_SCALE = 0.0125f;
+	private static final float DOODLE_MAX_SCALE = 16f;
 
 
 	@ColorInt
@@ -136,21 +140,26 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	@State
 	boolean firstDisplayOfDoodle = true;
 
-	Realm realm;
-	Subscription lockSubscription;
+	@State
+	DoodleCanvas doodleCanvas;
 
-	DoodleDocument document;
+	@State
 	StrokeDoodle doodle;
 
-	MenuItem clearMenuItem;
-	MenuItem undoMenuItem;
-	MenuItem deleteMenuItem;
+	private Realm realm;
+	private Subscription lockSubscription;
+
+	private DoodleDocument document;
+
+	private MenuItem clearMenuItem;
+	private MenuItem undoMenuItem;
+	private MenuItem deleteMenuItem;
 
 	// when true, the document is in a read-only state and can't be edited
-	boolean readOnly;
+	private boolean readOnly;
 
 	// when true, it means the user wants write access
-	boolean wantDocumentWriteLock;
+	private boolean wantDocumentWriteLock;
 
 	private Subscription doodleSaveSubscription;
 	private Debouncer<Void> doodleEditSaveDebouncer;
@@ -195,14 +204,13 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		actionBar.setDisplayShowTitleEnabled(false);
 
 
-
 		doodleView.addSizeListener(this);
+		doodleView.setTwoFingerTapListener(this);
 
 		//
 		//  Load the DoodleDocument
 		//
 
-		StrokeDoodle doodle;
 		realm = Realm.getDefaultInstance();
 		if (savedInstanceState == null) {
 			documentUuid = getIntent().getStringExtra(EXTRA_DOODLE_DOCUMENT_UUID);
@@ -213,22 +221,23 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			}
 
 			doodle = document.loadDoodle(this);
+			doodleCanvas = new DoodleCanvas();
+			doodleCanvas.setMinPinchTranslationForTap(dp2px(TWO_FINGER_TAP_MIN_TRANSLATION_DP));
+			doodleCanvas.setMinPinchScalingForTap(TWO_FINGER_TAP_MIN_SCALING);
 
 		} else {
 			Icepick.restoreInstanceState(this, savedInstanceState);
 			document = DoodleDocument.byUuid(realm, documentUuid);
-
-			// this is a state restoration so load doodle from state
-			doodle = new StrokeDoodle(this);
-			Bundle doodleState = savedInstanceState.getBundle(STATE_DOODLE);
-			if (doodleState != null) {
-				doodle.onCreate(doodleState);
-			}
 		}
+
+		doodleView.setDoodleCanvas(doodleCanvas);
+
 
 		assert document != null;
 		documentModificationTime = document.getModificationDate().getTime();
-		setDoodle(doodle);
+
+		assert doodle != null;
+		setupDoodle(doodle);
 
 		//
 		// set up the document title edit text
@@ -274,7 +283,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		});
 
 
-
 		updateBrush();
 
 		// build our menus
@@ -285,7 +293,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		paletteFlyoutMenu.setSelectedMenuItemById(paletteFlyoutMenuSelectionId);
 
 		if (savedInstanceState == null) {
-			doodle.setCanvasScale(DEFAULT_ZOOM_LEVEL);
+			doodleCanvas.setCanvasScale(DEFAULT_ZOOM_LEVEL);
 		}
 
 
@@ -332,11 +340,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	@Override
 	protected void onSaveInstanceState(Bundle outState) {
 		Icepick.saveInstanceState(this, outState);
-
-		Bundle doodleState = new Bundle();
-		doodle.onSaveInstanceState(doodleState);
-		outState.putBundle(STATE_DOODLE, doodleState);
-
 		super.onSaveInstanceState(outState);
 	}
 
@@ -357,7 +360,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 			case R.id.menuItemCenterCanvasContent:
-				doodle.centerCanvasContent();
+				centerDoodleCanvasContents();
 				return true;
 
 			case R.id.menuItemFitCanvasContent:
@@ -374,6 +377,10 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 			case R.id.menuItemDelete:
 				queryDeleteDoodle();
+				return true;
+
+			case R.id.menuItemShare:
+				DoodleShareHelper.share(this, document);
 				return true;
 
 			case android.R.id.home:
@@ -428,10 +435,17 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	@Override
+	public void onDoodleViewTwoFingerTap(DoodleView view, int tapCount) {
+		if (tapCount > 1) {
+			fitDoodleCanvasContents();
+		}
+	}
+
+	@Override
 	public void onDoodleEdited(Doodle doodle) {
 
 		if (doodleEditSaveDebouncer == null) {
-			doodleEditSaveDebouncer = new Debouncer<Void>(DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS, new Action1<Void>() {
+			doodleEditSaveDebouncer = new Debouncer<>(DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS, new Action1<Void>() {
 				@Override
 				public void call(Void o) {
 					saveDoodleIfEdited();
@@ -472,7 +486,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 					if (readOnly) {
 						Log.i(TAG, "onRemoteChange: UPDATE - updating the doodle");
 						titleEditText.setText(document.getName());
-						setDoodle(document.loadDoodle(this));
+						setupDoodle(document.loadDoodle(this));
 					}
 					break;
 				case DELETE:
@@ -510,12 +524,20 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	///////////////////////////////////////////////////////////////////
 
+	public void centerDoodleCanvasContents() {
+		if (document == null) {
+			return;
+		}
+
+		doodleCanvas.centerCanvasContent();
+	}
+
 	public void fitDoodleCanvasContents() {
 		if (document == null) {
 			return;
 		}
 
-		doodle.fitCanvasContent(getResources().getDimensionPixelSize(R.dimen.doodle_fit_canvas_contents_padding));
+		doodleCanvas.fitCanvasContent(getResources().getDimensionPixelSize(R.dimen.doodle_fit_canvas_contents_padding));
 	}
 
 	/**
@@ -531,7 +553,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		}
 
 		// create a copy of the doodle in its current state
-		final StrokeDoodle doodleCopy = new StrokeDoodle(this, doodle);
+		final StrokeDoodle doodleCopy = new StrokeDoodle(doodle);
 
 		// serialize it to byte[] in an io thread, and then on main thread commit to store
 		doodleSaveSubscription = Observable.fromCallable(
@@ -575,7 +597,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		Log.i(TAG, "setReadOnly() called with: readOnly = [" + readOnly + "]");
 
 		this.readOnly = readOnly;
-		doodleView.setReadOnly(this.readOnly);
+		doodle.setReadOnly(this.readOnly);
 		titleEditText.setEnabled(!this.readOnly);
 
 		setViewVisibility(toolSelectorFlyoutMenu, !readOnly, animate);
@@ -584,30 +606,25 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		updateMenuItems();
 	}
 
-	void setDoodle(StrokeDoodle doodle) {
+	void setupDoodle(StrokeDoodle doodle) {
 		this.doodle = doodle;
+		this.doodle.setReadOnly(this.readOnly);
 
 		this.doodle.setBackgroundColor(ContextCompat.getColor(this, R.color.doodleBackground));
 		this.doodle.addChangeListener(this);
 
-		doodleView.setDoodle(this.doodle);
+		doodleCanvas.setDoodle(this.doodle);
+		doodleCanvas.setMinCanvasScale(DOODLE_MIN_SCALE);
+		doodleCanvas.setMaxCanvasScale(DOODLE_MAX_SCALE);
+		doodleCanvas.setCanvasScaleClamped(true);
 
-		doodle.setCoordinateGridSize(dp2px(100));
 		if (DEBUG_DRAW_DOODLE) {
-			doodle.setDrawCoordinateGrid(true);
-			doodle.setDrawInvalidationRect(true);
-			doodle.setDrawViewport(true);
-			doodle.setDrawCanvasContentBoundingRect(true);
+			doodleCanvas.setCoordinateGridSize(dp2px(100));
+			doodleCanvas.setDrawCoordinateGrid(true);
+			doodleCanvas.setDrawInvalidationRect(true);
+			doodleCanvas.setDrawViewport(true);
+			doodleCanvas.setDrawCanvasContentBoundingRect(true);
 		}
-
-		doodle.setTwoFingerTapListener(new StrokeDoodle.TwoFingerTapListener() {
-			@Override
-			public void onTwoFingerTap(int tapCount) {
-				if (tapCount > 1) {
-					fitDoodleCanvasContents();
-				}
-			}
-		});
 	}
 
 	public void setDocumentName(String documentName) {

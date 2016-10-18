@@ -1,28 +1,32 @@
 #Currently
 
-- If you edit a doodle that's been remotely deleted before the dialog shows, the deletion doesn't happen!
-	- it doesn't crash, either, so that's good
-	- thoughts:
-		- should server broadcast when a document is deleted?
-		- lock manager shouldn't grant locks to deleted document ids, but this still has race condition issues
+- TwoFingerTapListener maybe getting wrong tap count?
+- consider discarding touches that begin at screen edge! this will avoid issues with dragging up the navbar
 
-- How to handle panning while locked? Right now the pan gesture is blocked.
-	- option 1: Don't. Just keep content fit/centered
-	- option 2: Somehow support a local concept of zoom/translate which isn't synced
+- DoodleShareActivity has a TODO about threading. May want to look into it.
 
-When assigning new doodle to doodle view we lose current transform
-	- thinking that the doodle's transform should be stored not in the doodle but in the doodle view
-	- can't use DoodleView to store transform, since we still need to be able to transform a doodle for thumbnail rendering
-	- consider an object between Doodle & DoodleView, DoodlePresenter. DoodlePresenter has the transform and the viewport. DoodleView is assigned a DoodlePresenter. The DoodlePresenter is assigned a Doodle
+#UX
+
+- Sync Settings
+	Move Status/Model/Sync/Reset&Sync to a menu
+	Rethink UI, make it look more "account page"
+
+- MainActivity
+	Put a sync status type icon in the header?
+
+- DoodleActivity
+	Make our menu actions show as action
+	Make the edit text layout up to but not overlap the menu actions
 
 
 
 #BUGS
 
-Drawings done on other devices seem to have odd offsets saved in the document. This means a document drawn on one device can be weirdly transformed when viewed on another. Trouble is, how do we handle this?
+- still have this issue:
+java.lang.RuntimeException: Could not dispatch event: class org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent to handler [EventHandler public void org.zakariya.mrdoodle.ui.DoodleDocumentGridFragment.onDoodleDocumentCreated(org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent)]: Illegal State: Object is no longer valid to operate on. Was it deleted by another thread?
 
-Explicit sync by tapping Sync button in SyncSettingsActivity when not connected to server caused a UI freeze.
-	- I can't seem to reproduce this. Network activity does appear to be running in an io thread, like it should.
+	I backgrounded and restored MrDoodle to connect to the server and reset the exponential reconnect timeout. I'm guessing the grid fragment never disconnected from the event bus????
+
 
 When deleting a bunch of items quickly - looks like the previously removed doc gets deleted. I assume snackbar is a singleton and is flushing its ondismissed queue or something to that effect.
 

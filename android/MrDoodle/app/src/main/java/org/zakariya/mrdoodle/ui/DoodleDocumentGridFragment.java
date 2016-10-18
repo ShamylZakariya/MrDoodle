@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.MenuRes;
 import android.support.annotation.Nullable;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CoordinatorLayout;
@@ -37,6 +38,8 @@ import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
+import org.zakariya.mrdoodle.sync.LockState;
+import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
 import org.zakariya.mrdoodle.ui.itemdecorators.EdgeItemDecoration;
 import org.zakariya.mrdoodle.util.BusProvider;
@@ -246,11 +249,16 @@ public class DoodleDocumentGridFragment extends Fragment
 			bottomSheetDialog.dismiss();
 		}
 
+		SyncManager syncManager = SyncManager.getInstance();
+		LockState lockState = syncManager.getLockState();
+		boolean isLocked = lockState.isLockedByAnotherDevice(document.getUuid());
+		@MenuRes int menuRes = isLocked ? R.menu.menu_action_locked_doodle : R.menu.menu_action_unlocked_doodle;
+
 		selectedDocumentUuid = document.getUuid();
 		bottomSheetDialog = new BottomSheetBuilder(getActivity())
 				.setMode(BottomSheetBuilder.MODE_LIST)
 				.setAppBarLayout(appBarLayout)
-				.setMenu(R.menu.menu_doodle_action)
+				.setMenu(menuRes)
 				.expandOnStart(true)
 				.setIconTintColorResource(R.color.primaryDark)
 				.setItemClickListener(new BottomSheetItemClickListener() {
@@ -277,6 +285,7 @@ public class DoodleDocumentGridFragment extends Fragment
 				newDoodleFab.show();
 			}
 		});
+
 		bottomSheetDialog.show();
 		newDoodleFab.hide();
 	}
