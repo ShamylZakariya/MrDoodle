@@ -1,7 +1,6 @@
 #Currently
 
 - make DoodleActivity's toolbar edittext a CHILD of the toolbar! not an overlay!
-- need to know which side of the screen the navbar is on so we can disable edge swipes from the right direction
 
 #UX
 
