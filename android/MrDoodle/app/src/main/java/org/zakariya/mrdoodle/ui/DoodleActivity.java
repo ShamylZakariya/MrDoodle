@@ -224,6 +224,8 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			doodleCanvas = new DoodleCanvas();
 			doodleCanvas.setMinPinchTranslationForTap(dp2px(TWO_FINGER_TAP_MIN_TRANSLATION_DP));
 			doodleCanvas.setMinPinchScalingForTap(TWO_FINGER_TAP_MIN_SCALING);
+			doodleCanvas.setDisabledEdgeWidth(getResources().getDimension(R.dimen.doodle_canvas_disabled_touch_edge_width));
+			doodleCanvas.setDisabledEdgeSwipeMask(DoodleCanvas.EDGE_BOTTOM);
 
 		} else {
 			Icepick.restoreInstanceState(this, savedInstanceState);

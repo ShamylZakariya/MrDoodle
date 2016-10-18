@@ -22,4 +22,6 @@
 
 	<dimen name="doodle_fit_canvas_contents_padding">16dp</dimen>
 
+	<dimen name="doodle_canvas_disabled_touch_edge_width">16dp</dimen>
+
 </resources>

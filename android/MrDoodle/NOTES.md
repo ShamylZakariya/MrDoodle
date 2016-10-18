@@ -1,5 +1,6 @@
 #Currently
 
+- make DoodleActivity's toolbar edittext a CHILD of the toolbar! not an overlay!
 - consider discarding touches that begin at screen edge! this will avoid issues with dragging up the navbar
 
 #UX

@@ -32,6 +32,11 @@ import org.zakariya.doodle.model.Doodle;
 @SuppressWarnings({"WeakerAccess", "unused"})
 public class DoodleCanvas implements Parcelable {
 
+	public static final int EDGE_TOP = 1;
+	public static final int EDGE_RIGHT = 1 << 1;
+	public static final int EDGE_BOTTOM = 1 << 2;
+	public static final int EDGE_LEFT = 1 << 3;
+
 
 	private static final String TAG = "DoodleCanvas";
 
@@ -51,6 +56,8 @@ public class DoodleCanvas implements Parcelable {
 	private float minPinchScalingForTap = 0.2f;
 	private float minCanvasScale = 0.125f;
 	private float maxCanvasScale = 16.0f;
+	private int disabledEdgeSwipeMask = 0;
+	private float disabledEdgeWidth = 0;
 
 
 	private Matrix screenToCanvasMatrix = new Matrix();
@@ -62,7 +69,8 @@ public class DoodleCanvas implements Parcelable {
 	private Paint overlayPaint;
 	private RectF invalidationRect;
 
-	// two finger touch state
+	// touch state
+	private boolean touchDiscarded = false;
 	private boolean performingPinchOperations = false;
 	private PointF pinchLastCenterScreen;
 	private float pinchLastLengthScreen;
@@ -585,6 +593,37 @@ public class DoodleCanvas implements Parcelable {
 	}
 
 	/**
+	 * Disable edge swipes from edges specified in the mask
+	 * @param mask a logical or of EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM and EDGE_RIGHT
+	 */
+	public void setDisabledEdgeSwipeMask(int mask) {
+		this.disabledEdgeSwipeMask = mask;
+	}
+
+	/**
+	 * @return the disabled edge swipe mask
+	 */
+	public int getDisabledEdgeSwipeMask() {
+		return this.disabledEdgeSwipeMask;
+	}
+
+	/**
+	 * Get the width, in pixels, of the disabled edge region around the canvas
+	 * which will prevent new touch events from being consumed.
+	 * @return the width of the disabled region that  prevents touches from starting
+	 */
+	public float getDisabledEdgeWidth() {
+		return disabledEdgeWidth;
+	}
+
+	/**
+	 * @param disabledEdgeWidth the width of the disabled region around the edge that prevents touches from starting.
+	 */
+	public void setDisabledEdgeWidth(float disabledEdgeWidth) {
+		this.disabledEdgeWidth = disabledEdgeWidth;
+	}
+
+	/**
 	 * Update the canvasToScreen and inverse screenToCanvas matrices and dependant
 	 * element such as the viewportCanvasRect
 	 * Note, translation is measured in screen coordinates.
@@ -632,6 +671,40 @@ public class DoodleCanvas implements Parcelable {
 
 	protected boolean onTouchEventBegin(@NonNull MotionEvent event) {
 
+		Log.i(TAG, "onTouchEventBegin: x: " + event.getX() + ", y: " + event.getY() + " viewportScreenRect: " + viewportScreenRect);
+
+		touchDiscarded = false;
+		if (disabledEdgeSwipeMask != 0) {
+			if ((disabledEdgeSwipeMask & EDGE_TOP) == EDGE_TOP) {
+				if (event.getY() < viewportScreenRect.top + disabledEdgeWidth) {
+					touchDiscarded = true;
+					return false;
+				}
+			}
+
+			if ((disabledEdgeSwipeMask & EDGE_RIGHT) == EDGE_RIGHT) {
+				if (event.getX() > viewportScreenRect.right - disabledEdgeWidth) {
+					touchDiscarded = true;
+					return false;
+				}
+			}
+
+			if ((disabledEdgeSwipeMask & EDGE_BOTTOM) == EDGE_BOTTOM) {
+				if (event.getY() > viewportScreenRect.bottom - disabledEdgeWidth) {
+					touchDiscarded = true;
+					return false;
+				}
+			}
+
+			if ((disabledEdgeSwipeMask & EDGE_LEFT) == EDGE_LEFT) {
+				if (event.getX() < viewportScreenRect.left + disabledEdgeWidth) {
+					touchDiscarded = true;
+					return false;
+				}
+			}
+		}
+
+
 		if (event.getPointerCount() == 1) {
 			return doodle.onTouchEventBegin(event);
 		} else if (event.getPointerCount() == 2) {
@@ -658,6 +731,13 @@ public class DoodleCanvas implements Parcelable {
 	}
 
 	protected boolean onTouchEventMove(@NonNull MotionEvent event) {
+
+		if (touchDiscarded) {
+			return false;
+		}
+
+		Log.i(TAG, "onTouchEventMove: x: " + event.getX() + ", y: " + event.getY() + " viewportScreenRect: " + viewportScreenRect);
+
 
 		if (event.getPointerCount() == 1 && !performingPinchOperations) {
 			return doodle.onTouchEventMove(event);
@@ -729,6 +809,12 @@ public class DoodleCanvas implements Parcelable {
 	}
 
 	protected boolean onTouchEventEnd(@NonNull MotionEvent event) {
+
+		// reset touchDiscardedFlag
+		if (touchDiscarded) {
+			touchDiscarded = false;
+			return false;
+		}
 
 		// a two-finger pinch gesture ended
 		if (performingPinchOperations) {
@@ -840,6 +926,8 @@ public class DoodleCanvas implements Parcelable {
 		dest.writeFloat(this.minPinchScalingForTap);
 		dest.writeFloat(this.minCanvasScale);
 		dest.writeFloat(this.maxCanvasScale);
+		dest.writeInt(this.disabledEdgeSwipeMask);
+		dest.writeFloat(this.disabledEdgeWidth);
 	}
 
 	protected DoodleCanvas(Parcel in) {
@@ -856,6 +944,8 @@ public class DoodleCanvas implements Parcelable {
 		this.minPinchScalingForTap = in.readFloat();
 		this.minCanvasScale = in.readFloat();
 		this.maxCanvasScale = in.readFloat();
+		this.disabledEdgeSwipeMask = in.readInt();
+		this.disabledEdgeWidth = in.readFloat();
 	}
 
 	public static final Creator<DoodleCanvas> CREATOR = new Creator<DoodleCanvas>() {
