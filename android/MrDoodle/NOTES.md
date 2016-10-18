@@ -1,8 +1,9 @@
 #Currently
 
-- rotation isn't remember scale/transform/etc
+- TwoFingerTapListener maybe getting wrong tap count?
 - consider discarding touches that begin at screen edge! this will avoid issues with dragging up the navbar
 
+- DoodleShareActivity has a TODO about threading. May want to look into it.
 
 #UX
 
@@ -21,10 +22,11 @@
 
 #BUGS
 
-Drawings done on other devices seem to have odd offsets saved in the document. This means a document drawn on one device can be weirdly transformed when viewed on another. Trouble is, how do we handle this?
+- still have this issue:
+java.lang.RuntimeException: Could not dispatch event: class org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent to handler [EventHandler public void org.zakariya.mrdoodle.ui.DoodleDocumentGridFragment.onDoodleDocumentCreated(org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent)]: Illegal State: Object is no longer valid to operate on. Was it deleted by another thread?
 
-Explicit sync by tapping Sync button in SyncSettingsActivity when not connected to server caused a UI freeze.
-	- I can't seem to reproduce this. Network activity does appear to be running in an io thread, like it should.
+	I backgrounded and restored MrDoodle to connect to the server and reset the exponential reconnect timeout. I'm guessing the grid fragment never disconnected from the event bus????
+
 
 When deleting a bunch of items quickly - looks like the previously removed doc gets deleted. I assume snackbar is a singleton and is flushing its ondismissed queue or something to that effect.
 
