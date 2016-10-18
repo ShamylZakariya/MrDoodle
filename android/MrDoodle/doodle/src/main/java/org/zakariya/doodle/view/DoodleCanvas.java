@@ -5,7 +5,6 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PointF;
 import android.graphics.RectF;
-import android.os.Handler;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.annotation.ColorInt;
@@ -18,27 +17,25 @@ import android.view.MotionEvent;
 import org.zakariya.doodle.model.Doodle;
 
 /**
- * DoodleCanvas
+ * DoodleCanvas is a "presenter" for Doodle instances. The DoodleCanvas
+ * represents a viewport, translation, and scaling. The DoodleCanvas also
+ * dispatches touch events, handling two-finger touches which aren't consumed
+ * by the doodle.
+ *
+ * Generally, one will create a DoodleView, assign a DoodleCanvas to it, and finally
+ * assign a doodle to the DoodleCanvas.
+ *
+ * DoodleCanvas is parcelable, and intended to be stateful during screen rotations.
+ * It will maintain the center of the viewport through rotations.
  */
 
-@SuppressWarnings({"WeakerAccess", "unused"}) // Icepick needs non-private members
+@SuppressWarnings({"WeakerAccess", "unused"})
 public class DoodleCanvas implements Parcelable {
-
-	/**
-	 * Interface for listeners interested in being notified when user makes two-finger taps.
-	 * A client could, for example, use a two-finger double-tap as a cue to zoom fit the canvas.
-	 */
-	public interface TwoFingerTapListener {
-		void onTwoFingerTap(int tapCount);
-	}
 
 
 	private static final String TAG = "DoodleCanvas";
 
-	private static final float SCALE_MIN = 0.125f;
-	private static final float SCALE_MAX = 16.0f;
 	private static final float TRANSLATION_MAX = 24000f;
-	private static final long DOUBLE_TAP_DELAY_MILLIS = 350;
 
 	// this is state that must persist
 	private boolean drawInvalidationRect = false;
@@ -49,10 +46,11 @@ public class DoodleCanvas implements Parcelable {
 	private float canvasScale = 1f;
 	private PointF canvasTranslation = new PointF(0, 0);
 	private PointF canvasOriginRelativeToViewportCenter = null;
-	private boolean readOnly;
 	private float coordinateGridSize = 100;
 	private float minPinchTranslationForTap = 12f;
 	private float minPinchScalingForTap = 0.2f;
+	private float minCanvasScale = 0.125f;
+	private float maxCanvasScale = 16.0f;
 
 
 	private Matrix screenToCanvasMatrix = new Matrix();
@@ -61,10 +59,6 @@ public class DoodleCanvas implements Parcelable {
 	private RectF viewportCanvasRect = new RectF();
 	private DoodleView doodleView;
 	private Doodle doodle;
-	private TwoFingerTapListener twoFingerTapListener;
-	private int doubleTwoFingerTapCount;
-	private boolean doubleTwoFingerTapCandidacyTimerStarted;
-	private Handler doubleTwoFingerTapTimerHandler;
 	private Paint overlayPaint;
 	private RectF invalidationRect;
 
@@ -89,7 +83,7 @@ public class DoodleCanvas implements Parcelable {
 	/**
 	 * Create a DoodleCanvas with a Doodle
 	 *
-	 * @param doodle
+	 * @param doodle the presented doodle
 	 */
 	public DoodleCanvas(Doodle doodle) {
 		this();
@@ -111,7 +105,6 @@ public class DoodleCanvas implements Parcelable {
 	public void setDoodle(Doodle doodle) {
 		this.doodle = doodle;
 		this.doodle.setDoodleCanvas(this);
-		this.doodle.setReadOnly(this.isReadOnly());
 
 		DoodleView view = getDoodleView();
 		if (view != null) {
@@ -121,23 +114,25 @@ public class DoodleCanvas implements Parcelable {
 		}
 	}
 
-	void setDoodleView(DoodleView view) {
+	/**
+	 * Assign the doodle view enclosing this doodle.
+	 * @param view the wrapping DoodleView
+	 */
+	public void setDoodleView(DoodleView view) {
 		doodleView = view;
 	}
 
+	/**
+	 * @return the enclosing DoodleView, if there is one
+	 */
 	@Nullable
 	public DoodleView getDoodleView() {
 		return doodleView;
 	}
 
-	public TwoFingerTapListener getTwoFingerTapListener() {
-		return twoFingerTapListener;
-	}
-
-	public void setTwoFingerTapListener(TwoFingerTapListener twoFingerTapListener) {
-		this.twoFingerTapListener = twoFingerTapListener;
-	}
-
+	/**
+	 * Notify the enclosing DoodleView to repaint the entire view.
+	 */
 	public void invalidate() {
 		DoodleView view = getDoodleView();
 		if (view != null) {
@@ -145,6 +140,10 @@ public class DoodleCanvas implements Parcelable {
 		}
 	}
 
+	/**
+	 * Notify the enclosing DoodleView to repaint a sub rect of the view
+	 * @param rect a dirty rect to update
+	 */
 	public void invalidate(RectF rect) {
 		invalidationRect = rect;
 		DoodleView dv = getDoodleView();
@@ -153,6 +152,10 @@ public class DoodleCanvas implements Parcelable {
 		}
 	}
 
+	/**
+	 * Draw the enclosed Doodle into the provided canvas with the current transform
+	 * @param canvas a canvas to draw into
+	 */
 	public void draw(Canvas canvas) {
 
 		this.doodle.draw(canvas);
@@ -169,7 +172,17 @@ public class DoodleCanvas implements Parcelable {
 		drawInvalidationRect(canvas);
 	}
 
+	/**
+	 * Draw the enclosed doodle with constraints. This functionality exists mostly for thumbnail rendering. While this method resizes and assigns a new transform, the previous size and transform will be re-applied afterwards.
+	 * @param canvas a canvas to draw into
+	 * @param width width of canvas
+	 * @param height height of canvas
+	 * @param fitContents if true, a transform will be set which guarantees contents will be center-fit to the width/height
+	 * @param fitPadding amount of padding in pixels around the doodle (if fitContents is true)
+	 */
 	public void draw(Canvas canvas, int width, int height, boolean fitContents, float fitPadding) {
+		boolean clamped = isCanvasScaleClamped();
+		setCanvasScaleClamped(false);
 		int oldWidth = getWidth();
 		int oldHeight = getHeight();
 		if (oldWidth != width || oldHeight != height) {
@@ -181,6 +194,7 @@ public class DoodleCanvas implements Parcelable {
 		} else {
 			draw(canvas, fitContents, fitPadding);
 		}
+		setCanvasScaleClamped(clamped);
 	}
 
 	private void draw(Canvas canvas, boolean fitContents, float fitPadding) {
@@ -199,6 +213,12 @@ public class DoodleCanvas implements Parcelable {
 		}
 	}
 
+	/**
+	 * Resize the canvas and internal viewport. Will be forwarded to doodle, which may use width/height
+	 * info to generate bitmap backing stores, etc.
+	 * @param newWidth new width of canvas
+	 * @param newHeight new height of canvas
+	 */
 	public void resize(int newWidth, int newHeight) {
 		if (this.doodle != null) {
 			this.doodle.resize(newWidth, newHeight);
@@ -221,63 +241,95 @@ public class DoodleCanvas implements Parcelable {
 		invalidate();
 	}
 
+	/**
+	 * @return the width of the canvas
+	 */
 	public int getWidth() {
 		return (int) viewportScreenRect.right;
 	}
 
+	/**
+	 * @return the height of the canvas
+	 */
 	public int getHeight() {
 		return (int) viewportScreenRect.bottom;
 	}
 
-	public boolean isReadOnly() {
-		return readOnly;
-	}
-
-	public void setReadOnly(boolean readOnly) {
-		this.readOnly = readOnly;
-		this.doodle.setReadOnly(readOnly);
-	}
-
+	/**
+	 * @return true if the canvas is drawing invalidation rect overlays
+	 */
 	public boolean shouldDrawInvalidationRect() {
 		return drawInvalidationRect;
 	}
 
+	/**
+	 * For debugging purposes, you may want to see the rect passed to DoodleCanvas::invalidate(Rect)
+	 * @param drawInvalidationRect if true, draw invalidation rect when updating
+	 */
 	public void setDrawInvalidationRect(boolean drawInvalidationRect) {
 		this.drawInvalidationRect = drawInvalidationRect;
 		invalidate();
 	}
 
+	/**
+	 * @return true if canvas is set to draw the coordinate grid
+	 */
 	public boolean shouldDrawCoordinateGrid() {
 		return drawCoordinateGrid;
 	}
 
+	/**
+	 * Turn on or off the drawing of a coordinate grid
+	 * @param drawCoordinateGrid if true, draw the coordinate grid
+	 */
 	public void setDrawCoordinateGrid(boolean drawCoordinateGrid) {
 		this.drawCoordinateGrid = drawCoordinateGrid;
 		invalidate();
 	}
 
+	/**
+	 * @return true if drawing of the viewport is enabled (generally for debugging purposes)
+	 */
 	public boolean shouldDrawViewport() {
 		return drawViewport;
 	}
 
+	/**
+	 * Turn on or off the drawing of the viewport (generally for debugging purposes)
+	 * @param drawViewport if true, draw the viewport
+	 */
 	public void setDrawViewport(boolean drawViewport) {
 		this.drawViewport = drawViewport;
 		invalidate();
 	}
 
+	/**
+	 * @return true if canvas is set to draw the bounding rectangle of canvas contents
+	 */
 	public boolean shouldDrawCanvasContentBoundingRect() {
 		return drawCanvasContentBoundingRect;
 	}
 
+	/**
+	 * Turn on or off the drawing of a bounding rect around the canvas contents (generally for debugging purposes)
+	 * @param drawCanvasContentBoundingRect if true, draw content bounding rect
+	 */
 	public void setDrawCanvasContentBoundingRect(boolean drawCanvasContentBoundingRect) {
 		this.drawCanvasContentBoundingRect = drawCanvasContentBoundingRect;
 		invalidate();
 	}
 
+	/**
+	 * @return the size of the coordinate grid
+	 */
 	public float getCoordinateGridSize() {
 		return coordinateGridSize;
 	}
 
+	/**
+	 * If drawing the coordinate grid (shouldDrawCoordinateGrid()), set its size.
+	 * @param coordinateGridSize the size of the coordinate grid
+	 */
 	public void setCoordinateGridSize(float coordinateGridSize) {
 		this.coordinateGridSize = coordinateGridSize;
 		invalidate();
@@ -287,6 +339,12 @@ public class DoodleCanvas implements Parcelable {
 		return minPinchTranslationForTap;
 	}
 
+	/**
+	 * Since fingers are big and fat, this is the scaling fudge factor for two-finger touch
+	 * wiggle to be considered a tap. I.e, since touching with two fingers initiates a translation operation,
+	 * this is the minimum amount of translation allowed to trigger a tap when the two-fingers are lifted.
+	 * @param minPinchTranslationForTap
+	 */
 	public void setMinPinchTranslationForTap(float minPinchTranslationForTap) {
 		this.minPinchTranslationForTap = minPinchTranslationForTap;
 	}
@@ -295,15 +353,57 @@ public class DoodleCanvas implements Parcelable {
 		return minPinchScalingForTap;
 	}
 
+	/**
+	 * Since fingers are big and fat, this is the scaling fudge factor for two-finger touch
+	 * wiggle to be considered a tap. I.e, since touching with two fingers initiates a scaling operation,
+	 * this is the minimum amount of scale allowed to trigger a tap when the two-fingers are lifted.
+	 * @param minPinchScalingForTap
+	 */
 	public void setMinPinchScalingForTap(float minPinchScalingForTap) {
 		this.minPinchScalingForTap = minPinchScalingForTap;
 	}
 
-	public void setTransformRangeClampingEnabled(boolean transformRangeClampingEnabled) {
+	/**
+	 * @return Minimum scale allowed for the canvas, if canvas scale is clamped.
+	 */
+	public float getMinCanvasScale() {
+		return minCanvasScale;
+	}
+
+	/**
+	 * Set the minimum allowable scale for the canvas. This only applies if scale is clamped.
+	 * @param minCanvasScale the minimum allowable scale for the canvas
+	 */
+	public void setMinCanvasScale(float minCanvasScale) {
+		this.minCanvasScale = minCanvasScale;
+		setCanvasScale(getCanvasScale());
+	}
+
+	/**
+	 * @return Maximum scale allowed for the canvas, if canvas scale is clamped.
+	 */
+	public float getMaxCanvasScale() {
+		return maxCanvasScale;
+	}
+
+	/**
+	 * Set the maximum allowable scale for the canvas. This only applies if scale is clamped.
+	 * @param maxScale the minimum allowable scale for the canvas
+	 */
+	public void setMaxCanvasScale(float maxScale) {
+		this.maxCanvasScale = maxScale;
+		setCanvasScale(getCanvasScale());
+	}
+
+	/**
+	 * Turn on or off the clamping of canvas scale the the min/max set via setMinCanvasScale and setMaxCanvasScale.
+	 * @param transformRangeClampingEnabled if true, transforms will clamp scale to the current min/max
+	 */
+	public void setCanvasScaleClamped(boolean transformRangeClampingEnabled) {
 		this.transformRangeClampingEnabled = transformRangeClampingEnabled;
 	}
 
-	public boolean isTransformRangeClampingEnabled() {
+	public boolean isCanvasScaleClamped() {
 		return transformRangeClampingEnabled;
 	}
 
@@ -330,7 +430,7 @@ public class DoodleCanvas implements Parcelable {
 	}
 
 	protected float clampCanvasScale(float s) {
-		return transformRangeClampingEnabled ? Math.min(Math.max(s, SCALE_MIN), SCALE_MAX) : s;
+		return transformRangeClampingEnabled ? Math.min(Math.max(s, minCanvasScale), maxCanvasScale) : s;
 	}
 
 	/**
@@ -354,15 +454,23 @@ public class DoodleCanvas implements Parcelable {
 		return canvasTranslation.y;
 	}
 
-
+	/**
+	 * @return the matrix that transforms screen coordinates to the canvas/doodle coordinates
+	 */
 	public Matrix getScreenToCanvasMatrix() {
 		return screenToCanvasMatrix;
 	}
 
+	/**
+	 * @return the matrix that transforms canvas/doodle coordinates to screen coordinates
+	 */
 	public Matrix getCanvasToScreenMatrix() {
 		return canvasToScreenMatrix;
 	}
 
+	/**
+	 * @return the current viewport rect (generally, (0,0,getWidth(),getHeight()))
+	 */
 	public RectF getViewportScreenRect() {
 		return viewportScreenRect;
 	}
@@ -626,7 +734,10 @@ public class DoodleCanvas implements Parcelable {
 		if (performingPinchOperations) {
 
 			if (totalPinchScaling < minPinchScalingForTap && totalPinchTranslation < minPinchTranslationForTap) {
-				dispatchTwoFingerTap();
+				DoodleView doodleView = getDoodleView();
+				if (doodleView != null) {
+					doodleView.dispatchTwoFingerTap();
+				}
 			}
 
 			if (event.getPointerCount() == 1) {
@@ -637,31 +748,6 @@ public class DoodleCanvas implements Parcelable {
 		}
 
 		return doodle.onTouchEventEnd(event);
-	}
-
-
-	protected void dispatchTwoFingerTap() {
-
-		if (doubleTwoFingerTapTimerHandler == null) {
-			doubleTwoFingerTapTimerHandler = new Handler();
-		}
-
-		doubleTwoFingerTapCount++;
-
-		if (!doubleTwoFingerTapCandidacyTimerStarted) {
-			doubleTwoFingerTapCandidacyTimerStarted = true;
-			doubleTwoFingerTapTimerHandler.postDelayed(new Runnable() {
-				@Override
-				public void run() {
-					if (twoFingerTapListener != null) {
-						twoFingerTapListener.onTwoFingerTap(doubleTwoFingerTapCount);
-					}
-
-					doubleTwoFingerTapCount = 0;
-					doubleTwoFingerTapCandidacyTimerStarted = false;
-				}
-			}, DOUBLE_TAP_DELAY_MILLIS);
-		}
 	}
 
 	protected void drawInvalidationRect(Canvas canvas) {
@@ -749,10 +835,11 @@ public class DoodleCanvas implements Parcelable {
 		dest.writeFloat(this.canvasScale);
 		dest.writeParcelable(this.canvasTranslation, flags);
 		dest.writeParcelable(this.canvasOriginRelativeToViewportCenter, flags);
-		dest.writeByte(this.readOnly ? (byte) 1 : (byte) 0);
 		dest.writeFloat(this.coordinateGridSize);
 		dest.writeFloat(this.minPinchTranslationForTap);
 		dest.writeFloat(this.minPinchScalingForTap);
+		dest.writeFloat(this.minCanvasScale);
+		dest.writeFloat(this.maxCanvasScale);
 	}
 
 	protected DoodleCanvas(Parcel in) {
@@ -764,13 +851,14 @@ public class DoodleCanvas implements Parcelable {
 		this.canvasScale = in.readFloat();
 		this.canvasTranslation = in.readParcelable(PointF.class.getClassLoader());
 		this.canvasOriginRelativeToViewportCenter = in.readParcelable(PointF.class.getClassLoader());
-		this.readOnly = in.readByte() != 0;
 		this.coordinateGridSize = in.readFloat();
 		this.minPinchTranslationForTap = in.readFloat();
 		this.minPinchScalingForTap = in.readFloat();
+		this.minCanvasScale = in.readFloat();
+		this.maxCanvasScale = in.readFloat();
 	}
 
-	public static final Parcelable.Creator<DoodleCanvas> CREATOR = new Parcelable.Creator<DoodleCanvas>() {
+	public static final Creator<DoodleCanvas> CREATOR = new Creator<DoodleCanvas>() {
 		@Override
 		public DoodleCanvas createFromParcel(Parcel source) {
 			return new DoodleCanvas(source);

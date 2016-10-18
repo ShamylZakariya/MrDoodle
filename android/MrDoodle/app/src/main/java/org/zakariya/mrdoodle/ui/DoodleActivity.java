@@ -34,8 +34,8 @@ import com.squareup.otto.Subscribe;
 
 import org.zakariya.doodle.model.Brush;
 import org.zakariya.doodle.model.Doodle;
-import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.doodle.view.DoodleCanvas;
+import org.zakariya.doodle.model.StrokeDoodle;
 import org.zakariya.doodle.view.DoodleView;
 import org.zakariya.flyoutmenu.FlyoutMenuView;
 import org.zakariya.mrdoodle.R;
@@ -67,7 +67,8 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
-public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener, Doodle.EditListener {
+@SuppressWarnings("unused")
+public class DoodleActivity extends BaseActivity implements DoodleView.SizeListener, DoodleView.TwoFingerTapListener, Doodle.EditListener {
 
 	private static final String TAG = "DoodleActivity";
 
@@ -86,6 +87,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	private static final boolean DEBUG_DRAW_DOODLE = false;
 	private static final float TWO_FINGER_TAP_MIN_TRANSLATION_DP = 4;
 	private static final float TWO_FINGER_TAP_MIN_SCALING = 0.2f;
+	private static final float DOODLE_MIN_SCALE = 0.0125f;
+	private static final float DOODLE_MAX_SCALE = 16f;
+
 
 	@ColorInt
 	private static final int TOOL_MENU_FILL_COLOR = 0xFF303030;
@@ -201,6 +205,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 
 		doodleView.addSizeListener(this);
+		doodleView.setTwoFingerTapListener(this);
 
 		//
 		//  Load the DoodleDocument
@@ -430,10 +435,17 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	@Override
+	public void onDoodleViewTwoFingerTap(DoodleView view, int tapCount) {
+		if (tapCount > 1) {
+			fitDoodleCanvasContents();
+		}
+	}
+
+	@Override
 	public void onDoodleEdited(Doodle doodle) {
 
 		if (doodleEditSaveDebouncer == null) {
-			doodleEditSaveDebouncer = new Debouncer<Void>(DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS, new Action1<Void>() {
+			doodleEditSaveDebouncer = new Debouncer<>(DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS, new Action1<Void>() {
 				@Override
 				public void call(Void o) {
 					saveDoodleIfEdited();
@@ -585,7 +597,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		Log.i(TAG, "setReadOnly() called with: readOnly = [" + readOnly + "]");
 
 		this.readOnly = readOnly;
-		doodleCanvas.setReadOnly(this.readOnly);
+		doodle.setReadOnly(this.readOnly);
 		titleEditText.setEnabled(!this.readOnly);
 
 		setViewVisibility(toolSelectorFlyoutMenu, !readOnly, animate);
@@ -596,28 +608,23 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	void setupDoodle(StrokeDoodle doodle) {
 		this.doodle = doodle;
+		this.doodle.setReadOnly(this.readOnly);
 
 		this.doodle.setBackgroundColor(ContextCompat.getColor(this, R.color.doodleBackground));
 		this.doodle.addChangeListener(this);
 
 		doodleCanvas.setDoodle(this.doodle);
+		doodleCanvas.setMinCanvasScale(DOODLE_MIN_SCALE);
+		doodleCanvas.setMaxCanvasScale(DOODLE_MAX_SCALE);
+		doodleCanvas.setCanvasScaleClamped(true);
 
-		doodleCanvas.setCoordinateGridSize(dp2px(100));
 		if (DEBUG_DRAW_DOODLE) {
+			doodleCanvas.setCoordinateGridSize(dp2px(100));
 			doodleCanvas.setDrawCoordinateGrid(true);
 			doodleCanvas.setDrawInvalidationRect(true);
 			doodleCanvas.setDrawViewport(true);
 			doodleCanvas.setDrawCanvasContentBoundingRect(true);
 		}
-
-		doodleCanvas.setTwoFingerTapListener(new DoodleCanvas.TwoFingerTapListener() {
-			@Override
-			public void onTwoFingerTap(int tapCount) {
-				if (tapCount > 1) {
-					fitDoodleCanvasContents();
-				}
-			}
-		});
 	}
 
 	public void setDocumentName(String documentName) {
