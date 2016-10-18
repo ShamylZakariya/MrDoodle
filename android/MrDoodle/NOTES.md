@@ -1,9 +1,6 @@
 #Currently
 
-- TwoFingerTapListener maybe getting wrong tap count?
 - consider discarding touches that begin at screen edge! this will avoid issues with dragging up the navbar
-
-- DoodleShareActivity has a TODO about threading. May want to look into it.
 
 #UX
 
