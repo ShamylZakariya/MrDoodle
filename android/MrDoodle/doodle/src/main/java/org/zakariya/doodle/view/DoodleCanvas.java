@@ -1,32 +1,28 @@
 package org.zakariya.doodle.view;
 
-import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PointF;
 import android.graphics.RectF;
-import android.os.Bundle;
 import android.os.Handler;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.view.MotionEventCompat;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.MotionEvent;
 
 import org.zakariya.doodle.model.Doodle;
-
-import icepick.Icepick;
-import icepick.State;
 
 /**
  * DoodleCanvas
  */
 
 @SuppressWarnings({"WeakerAccess", "unused"}) // Icepick needs non-private members
-public class DoodleCanvas {
+public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Interface for listeners interested in being notified when user makes two-finger taps.
@@ -43,38 +39,21 @@ public class DoodleCanvas {
 	private static final float SCALE_MAX = 16.0f;
 	private static final float TRANSLATION_MAX = 24000f;
 	private static final long DOUBLE_TAP_DELAY_MILLIS = 350;
-	private static final float DOUBLE_TAP_MIN_TRANSLATION_DP = 4;
-	private static final float DOUBLE_TAP_MIN_SCALING = 0.2f;
 
-	@State
-	boolean drawInvalidationRect = false;
+	// this is state that must persist
+	private boolean drawInvalidationRect = false;
+	private boolean drawCoordinateGrid = false;
+	private boolean drawViewport = false;
+	private boolean drawCanvasContentBoundingRect = false;
+	private boolean transformRangeClampingEnabled = true;
+	private float canvasScale = 1f;
+	private PointF canvasTranslation = new PointF(0, 0);
+	private PointF canvasOriginRelativeToViewportCenter = null;
+	private boolean readOnly;
+	private float coordinateGridSize = 100;
+	private float minPinchTranslationForTap = 12f;
+	private float minPinchScalingForTap = 0.2f;
 
-	@State
-	boolean drawCoordinateGrid = false;
-
-	@State
-	boolean drawViewport = false;
-
-	@State
-	boolean drawCanvasContentBoundingRect = false;
-
-	@State
-	boolean transformRangeClampingEnabled = true;
-
-	@State
-	float canvasScale = 1f;
-
-	@State
-	PointF canvasTranslation = new PointF(0, 0);
-
-	@State
-	PointF canvasOriginRelativeToViewportCenter = null;
-
-	@State
-	boolean readOnly;
-
-	@State
-	float coordinateGridSize = 100;
 
 	private Matrix screenToCanvasMatrix = new Matrix();
 	private Matrix canvasToScreenMatrix = new Matrix();
@@ -95,22 +74,16 @@ public class DoodleCanvas {
 	private float pinchLastLengthScreen;
 	private float totalPinchTranslation;
 	private float totalPinchScaling;
-	private float minPinchTranslationForTap;
-	private float minPinchScalingForTap;
 
 
 	/**
 	 * Create a default DoodleCanvas. You will need to assign a doodle.
 	 */
-	public DoodleCanvas(Context context) {
+	public DoodleCanvas() {
 		overlayPaint = new Paint();
 		overlayPaint.setAntiAlias(true);
 		overlayPaint.setStrokeWidth(1);
 		overlayPaint.setStyle(Paint.Style.STROKE);
-
-		minPinchTranslationForTap = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, DOUBLE_TAP_MIN_TRANSLATION_DP, context.getResources().getDisplayMetrics());
-		minPinchScalingForTap = DOUBLE_TAP_MIN_SCALING;
-
 	}
 
 	/**
@@ -118,23 +91,9 @@ public class DoodleCanvas {
 	 *
 	 * @param doodle
 	 */
-	public DoodleCanvas(Context context, Doodle doodle) {
-		this(context);
+	public DoodleCanvas(Doodle doodle) {
+		this();
 		setDoodle(doodle);
-	}
-
-	public void onLoadInstanceState(Bundle savedInstanceState) {
-		Icepick.restoreInstanceState(this, savedInstanceState);
-	}
-
-	public void onSaveInstanceState(Bundle outState) {
-		// we want to retain canvasOriginRelativeToViewportCenter so that we can
-		// re-center content after a rotation/resize.
-		canvasOriginRelativeToViewportCenter = new PointF();
-		canvasOriginRelativeToViewportCenter.x = getCanvasTranslationX() - viewportScreenRect.centerX();
-		canvasOriginRelativeToViewportCenter.y = getCanvasTranslationY() - viewportScreenRect.centerY();
-
-		Icepick.saveInstanceState(this, outState);
 	}
 
 	/**
@@ -196,6 +155,8 @@ public class DoodleCanvas {
 
 	public void draw(Canvas canvas) {
 
+		this.doodle.draw(canvas);
+
 		if (shouldDrawCoordinateGrid() || shouldDrawViewport() || shouldDrawCanvasContentBoundingRect()) {
 			canvas.save();
 			canvas.concat(canvasToScreenMatrix);
@@ -204,8 +165,6 @@ public class DoodleCanvas {
 			drawCanvasContentBoundingRect(canvas);
 			canvas.restore();
 		}
-
-		this.doodle.draw(canvas);
 
 		drawInvalidationRect(canvas);
 	}
@@ -324,6 +283,21 @@ public class DoodleCanvas {
 		invalidate();
 	}
 
+	public float getMinPinchTranslationForTap() {
+		return minPinchTranslationForTap;
+	}
+
+	public void setMinPinchTranslationForTap(float minPinchTranslationForTap) {
+		this.minPinchTranslationForTap = minPinchTranslationForTap;
+	}
+
+	public float getMinPinchScalingForTap() {
+		return minPinchScalingForTap;
+	}
+
+	public void setMinPinchScalingForTap(float minPinchScalingForTap) {
+		this.minPinchScalingForTap = minPinchScalingForTap;
+	}
 
 	public void setTransformRangeClampingEnabled(boolean transformRangeClampingEnabled) {
 		this.transformRangeClampingEnabled = transformRangeClampingEnabled;
@@ -520,6 +494,11 @@ public class DoodleCanvas {
 
 		// update viewportCanvasRect
 		screenToCanvasMatrix.mapRect(viewportCanvasRect, viewportScreenRect);
+
+		// this is required to maintain viewport center location during rotations
+		canvasOriginRelativeToViewportCenter = new PointF();
+		canvasOriginRelativeToViewportCenter.x = getCanvasTranslationX() - viewportScreenRect.centerX();
+		canvasOriginRelativeToViewportCenter.y = getCanvasTranslationY() - viewportScreenRect.centerY();
 
 		// and notify doodle
 		doodle.canvasMatricesUpdated();
@@ -753,4 +732,53 @@ public class DoodleCanvas {
 		}
 	}
 
+	// Parcelable
+
+	@Override
+	public int describeContents() {
+		return 0;
+	}
+
+	@Override
+	public void writeToParcel(Parcel dest, int flags) {
+		dest.writeByte(this.drawInvalidationRect ? (byte) 1 : (byte) 0);
+		dest.writeByte(this.drawCoordinateGrid ? (byte) 1 : (byte) 0);
+		dest.writeByte(this.drawViewport ? (byte) 1 : (byte) 0);
+		dest.writeByte(this.drawCanvasContentBoundingRect ? (byte) 1 : (byte) 0);
+		dest.writeByte(this.transformRangeClampingEnabled ? (byte) 1 : (byte) 0);
+		dest.writeFloat(this.canvasScale);
+		dest.writeParcelable(this.canvasTranslation, flags);
+		dest.writeParcelable(this.canvasOriginRelativeToViewportCenter, flags);
+		dest.writeByte(this.readOnly ? (byte) 1 : (byte) 0);
+		dest.writeFloat(this.coordinateGridSize);
+		dest.writeFloat(this.minPinchTranslationForTap);
+		dest.writeFloat(this.minPinchScalingForTap);
+	}
+
+	protected DoodleCanvas(Parcel in) {
+		this.drawInvalidationRect = in.readByte() != 0;
+		this.drawCoordinateGrid = in.readByte() != 0;
+		this.drawViewport = in.readByte() != 0;
+		this.drawCanvasContentBoundingRect = in.readByte() != 0;
+		this.transformRangeClampingEnabled = in.readByte() != 0;
+		this.canvasScale = in.readFloat();
+		this.canvasTranslation = in.readParcelable(PointF.class.getClassLoader());
+		this.canvasOriginRelativeToViewportCenter = in.readParcelable(PointF.class.getClassLoader());
+		this.readOnly = in.readByte() != 0;
+		this.coordinateGridSize = in.readFloat();
+		this.minPinchTranslationForTap = in.readFloat();
+		this.minPinchScalingForTap = in.readFloat();
+	}
+
+	public static final Parcelable.Creator<DoodleCanvas> CREATOR = new Parcelable.Creator<DoodleCanvas>() {
+		@Override
+		public DoodleCanvas createFromParcel(Parcel source) {
+			return new DoodleCanvas(source);
+		}
+
+		@Override
+		public DoodleCanvas[] newArray(int size) {
+			return new DoodleCanvas[size];
+		}
+	};
 }

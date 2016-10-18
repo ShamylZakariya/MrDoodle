@@ -154,7 +154,7 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 			Canvas bitmapCanvas = new Canvas(thumbnail);
 
 			StrokeDoodle doodle = document.loadDoodle(context);
-			DoodleCanvas canvas = new DoodleCanvas(context, doodle);
+			DoodleCanvas canvas = new DoodleCanvas(doodle);
 			canvas.setTransformRangeClampingEnabled(false);
 			canvas.draw(bitmapCanvas, width, height, true, padding);
 
@@ -230,7 +230,7 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 
 			if (document != null) {
 				StrokeDoodle doodle = document.loadDoodle(context);
-				DoodleCanvas canvas = new DoodleCanvas(context, doodle);
+				DoodleCanvas canvas = new DoodleCanvas(doodle);
 				canvas.setTransformRangeClampingEnabled(false);
 
 				canvas.draw(bitmapCanvas, width, height, true, padding);

@@ -1,13 +1,8 @@
 #Currently
 
-- How to handle panning while locked? Right now the pan gesture is blocked.
-	- option 1: Don't. Just keep content fit/centered
-	- option 2: Somehow support a local concept of zoom/translate which isn't synced
+- rotation isn't remember scale/transform/etc
+- consider discarding touches that begin at screen edge! this will avoid issues with dragging up the navbar
 
-	When assigning new doodle to doodle view we lose current transform
-		- thinking that the doodle's transform should be stored not in the doodle but in the doodle view
-		- can't use DoodleView to store transform, since we still need to be able to transform a doodle for thumbnail rendering
-		- consider an object between Doodle & DoodleView, DoodlePresenter. DoodlePresenter has the transform and the viewport. DoodleView is assigned a DoodlePresenter. The DoodlePresenter is assigned a Doodle
 
 #UX
 

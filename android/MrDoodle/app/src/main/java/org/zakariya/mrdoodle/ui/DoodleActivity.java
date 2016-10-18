@@ -85,7 +85,10 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	private static final int ANIMATION_DURATION_MILLIS = 300;
 	private static final int DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS = 250;
 	private static final float DEFAULT_ZOOM_LEVEL = 1;
-	private static final boolean DEBUG_DRAW_DOODLE = false;
+	private static final boolean DEBUG_DRAW_DOODLE = true;
+	private static final float TWO_FINGER_TAP_MIN_TRANSLATION_DP = 4;
+	private static final float TWO_FINGER_TAP_MIN_SCALING = 0.2f;
+
 
 
 	@ColorInt
@@ -137,22 +140,24 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	@State
 	boolean firstDisplayOfDoodle = true;
 
-	Realm realm;
-	Subscription lockSubscription;
-
-	DoodleDocument document;
-	StrokeDoodle doodle;
+	@State
 	DoodleCanvas doodleCanvas;
 
-	MenuItem clearMenuItem;
-	MenuItem undoMenuItem;
-	MenuItem deleteMenuItem;
+	private Realm realm;
+	private Subscription lockSubscription;
+
+	private DoodleDocument document;
+	private StrokeDoodle doodle;
+
+	private MenuItem clearMenuItem;
+	private MenuItem undoMenuItem;
+	private MenuItem deleteMenuItem;
 
 	// when true, the document is in a read-only state and can't be edited
-	boolean readOnly;
+	private boolean readOnly;
 
 	// when true, it means the user wants write access
-	boolean wantDocumentWriteLock;
+	private boolean wantDocumentWriteLock;
 
 	private Subscription doodleSaveSubscription;
 	private Debouncer<Void> doodleEditSaveDebouncer;
@@ -199,8 +204,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 
 		doodleView.addSizeListener(this);
-		doodleCanvas = new DoodleCanvas(this);
-		doodleView.setDoodleCanvas(doodleCanvas);
 
 		//
 		//  Load the DoodleDocument
@@ -217,6 +220,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			}
 
 			doodle = document.loadDoodle(this);
+			doodleCanvas = new DoodleCanvas();
+			doodleCanvas.setMinPinchTranslationForTap(dp2px(TWO_FINGER_TAP_MIN_TRANSLATION_DP));
+			doodleCanvas.setMinPinchScalingForTap(TWO_FINGER_TAP_MIN_SCALING);
 
 		} else {
 			Icepick.restoreInstanceState(this, savedInstanceState);
@@ -229,6 +235,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 				doodle.onLoadInstanceState(doodleState);
 			}
 		}
+
+		doodleView.setDoodleCanvas(doodleCanvas);
+
 
 		assert document != null;
 		documentModificationTime = document.getModificationDate().getTime();
@@ -361,7 +370,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 			case R.id.menuItemCenterCanvasContent:
-				doodleCanvas.centerCanvasContent();
+				centerDoodleCanvasContents();
 				return true;
 
 			case R.id.menuItemFitCanvasContent:
@@ -513,6 +522,14 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	///////////////////////////////////////////////////////////////////
+
+	public void centerDoodleCanvasContents() {
+		if (document == null) {
+			return;
+		}
+
+		doodleCanvas.centerCanvasContent();
+	}
 
 	public void fitDoodleCanvasContents() {
 		if (document == null) {
