@@ -24,51 +24,45 @@
 		android:layout_height="wrap_content"
 		android:theme="@style/AppTheme.AppBarOverlay">
 
-		<FrameLayout
+		<android.support.v7.widget.Toolbar
+			xmlns:android="http://schemas.android.com/apk/res/android"
+			xmlns:app="http://schemas.android.com/apk/res-auto"
+			android:id="@+id/toolbar"
+			android:background="@color/primary"
+			app:theme="@style/AppTheme.Toolbar"
+			app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+			app:titleTextAppearance="@style/AppTheme.Toolbar.Title"
 			android:layout_width="match_parent"
-			android:layout_height="wrap_content">
+			android:layout_height="wrap_content"
+			android:minHeight="?attr/actionBarSize">
 
-			<include layout="@layout/toolbar"/>
+			<android.support.design.widget.TextInputLayout
+				android:id="@+id/titleEditTextLayout"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="start|center_vertical"
+				android:translationY="-5dp"
+				app:errorEnabled="false"
+				>
 
-			<LinearLayout
-				android:layout_width="match_parent"
-				android:layout_height="?attr/actionBarSize"
-				android:layout_marginEnd="48dp"
-				android:layout_marginStart="60dp"
-				android:baselineAligned="false"
-				android:orientation="horizontal">
-
-				<android.support.design.widget.TextInputLayout
-					android:id="@+id/titleEditTextLayout"
-					android:layout_width="0dp"
+				<android.support.design.widget.TextInputEditText
+					android:id="@+id/titleEditText"
+					style="@style/ImmersiveTitleTextStyle"
+					android:layout_width="match_parent"
 					android:layout_height="wrap_content"
-					android:layout_gravity="start|center_vertical"
-					android:layout_weight="1"
-					android:translationY="-4dp"
-					app:errorEnabled="false"
-					>
+					android:ellipsize="end"
+					android:imeOptions="actionDone"
+					android:inputType="textCapWords|textNoSuggestions"
+					android:lines="1"
+					android:maxLines="1"
+					android:selectAllOnFocus="true"
+					android:theme="@style/ImmersiveAppBarEditText"
+					tools:text="Title Text"
+					/>
 
-					<android.support.design.widget.TextInputEditText
-						android:id="@+id/titleEditText"
-						style="@style/ImmersiveTitleTextStyle"
-						android:layout_width="match_parent"
-						android:layout_height="wrap_content"
-						android:ellipsize="end"
-						android:imeOptions="actionDone"
-						android:inputType="textCapWords|textNoSuggestions"
-						android:lines="1"
-						android:maxLines="1"
-						android:selectAllOnFocus="true"
-						android:theme="@style/ImmersiveAppBarEditText"
-						tools:text="Title Text"
-						/>
+			</android.support.design.widget.TextInputLayout>
 
-				</android.support.design.widget.TextInputLayout>
-
-			</LinearLayout>
-
-
-		</FrameLayout>
+		</android.support.v7.widget.Toolbar>
 
 	</android.support.design.widget.AppBarLayout>
 

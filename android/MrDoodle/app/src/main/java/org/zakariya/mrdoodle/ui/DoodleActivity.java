@@ -368,10 +368,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-			case R.id.menuItemCenterCanvasContent:
-				centerDoodleCanvasContents();
-				return true;
-
 			case R.id.menuItemFitCanvasContent:
 				fitDoodleCanvasContents();
 				return true;
@@ -532,14 +528,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	///////////////////////////////////////////////////////////////////
-
-	public void centerDoodleCanvasContents() {
-		if (document == null) {
-			return;
-		}
-
-		doodleCanvas.centerCanvasContent();
-	}
 
 	public void fitDoodleCanvasContents() {
 		if (document == null) {
