@@ -251,7 +251,7 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Override
 	public void onLongItemClick(View view, int position) {
 		// we only show the sheet if a delete action isn't currently showing the undo snackbar
-		if (!TextUtils.isEmpty(documentQueuedToDelete)) {
+		if (TextUtils.isEmpty(documentQueuedToDelete)) {
 			DoodleDocument document = adapter.getDocumentAt(position);
 			queryDoodleDocumentAction(document);
 		}
