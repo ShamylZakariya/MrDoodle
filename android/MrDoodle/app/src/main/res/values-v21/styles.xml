@@ -19,6 +19,12 @@
 		<!--<item name="android:windowTranslucentNavigation">true</item>-->
 	</style>
 
+	<style name="AlertDialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
+		<item name="android:colorAccent">@color/primaryDark</item>
+		<item name="android:textColorPrimary">@color/textColor</item>
+	</style>
+
+
 	<style name="MrDoodle.DoodleActivity">
 		<item name="actionBarStyle">@style/ImmersiveToolbarStyle</item>
 	</style>
