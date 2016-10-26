@@ -85,7 +85,6 @@ public class DoodleDocumentGridFragment extends Fragment
 	DoodleDocumentAdapter adapter;
 
 	private BottomSheetMenuDialog bottomSheetDialog;
-	private Snackbar documentDeleteSnackbar;
 	private String documentQueuedToDelete;
 
 	@State
@@ -252,7 +251,7 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Override
 	public void onLongItemClick(View view, int position) {
 		// we only show the sheet if a delete action isn't currently showing the undo snackbar
-		if (documentDeleteSnackbar == null) {
+		if (!TextUtils.isEmpty(documentQueuedToDelete)) {
 			DoodleDocument document = adapter.getDocumentAt(position);
 			queryDoodleDocumentAction(document);
 		}
@@ -324,17 +323,16 @@ public class DoodleDocumentGridFragment extends Fragment
 			throw new IllegalStateException("Called on unattached fragment");
 		}
 
-		// hide document from adapter. after documentDeleteSnackbar times out we'll delete it, or if canceled, unhide it
+		// hide document from adapter. after snackbar times out we'll delete it, or if canceled, unhide it
 		adapter.setDocumentHidden(doc, true);
 
-		documentDeleteSnackbar = Snackbar.make(rootView, R.string.snackbar_document_deleted, Snackbar.LENGTH_LONG);
+		Snackbar snackbar = Snackbar.make(rootView, R.string.snackbar_document_deleted, Snackbar.LENGTH_LONG);
 		documentQueuedToDelete = doc.getUuid();
 
-		documentDeleteSnackbar.setCallback(new Snackbar.Callback() {
+		snackbar.setCallback(new Snackbar.Callback() {
 			@Override
 			public void onDismissed(Snackbar snackbar, int event) {
 				super.onDismissed(snackbar, event);
-				documentDeleteSnackbar = null;
 				if (realm != null) {
 					DoodleDocument doc = DoodleDocument.byUuid(realm, documentQueuedToDelete);
 					if (doc != null && adapter.isDocumentHidden(doc)) {
@@ -346,10 +344,9 @@ public class DoodleDocumentGridFragment extends Fragment
 			}
 		});
 
-		documentDeleteSnackbar.setAction(R.string.snackbar_document_deleted_undo, new View.OnClickListener() {
+		snackbar.setAction(R.string.snackbar_document_deleted_undo, new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				documentDeleteSnackbar = null;
 				if (realm != null) {
 					DoodleDocument doc = DoodleDocument.byUuid(realm, documentQueuedToDelete);
 					if (doc != null && adapter.isDocumentHidden(doc)) {
@@ -360,15 +357,15 @@ public class DoodleDocumentGridFragment extends Fragment
 		});
 
 		// make text white
-		View view = documentDeleteSnackbar.getView();
+		View view = snackbar.getView();
 		TextView tv = (TextView) view.findViewById(android.support.design.R.id.snackbar_text);
 		tv.setTextColor(Color.WHITE);
 
 		// set color of undo button
 		//noinspection deprecation
-		documentDeleteSnackbar.setActionTextColor(getResources().getColor(R.color.accent));
+		snackbar.setActionTextColor(getResources().getColor(R.color.accent));
 
-		documentDeleteSnackbar.show();
+		snackbar.show();
 	}
 
 	void editDoodleDocument(DoodleDocument doc) {
