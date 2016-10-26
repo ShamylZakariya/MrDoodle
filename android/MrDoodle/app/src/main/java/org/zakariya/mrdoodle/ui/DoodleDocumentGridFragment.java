@@ -85,6 +85,8 @@ public class DoodleDocumentGridFragment extends Fragment
 	DoodleDocumentAdapter adapter;
 
 	private BottomSheetMenuDialog bottomSheetDialog;
+	private Snackbar documentDeleteSnackbar;
+	private String documentQueuedToDelete;
 
 	@State
 	String selectedDocumentUuid;
@@ -108,7 +110,18 @@ public class DoodleDocumentGridFragment extends Fragment
 		}
 
 		adapter.onDestroy();
+
+		// delete any documents which might have been queued to delete by user
+		if (!TextUtils.isEmpty(documentQueuedToDelete)) {
+			DoodleDocument doc = DoodleDocument.byUuid(realm, documentQueuedToDelete);
+			if (doc != null) {
+				DoodleDocument.delete(getContext(), realm, doc);
+				BusProvider.getMainThreadBus().post(new DoodleDocumentWasDeletedEvent(documentQueuedToDelete));
+			}
+		}
+
 		realm.close();
+		realm = null;
 		super.onDestroy();
 	}
 
@@ -238,8 +251,11 @@ public class DoodleDocumentGridFragment extends Fragment
 
 	@Override
 	public void onLongItemClick(View view, int position) {
-		DoodleDocument document = adapter.getDocumentAt(position);
-		queryDoodleDocumentAction(document);
+		// we only show the sheet if a delete action isn't currently showing the undo snackbar
+		if (documentDeleteSnackbar == null) {
+			DoodleDocument document = adapter.getDocumentAt(position);
+			queryDoodleDocumentAction(document);
+		}
 	}
 
 
@@ -308,44 +324,51 @@ public class DoodleDocumentGridFragment extends Fragment
 			throw new IllegalStateException("Called on unattached fragment");
 		}
 
-		// hide document from adapter. after snackbar times out we'll delete it, or if canceled, unhide it
+		// hide document from adapter. after documentDeleteSnackbar times out we'll delete it, or if canceled, unhide it
 		adapter.setDocumentHidden(doc, true);
 
-		Snackbar snackbar = Snackbar.make(rootView, R.string.snackbar_document_deleted, Snackbar.LENGTH_LONG);
+		documentDeleteSnackbar = Snackbar.make(rootView, R.string.snackbar_document_deleted, Snackbar.LENGTH_LONG);
+		documentQueuedToDelete = doc.getUuid();
 
-		// make text white
-		View view = snackbar.getView();
-		TextView tv = (TextView) view.findViewById(android.support.design.R.id.snackbar_text);
-		tv.setTextColor(Color.WHITE);
-
-		final String docUuid = doc.getUuid();
-
-		snackbar.setCallback(new Snackbar.Callback() {
+		documentDeleteSnackbar.setCallback(new Snackbar.Callback() {
 			@Override
 			public void onDismissed(Snackbar snackbar, int event) {
 				super.onDismissed(snackbar, event);
-				DoodleDocument doc = DoodleDocument.byUuid(realm, docUuid);
-				if (doc != null && adapter.isDocumentHidden(doc)) {
-					DoodleDocument.delete(getContext(), realm, doc);
-					BusProvider.getMainThreadBus().post(new DoodleDocumentWasDeletedEvent(docUuid));
+				documentDeleteSnackbar = null;
+				if (realm != null) {
+					DoodleDocument doc = DoodleDocument.byUuid(realm, documentQueuedToDelete);
+					if (doc != null && adapter.isDocumentHidden(doc)) {
+						DoodleDocument.delete(getContext(), realm, doc);
+						BusProvider.getMainThreadBus().post(new DoodleDocumentWasDeletedEvent(documentQueuedToDelete));
+					}
 				}
+				documentQueuedToDelete = null;
 			}
 		});
 
-		snackbar.setAction(R.string.snackbar_document_deleted_undo, new View.OnClickListener() {
+		documentDeleteSnackbar.setAction(R.string.snackbar_document_deleted_undo, new View.OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				DoodleDocument doc = DoodleDocument.byUuid(realm, docUuid);
-				if (doc != null && adapter.isDocumentHidden(doc)) {
-					adapter.setDocumentHidden(doc, false);
+				documentDeleteSnackbar = null;
+				if (realm != null) {
+					DoodleDocument doc = DoodleDocument.byUuid(realm, documentQueuedToDelete);
+					if (doc != null && adapter.isDocumentHidden(doc)) {
+						adapter.setDocumentHidden(doc, false);
+					}
 				}
 			}
 		});
 
-		//noinspection deprecation
-		snackbar.setActionTextColor(getResources().getColor(R.color.accent));
+		// make text white
+		View view = documentDeleteSnackbar.getView();
+		TextView tv = (TextView) view.findViewById(android.support.design.R.id.snackbar_text);
+		tv.setTextColor(Color.WHITE);
 
-		snackbar.show();
+		// set color of undo button
+		//noinspection deprecation
+		documentDeleteSnackbar.setActionTextColor(getResources().getColor(R.color.accent));
+
+		documentDeleteSnackbar.show();
 	}
 
 	void editDoodleDocument(DoodleDocument doc) {

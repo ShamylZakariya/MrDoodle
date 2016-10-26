@@ -1,6 +1,6 @@
 #Currently
 
-- Menu overflow icon color is not tinted correctly
+- AlertDialog theme on Nougat isn't being applied correctly
 
 #UX
 
