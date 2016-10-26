@@ -17,4 +17,7 @@
 	<color name="doodleBackground">#FFFFFFFF</color>
 	<color name="trouble">#e24e2a</color>
 
+	<color name="snackbarText">@color/windowBackground</color>
+	<color name="snackbarAction">@color/primary</color>
+
 </resources>

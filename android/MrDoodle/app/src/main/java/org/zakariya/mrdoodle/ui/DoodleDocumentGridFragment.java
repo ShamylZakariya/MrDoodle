@@ -3,7 +3,6 @@ package org.zakariya.mrdoodle.ui;
 import android.annotation.TargetApi;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.MenuRes;
@@ -359,11 +358,10 @@ public class DoodleDocumentGridFragment extends Fragment
 		// make text white
 		View view = snackbar.getView();
 		TextView tv = (TextView) view.findViewById(android.support.design.R.id.snackbar_text);
-		tv.setTextColor(Color.WHITE);
+		tv.setTextColor(ContextCompat.getColor(getContext(), R.color.snackbarText));
 
 		// set color of undo button
-		//noinspection deprecation
-		snackbar.setActionTextColor(getResources().getColor(R.color.accent));
+		snackbar.setActionTextColor(ContextCompat.getColor(getContext(), R.color.snackbarAction));
 
 		snackbar.show();
 	}
