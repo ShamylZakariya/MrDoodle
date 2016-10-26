@@ -2,6 +2,8 @@
 
 - AlertDialog theme on Nougat isn't being applied correctly
 
+- Figure out how to show the about/syncsettings/modeloverview as dialogs not fullscreen activities
+
 #UX
 
 - Sync Settings
