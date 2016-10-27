@@ -99,26 +99,26 @@
 			android:orientation="vertical">
 
 			<org.zakariya.flyoutmenu.FlyoutMenuView
-				android:id="@+id/toolSelectorFlyoutMenu"
-				android:layout_width="@dimen/doodle_drawing_tool_button_size"
-				android:layout_height="@dimen/doodle_drawing_tool_button_size"
-				android:layout_marginLeft="@dimen/doodle_drawing_tool_button_margin"
-				android:layout_marginRight="@dimen/doodle_drawing_tool_button_margin"
-				android:layout_marginTop="@dimen/doodle_drawing_tool_button_margin"
-				app:fmMenuAnchor="left"
-				/>
-
-			<org.zakariya.flyoutmenu.FlyoutMenuView
 				android:id="@+id/paletteFlyoutMenu"
 				android:layout_width="@dimen/doodle_drawing_tool_button_size"
 				android:layout_height="@dimen/doodle_drawing_tool_button_size"
-				android:layout_marginBottom="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginLeft="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginRight="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginTop="@dimen/doodle_drawing_tool_button_margin"
 				app:fmItemHeight="32dp"
 				app:fmItemMargin="0dp"
 				app:fmItemWidth="32dp"
+				app:fmMenuAnchor="left"
+				/>
+
+			<org.zakariya.flyoutmenu.FlyoutMenuView
+				android:id="@+id/toolSelectorFlyoutMenu"
+				android:layout_width="@dimen/doodle_drawing_tool_button_size"
+				android:layout_height="@dimen/doodle_drawing_tool_button_size"
+				android:layout_marginLeft="@dimen/doodle_drawing_tool_button_margin"
+				android:layout_marginRight="@dimen/doodle_drawing_tool_button_margin"
+				android:layout_marginTop="@dimen/doodle_drawing_tool_button_margin"
+				android:layout_marginBottom="@dimen/doodle_drawing_tool_button_margin"
 				app:fmMenuAnchor="left"
 				/>
 

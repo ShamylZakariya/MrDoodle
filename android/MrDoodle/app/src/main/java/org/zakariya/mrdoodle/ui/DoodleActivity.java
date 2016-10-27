@@ -85,6 +85,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	private static final int ANIMATION_DURATION_MILLIS = 300;
 	private static final int DOODLE_EDIT_SAVE_DEBOUNCE_MILLIS = 250;
+	private static final int UPDATE_FLYOUT_MENUS_DEBOUNCE_MILLIS = 250;
 	private static final float DEFAULT_ZOOM_LEVEL = 1;
 	private static final boolean DEBUG_DRAW_DOODLE = false;
 	private static final float TWO_FINGER_TAP_MIN_TRANSLATION_DP = 4;
@@ -172,6 +173,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	private Subscription doodleSaveSubscription;
 	private Debouncer<Void> doodleEditSaveDebouncer;
+	private Debouncer<Boolean> updateFlyoutMenuItemsDebouncer;
 
 	/**
 	 * Get an intent to view a given doodle document by its id
@@ -303,13 +305,11 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			}
 		});
 
-
-		updateBrush();
-
 		// build our menus
 		configureToolFlyoutMenu();
 		configurePaletteFlyoutMenu();
 
+		// select the tools that were previously used - this will indirectly call updateBrush()
 		toolSelectorFlyoutMenu.setSelectedMenuItemById(toolFlyoutMenuSelectionId);
 		paletteFlyoutMenu.setSelectedMenuItemById(paletteFlyoutMenuSelectionId);
 
@@ -338,6 +338,10 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 		if (doodleEditSaveDebouncer != null) {
 			doodleEditSaveDebouncer.destroy();
+		}
+
+		if (updateFlyoutMenuItemsDebouncer != null) {
+			updateFlyoutMenuItemsDebouncer.destroy();
 		}
 
 		if (doodleSaveSubscription != null && !doodleSaveSubscription.isUnsubscribed()) {
@@ -619,11 +623,10 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 		this.readOnly = readOnly;
 		doodle.setReadOnly(this.readOnly);
-		titleEditText.setEnabled(!this.readOnly);
-
-		setViewVisibility(toolSelectorFlyoutMenu, !readOnly, animate);
-		setViewVisibility(paletteFlyoutMenu, !readOnly, animate);
+		titleEditText.setEnabled(!readOnly);
 		setViewVisibility(lockIconImageView, readOnly, animate);
+
+		updateFlyoutMenuItems(animate);
 		updateMenuItems();
 	}
 
@@ -720,6 +723,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	void updateBrush() {
+		updateFlyoutMenuItems(true);
 		doodle.setBrush(new Brush(getBrushColor(), getBrushSize() / 2, getBrushSize(), 600, isBrushEraser()));
 	}
 
@@ -946,6 +950,26 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		resultData.putExtra(RESULT_DID_EDIT_DOODLE, edited);
 		resultData.putExtra(RESULT_DOODLE_DOCUMENT_UUID, document.getUuid());
 		setResult(RESULT_OK, resultData);
+	}
+
+	private void updateFlyoutMenuItems(boolean animate) {
+
+		if (updateFlyoutMenuItemsDebouncer == null) {
+			updateFlyoutMenuItemsDebouncer = new Debouncer<Boolean>(UPDATE_FLYOUT_MENUS_DEBOUNCE_MILLIS, new Action1<Boolean>() {
+				@Override
+				public void call(Boolean animate) {
+					boolean readOnly = isReadOnly();
+					boolean paletteVisible = !readOnly && !isBrushEraser();
+
+					Log.i(TAG, "updateFlyoutMenuItems: readOnly: " + readOnly + " isBrushEraser: " + isBrushEraser() + " paletteVisible: " + paletteVisible);
+
+					setViewVisibility(toolSelectorFlyoutMenu, !readOnly, animate);
+					setViewVisibility(paletteFlyoutMenu, paletteVisible, animate);
+				}
+			});
+		}
+
+		updateFlyoutMenuItemsDebouncer.send(animate);
 	}
 
 	private void updateMenuItems() {

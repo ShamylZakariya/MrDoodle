@@ -1,7 +1,7 @@
 #Currently
 
 - AlertDialog theme on Nougat isn't being applied correctly
-- Remember the pen and color used previously when loading DoodleActivity
+- When user picks an eraser, hide/disable to color palette menu
 
 #UX
 
