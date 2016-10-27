@@ -1,8 +1,5 @@
 #Currently
 
-- AlertDialog theme on Nougat isn't being applied correctly
-- When user picks an eraser, hide/disable to color palette menu
-
 #UX
 
 - Sync Settings
@@ -19,6 +16,8 @@
 java.lang.RuntimeException: Could not dispatch event: class org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent to handler [EventHandler public void org.zakariya.mrdoodle.ui.DoodleDocumentGridFragment.onDoodleDocumentCreated(org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent)]: Illegal State: Object is no longer valid to operate on. Was it deleted by another thread?
 
 	I backgrounded and restored MrDoodle to connect to the server and reset the exponential reconnect timeout. I'm guessing the grid fragment never disconnected from the event bus????
+
+	Also saw this on a first run when a lot of deletions happened. Looked like a Doodle was accessed after deletion, which threw an exception, which (maybe???) killed the fragment, then the Bus died attempting to signal said fragment. Perhaps the dispatch was queued on a handler and sent after the fragment was destroyed because of exception?
 
 #TODO
 

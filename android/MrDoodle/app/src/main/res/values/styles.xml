@@ -89,9 +89,21 @@
 		<item name="android:layout_margin">48dp</item>
 	</style>
 
+	<!-- alert dialog styles -->
 	<style name="AlertDialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
-		<item name="colorAccent">@color/primaryDark</item>
-		<item name="android:textColorPrimary">@color/textColor</item>
+		<item name="colorAccent">@color/alertDialogAccent</item>
+		<item name="android:textColorPrimary">@color/alertDialogText</item>
+		<item name="buttonBarButtonStyle">@style/AlertDialogButtonStyle</item>
+		<item name="android:windowTitleStyle">@style/AlertDialogTitleTextStyle</item>
+	</style>
+
+	<style name="AlertDialogTitleTextStyle">
+		<item name="android:textColor">@color/alertDialogText</item>
+		<item name="android:textAppearance">@style/TextAppearance.AppCompat.Title</item>
+	</style>
+
+	<style name="AlertDialogButtonStyle" parent="@style/Widget.AppCompat.Button.ButtonBar.AlertDialog">
+		<item name="android:textColor">@color/alertDialogAccent</item>
 	</style>
 
 	<!-- bottom sheet dialogs -->

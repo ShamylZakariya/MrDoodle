@@ -17,6 +17,9 @@
 	<color name="doodleBackground">#FFFFFFFF</color>
 	<color name="trouble">#e24e2a</color>
 
+	<color name="alertDialogText">#323232</color>
+	<color name="alertDialogAccent">@color/primaryDark</color>
+
 	<color name="snackbarText">@color/windowBackground</color>
 	<color name="snackbarAction">@color/primary</color>
 

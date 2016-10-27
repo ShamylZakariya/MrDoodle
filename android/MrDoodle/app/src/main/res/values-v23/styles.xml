@@ -2,7 +2,7 @@
 <resources>
 
 	<style name="MrDoodle" parent="Theme.AppCompat.Light.NoActionBar">
-		<item name="android:alertDialogTheme">@style/AlertDialogStyle</item>
+		<item name="alertDialogTheme">@style/AlertDialogStyle</item>
 
 		<item name="android:colorPrimary">@color/primary</item>
 		<item name="android:colorPrimaryDark">@color/primaryDark</item>

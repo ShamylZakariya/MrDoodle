@@ -2,7 +2,7 @@
 <resources>
 
 	<style name="MrDoodle" parent="Theme.AppCompat.Light.NoActionBar">
-		<item name="android:alertDialogTheme">@style/AlertDialogStyle</item>
+		<item name="alertDialogTheme">@style/AlertDialogStyle</item>
 
 		<item name="android:colorPrimary">@color/primary</item>
 		<item name="android:colorPrimaryDark">@color/primaryDark</item>
@@ -18,12 +18,6 @@
 		<!--<item name="android:navigationBarColor">@color/translucent_status_bar</item>-->
 		<!--<item name="android:windowTranslucentNavigation">true</item>-->
 	</style>
-
-	<style name="AlertDialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
-		<item name="android:colorAccent">@color/primaryDark</item>
-		<item name="android:textColorPrimary">@color/textColor</item>
-	</style>
-
 
 	<style name="MrDoodle.DoodleActivity">
 		<item name="actionBarStyle">@style/ImmersiveToolbarStyle</item>
