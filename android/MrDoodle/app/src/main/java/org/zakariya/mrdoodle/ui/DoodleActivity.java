@@ -4,6 +4,7 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.ColorInt;
@@ -91,6 +92,13 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	private static final float DOODLE_MIN_SCALE = 0.0125f;
 	private static final float DOODLE_MAX_SCALE = 16f;
 
+	private static final String PREFS_NAME = "DoodleActivity";
+	private static final String PREF_KEY_PALETTE_MENU_SELECTION_ID = "PREF_KEY_PALETTE_MENU_SELECTION_ID";
+	private static final String PREF_KEY_TOOL_MENU_SELECTION_ID = "PREF_KEY_TOOL_MENU_SELECTION_ID";
+
+	private static final float DEFAULT_BRUSH_SIZE = 0;
+	private static final boolean DEFAULT_BRUSH_IS_ERASER = false;
+	private static final int DEFAULT_BRUSH_COLOR = 0xFF000000;
 
 	@ColorInt
 	private static final int TOOL_MENU_FILL_COLOR = 0xFF303030;
@@ -118,13 +126,13 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	ImageView lockIconImageView;
 
 	@State
-	int brushColor = 0xFF000000;
+	int brushColor = DEFAULT_BRUSH_COLOR;
 
 	@State
-	float brushSize = 0;
+	float brushSize = DEFAULT_BRUSH_SIZE;
 
 	@State
-	boolean brushIsEraser;
+	boolean brushIsEraser = DEFAULT_BRUSH_IS_ERASER;
 
 	@State
 	String documentUuid;
@@ -227,12 +235,16 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			doodleCanvas.setMinPinchScalingForTap(TWO_FINGER_TAP_MIN_SCALING);
 			doodleCanvas.setDisabledEdgeWidth(getResources().getDimension(R.dimen.doodle_canvas_disabled_touch_edge_width));
 
+			// load the last set brush parameters
+			SharedPreferences prefs = getSharedPreferences();
+			toolFlyoutMenuSelectionId = prefs.getInt(PREF_KEY_TOOL_MENU_SELECTION_ID, toolFlyoutMenuSelectionId);
+			paletteFlyoutMenuSelectionId = prefs.getInt(PREF_KEY_PALETTE_MENU_SELECTION_ID, paletteFlyoutMenuSelectionId);
 		} else {
 			Icepick.restoreInstanceState(this, savedInstanceState);
 			document = DoodleDocument.byUuid(realm, documentUuid);
 		}
 
-		// set a touch deadzone on the edge where the navigation bar is hidden,
+		// set a touch dead zone on the edge where the navigation bar is hidden,
 		// this prevents edge swipes which would reveal the navigation bar from
 		// drawing a line or panning/zooming
 		boolean navigationBarOnRight = isNavigationBarRightOfContent();
@@ -409,6 +421,18 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		releaseDocumentWriteLock();
 		saveDoodleIfEdited();
 		super.onPause();
+	}
+
+	@Override
+	protected void onStop() {
+
+		SharedPreferences prefs = getSharedPreferences();
+		prefs.edit()
+				.putInt(PREF_KEY_PALETTE_MENU_SELECTION_ID, paletteFlyoutMenuSelectionId)
+				.putInt(PREF_KEY_TOOL_MENU_SELECTION_ID, toolFlyoutMenuSelectionId)
+				.apply();
+
+		super.onStop();
 	}
 
 	@Override
@@ -689,6 +713,10 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		}
 
 		getWindow().getDecorView().setSystemUiVisibility(flags);
+	}
+
+	SharedPreferences getSharedPreferences() {
+		return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 	}
 
 	void updateBrush() {
