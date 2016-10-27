@@ -1,8 +1,7 @@
 #Currently
 
 - AlertDialog theme on Nougat isn't being applied correctly
-
-- Figure out how to show the about/syncsettings/modeloverview as dialogs not fullscreen activities
+- Remember the pen and color used previously when loading DoodleActivity
 
 #UX
 
@@ -22,6 +21,12 @@ java.lang.RuntimeException: Could not dispatch event: class org.zakariya.mrdoodl
 	I backgrounded and restored MrDoodle to connect to the server and reset the exponential reconnect timeout. I'm guessing the grid fragment never disconnected from the event bus????
 
 #TODO
+
+- Figure out how to show the about/syncsettings/modeloverview as dialogs not fullscreen activities when on tablet
+	- it looks like the supported way to do this is with a fragment dialog
+	- this means those items would have to be fragments, not activities
+	- need to maintain state on rotation, since the dialogs would just disappear
+	-
 
 - Alpha Blending
 	Will require 3 new full-screen bitmaps.

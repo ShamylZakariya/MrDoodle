@@ -15,8 +15,8 @@
 	<dimen name="tab_indicator_height">4dp</dimen>
 
 	<dimen name="max_doodle_grid_item_size">360dp</dimen>
-	<dimen name="doodle_grid_item_edge_width">4dp</dimen>
-	<dimen name="doodle_grid_item_edge_dash_length">4dp</dimen>
+	<dimen name="doodle_grid_item_edge_width">8dp</dimen>
+	<dimen name="doodle_grid_item_edge_dash_length">0dp</dimen>
 	<dimen name="doodle_grid_item_border_width">8dp</dimen>
 	<dimen name="doodle_grid_item_thumbnail_padding">32dp</dimen>
 

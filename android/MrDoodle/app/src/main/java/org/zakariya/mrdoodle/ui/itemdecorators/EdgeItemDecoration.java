@@ -117,8 +117,6 @@ public class EdgeItemDecoration extends RecyclerView.ItemDecoration {
 				break;
 			}
 
-
-			// TODO fmod to offset y to make dashes track scroll position
 			float x0 = columnLeft;
 			float y0 = top;
 			float x1 = columnLeft;
