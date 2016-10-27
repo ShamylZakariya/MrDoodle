@@ -483,7 +483,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		}
 
 		// debounce save
-		doodleEditSaveDebouncer.send(null);
+		doodleEditSaveDebouncer.send();
 	}
 
 	///////////////////////////////////////////////////////////////////

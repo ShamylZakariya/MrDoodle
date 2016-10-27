@@ -34,6 +34,10 @@ public class Debouncer<T> {
 		subscription = observable.subscribe(callable);
 	}
 
+	public void send() {
+		send(null);
+	}
+
 	public void send(T o) {
 		bus.onNext(o);
 	}

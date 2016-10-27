@@ -377,7 +377,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 */
 	public void markLocalDocumentModification(String id, String type) {
 		getChangeJournal().markModified(id, type);
-		localChangeSyncTriggerDebouncer.send(null);
+		localChangeSyncTriggerDebouncer.send();
 	}
 
 	/**
@@ -388,7 +388,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	 */
 	public void markLocalDocumentDeletion(String id, String type) {
 		getChangeJournal().markDeleted(id, type);
-		localChangeSyncTriggerDebouncer.send(null);
+		localChangeSyncTriggerDebouncer.send();
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -453,7 +453,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 			// we're currently syncing - try again in the future. the debouncer will
 			// re-call this method in LOCAL_UPDATE_SYNC_TRIGGER_DEBOUNCE_MILLIS
 			Log.i(TAG, "triggerBackgroundSyncForLocalStatusChange: sync in progress, scheduling re-attempt...");
-			localChangeSyncTriggerDebouncer.send(null);
+			localChangeSyncTriggerDebouncer.send();
 		}
 	}
 
@@ -596,7 +596,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 		// check if we have any need to push journaled changes upstream
 		if (!getChangeJournal().isEmpty()) {
-			localChangeSyncTriggerDebouncer.send(null);
+			localChangeSyncTriggerDebouncer.send();
 		}
 	}
 
