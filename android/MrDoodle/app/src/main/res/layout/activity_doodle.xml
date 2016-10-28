@@ -25,16 +25,16 @@
 		android:theme="@style/AppTheme.AppBarOverlay">
 
 		<android.support.v7.widget.Toolbar
+			android:id="@+id/toolbar"
 			xmlns:android="http://schemas.android.com/apk/res/android"
 			xmlns:app="http://schemas.android.com/apk/res-auto"
-			android:id="@+id/toolbar"
-			android:background="@color/primary"
-			app:theme="@style/AppTheme.Toolbar"
-			app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
-			app:titleTextAppearance="@style/AppTheme.Toolbar.Title"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:minHeight="?attr/actionBarSize">
+			android:background="@color/primary"
+			android:minHeight="?attr/actionBarSize"
+			app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+			app:theme="@style/AppTheme.Toolbar"
+			app:titleTextAppearance="@style/AppTheme.Toolbar.Title">
 
 			<android.support.design.widget.TextInputLayout
 				android:id="@+id/titleEditTextLayout"
@@ -115,10 +115,10 @@
 				android:id="@+id/toolSelectorFlyoutMenu"
 				android:layout_width="@dimen/doodle_drawing_tool_button_size"
 				android:layout_height="@dimen/doodle_drawing_tool_button_size"
+				android:layout_marginBottom="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginLeft="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginRight="@dimen/doodle_drawing_tool_button_margin"
 				android:layout_marginTop="@dimen/doodle_drawing_tool_button_margin"
-				android:layout_marginBottom="@dimen/doodle_drawing_tool_button_margin"
 				app:fmMenuAnchor="left"
 				/>
 

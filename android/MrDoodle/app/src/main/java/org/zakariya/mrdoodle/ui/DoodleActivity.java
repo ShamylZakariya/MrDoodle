@@ -24,6 +24,7 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -262,48 +263,8 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		assert doodle != null;
 		setupDoodle(doodle);
 
-		//
 		// set up the document title edit text
-		//
-
-		titleEditText.setText(document.getName());
-		titleEditText.addTextChangedListener(new TextWatcher() {
-			@Override
-			public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-			}
-
-			@Override
-			public void onTextChanged(CharSequence s, int start, int before, int count) {
-			}
-
-			@Override
-			public void afterTextChanged(Editable s) {
-				setDocumentName(s.toString());
-			}
-		});
-
-		titleEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-			@Override
-			public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-				if (actionId == EditorInfo.IME_ACTION_DONE) {
-					v.clearFocus();
-					goFullscreen();
-					return true;
-				} else {
-					return false;
-				}
-			}
-		});
-
-		titleEditText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-			@Override
-			public void onFocusChange(View v, boolean hasFocus) {
-				if (!hasFocus) {
-					hideKeyboard(v);
-					goFullscreen();
-				}
-			}
-		});
+		configureTitleEditText();
 
 		// build our menus
 		configureToolFlyoutMenu();
@@ -457,6 +418,38 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		if (hasFocus) {
 			goFullscreen();
 		}
+	}
+
+	@Override
+	public boolean dispatchTouchEvent(MotionEvent ev) {
+		View v = getCurrentFocus();
+		if (v != null &&
+				v == titleEditText
+				&& (ev.getAction() == MotionEvent.ACTION_DOWN)) {
+
+			int editTextScreenCoords[] = new int[2];
+			v.getLocationOnScreen(editTextScreenCoords);
+
+			float x = ev.getRawX();
+			float y = ev.getRawY();
+
+			if (x < editTextScreenCoords[0] || x > (editTextScreenCoords[0] + v.getWidth()) || y < editTextScreenCoords[1] || y > (editTextScreenCoords[1] + v.getHeight())) {
+
+				// user tapped outside the edit text
+				titleEditText.clearFocus();
+				hideKeyboard();
+
+				// if user tapped on the doodleView, stop event propagation
+				int doodleViewScreenCoords[] = new int[2];
+				doodleView.getLocationOnScreen(doodleViewScreenCoords);
+				if (x >= doodleViewScreenCoords[0] && x <= (doodleViewScreenCoords[0] + doodleView.getWidth()) &&
+						y >= doodleViewScreenCoords[1] && y <= (doodleViewScreenCoords[1] + doodleView.getHeight())) {
+					return false;
+				}
+			}
+		}
+
+		return super.dispatchTouchEvent(ev);
 	}
 
 	@Override
@@ -619,7 +612,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	}
 
 	void setReadOnly(boolean readOnly, boolean animate) {
-		Log.i(TAG, "setReadOnly() called with: readOnly = [" + readOnly + "]");
+		Log.d(TAG, "setReadOnly() called with: readOnly = [" + readOnly + "]");
 
 		this.readOnly = readOnly;
 		doodle.setReadOnly(this.readOnly);
@@ -693,10 +686,12 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		return brushIsEraser;
 	}
 
-	void hideKeyboard(View view) {
-		InputMethodManager manager = (InputMethodManager) view.getContext().getSystemService(INPUT_METHOD_SERVICE);
-		if (manager != null) {
-			manager.hideSoftInputFromWindow(view.getWindowToken(), 0);
+	void hideKeyboard() {
+		if (getWindow() != null && getWindow().getDecorView() != null) {
+			InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+			if (imm != null) {
+				imm.hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0);
+			}
 		}
 	}
 
@@ -774,6 +769,46 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		});
 	}
 
+	private void configureTitleEditText() {
+		titleEditText.setText(document.getName());
+		titleEditText.addTextChangedListener(new TextWatcher() {
+			@Override
+			public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+			}
+
+			@Override
+			public void onTextChanged(CharSequence s, int start, int before, int count) {
+			}
+
+			@Override
+			public void afterTextChanged(Editable s) {
+				setDocumentName(s.toString());
+			}
+		});
+
+		titleEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+			@Override
+			public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+				if (actionId == EditorInfo.IME_ACTION_DONE) {
+					v.clearFocus();
+					goFullscreen();
+					return true;
+				} else {
+					return false;
+				}
+			}
+		});
+
+		titleEditText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+			@Override
+			public void onFocusChange(View v, boolean hasFocus) {
+				if (!hasFocus) {
+					hideKeyboard();
+					goFullscreen();
+				}
+			}
+		});
+	}
 
 	private void configurePaletteFlyoutMenu() {
 
@@ -960,9 +995,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 				public void call(Boolean animate) {
 					boolean readOnly = isReadOnly();
 					boolean paletteVisible = !readOnly && !isBrushEraser();
-
-					Log.i(TAG, "updateFlyoutMenuItems: readOnly: " + readOnly + " isBrushEraser: " + isBrushEraser() + " paletteVisible: " + paletteVisible);
-
 					setViewVisibility(toolSelectorFlyoutMenu, !readOnly, animate);
 					setViewVisibility(paletteFlyoutMenu, paletteVisible, animate);
 				}
