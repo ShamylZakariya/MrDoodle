@@ -6,18 +6,23 @@
 	<color name="primaryLight">#F1FCFC</color>
 	<color name="accent">#F9E900</color>
 	<color name="windowBackground">#ffffff</color>
-	<color name="textColor">#326562</color>
-	<color name="textColorLight">#649390</color>
-	<color name="toolbarTextColor">@color/textColor</color>
-	<color name="toolbarTextColorLight">@color/textColor</color>
-	<color name="toolbarIconColor">@color/textColor</color>
+	<color name="textColor">#263238</color>
+	<color name="textColorLight">#78909c</color>
+	<color name="toolbarTextColor">#326562</color>
+	<color name="toolbarTextColorLight">#326562</color>
+	<color name="toolbarIconColor">#326562</color>
+
+	<color name="tabSelectedTextColor">#326562</color>
+	<color name="tabTextColor">#8b326562</color>
+
+
 	<color name="rule">#deeded</color>
 	<color name="placeholderIconTint">#649390</color>
 	<color name="doodleGridBackgroundColor">@color/primaryLight</color>
 	<color name="doodleBackground">#FFFFFFFF</color>
 	<color name="trouble">#e24e2a</color>
 
-	<color name="alertDialogText">#323232</color>
+	<color name="alertDialogText">@color/textColor</color>
 	<color name="alertDialogAccent">@color/primaryDark</color>
 
 	<color name="snackbarText">@color/windowBackground</color>

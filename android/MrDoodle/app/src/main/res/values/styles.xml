@@ -72,6 +72,11 @@
 		<item name="android:textColor">@color/textColor</item>
 	</style>
 
+	<style name="Caption" parent="TextAppearance.AppCompat.Caption">
+		<item name="android:textColor">@color/textColor</item>
+	</style>
+
+
 	<style name="ImmersiveAppBarEditText" parent="Widget.AppCompat.EditText">
 		<item name="colorControlNormal">@color/primaryDark</item>
 		<item name="colorControlActivated">@color/textColor</item>

@@ -19,16 +19,17 @@
 
 		<TextView
 			android:id="@+id/syncDateTextView"
-			style="@style/Base.TextAppearance.AppCompat.Body2"
+			style="@style/Body2"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
 			tools:text="9:30 AM Sept 13 2016"/>
 
 		<TextView
 			android:id="@+id/syncSuccessTextView"
-			style="@style/Base.TextAppearance.AppCompat.Caption"
+			style="@style/Caption"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
+			android:textColor="@color/textColorLight"
 			tools:text="Success"/>
 
 	</LinearLayout>
