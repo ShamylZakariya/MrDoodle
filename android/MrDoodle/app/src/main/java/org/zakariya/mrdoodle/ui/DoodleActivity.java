@@ -17,6 +17,7 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.Toolbar;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
@@ -782,7 +783,19 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 			@Override
 			public void afterTextChanged(Editable s) {
-				setDocumentName(s.toString());
+
+				String title = s.toString();
+
+				// disallow empty titles
+				if (TextUtils.isEmpty(title)) {
+					title = getString(R.string.untitled_document);
+					titleEditText.setText(title);
+				}
+
+				setDocumentName(title);
+
+				// since the name has changed, resized the edit text
+				titleEditText.requestLayout();
 			}
 		});
 
