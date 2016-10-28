@@ -1,11 +1,5 @@
 #UX
 
-- Tapping outside the DoodleActivity appbar edit text should commit/dismiss keyboard and NOT draw on canvas
-	the setOnFocusChangeListener no longer gets called. I've put clickable and focuableInTouchMode values in various parent elements, per StackOverflow discussions, but it just doesn't seem to work. I'm thinking the thing to do is to put a full-screen view over the canvas which is clickable/focusable, and is only VISIBLE when the edit text is active. It can gobble taps.
-	http://stackoverflow.com/questions/20713273/dismiss-keyboard-when-click-outside-of-edittext-in-android
-
-- Title edit text doesn't grow to fit long titles
-
 - Sync Settings
 	Move Status/Model/Sync/Reset&Sync to a menu
 	Rethink UI, make it look more "account page"
