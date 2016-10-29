@@ -9,6 +9,7 @@ import org.zakariya.mrdoodle.util.EmulatorDetection;
 public class SyncConfiguration {
 
 	private boolean isEmulator;
+	private String userAgent;
 
 	public SyncConfiguration() {
 		this(EmulatorDetection.isEmulator());
@@ -40,4 +41,11 @@ public class SyncConfiguration {
 		return "ws://" + getSyncServerHost() + getApiPath() + "/connect/";
 	}
 
+	public String getUserAgent() {
+		return userAgent;
+	}
+
+	public void setUserAgent(String userAgent) {
+		this.userAgent = userAgent;
+	}
 }

@@ -3,15 +3,9 @@
 - switch placeholder graphics from PNGs to vector
 - update GSM deps
 
-- Use the canonical build # as a header in HTTP calls
 - Add a killswitch file on another server, say, shamylzakariya.github.io. it would be a JSON file with contents like: {
 	"discontinued": null || "MrDoodle sync services have been discontinued, sorry"
 }
-
-- MainActivity
-	Put a sync status type icon in the header?
-		what does it show? Would it encourage signing in for sync when not signed in?
-
 
 #NEXT
 Landscape layout for sync settings, about screen

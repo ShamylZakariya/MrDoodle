@@ -125,7 +125,9 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		SignInManager.init(new MockSignInTechnique(this));
 
 		// build the sync manager, providing mechanism for serializing/de-serializing our model type
-		SyncManager.init(this, new SyncConfiguration(), new SyncModelAdapter());
+		SyncConfiguration configuration = new SyncConfiguration();
+		configuration.setUserAgent("MrDoodle-" + getVersionString());
+		SyncManager.init(this, configuration, new SyncModelAdapter());
 
 		// set up notifier to let change journal capture model events
 		localChangeListener = new LocalChangeListener(SyncManager.getInstance());

@@ -70,10 +70,12 @@ public class SyncApi {
 	private String deviceId;
 	private SyncApiService syncApiService;
 	private boolean syncing;
+	private String userAgentString;
 
 	public SyncApi(Context context, SyncConfiguration syncConfiguration) {
 		this.context = context;
 		this.syncConfiguration = syncConfiguration;
+		this.userAgentString = syncConfiguration.getUserAgent();
 
 		// set up an interceptor to add Authorization headers
 		OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
@@ -82,7 +84,7 @@ public class SyncApi {
 			public okhttp3.Response intercept(Chain chain) throws IOException {
 				Request original = chain.request();
 				Request.Builder builder = original.newBuilder()
-						.header(SyncApiService.REQUEST_HEADER_USER_AGENT, "MrDoodle");
+						.header(SyncApiService.REQUEST_HEADER_USER_AGENT, userAgentString);
 
 				String authToken = getAuthorizationToken();
 				if (!TextUtils.isEmpty(authToken)) {
