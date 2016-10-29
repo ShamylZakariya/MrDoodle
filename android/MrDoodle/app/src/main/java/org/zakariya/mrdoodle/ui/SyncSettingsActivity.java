@@ -1,11 +1,17 @@
 package org.zakariya.mrdoodle.ui;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.DrawableRes;
+import android.support.annotation.MenuRes;
 import android.support.annotation.Nullable;
 import android.support.annotation.StringRes;
 import android.support.v4.app.NavUtils;
+import android.support.v4.view.ViewCompat;
+import android.support.v4.view.ViewPropertyAnimatorCompat;
 import android.support.v7.app.ActionBar;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
@@ -18,10 +24,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.squareup.otto.Subscribe;
 import com.squareup.picasso.Picasso;
 
+import org.zakariya.mrdoodle.BuildConfig;
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.net.SyncApi;
@@ -38,6 +46,7 @@ import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.model.SyncLogEntry;
 import org.zakariya.mrdoodle.util.BusProvider;
+import org.zakariya.mrdoodle.util.Debouncer;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
 
 import java.text.DateFormat;
@@ -54,6 +63,7 @@ import rx.Observable;
 import rx.Observer;
 import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
 /**
@@ -63,6 +73,8 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	private static final String TAG = "SyncSettingsActivity";
 	private static final int RC_GET_SIGN_IN = 1;
+	private static final int CONNECTION_STATUS_TOAST_DEBOUNCE_MILLIS = 250;
+	private static final long ANIMATION_DURATION_MILLIS = 250;
 
 	@Bind(R.id.toolbar)
 	Toolbar toolbar;
@@ -88,14 +100,17 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Bind(R.id.syncHistoryRecyclerView)
 	RecyclerView syncHistoryRecyclerView;
 
-	@Bind(R.id.connectedTextView)
-	TextView connectedTextView;
-
+	MenuItem toggleServerConnectionMenuItem;
+	MenuItem getRemoteStatusMenuItem;
+	MenuItem syncNowMenuItem;
+	MenuItem resetAndSyncMenuItem;
 	MenuItem signOutMenuItem;
+	MenuItem connectionStatusMenuItem;
 
 	Realm realm;
 	SyncLogAdapter syncLogAdapter;
 	Subscription syncSubscription;
+	Debouncer<String> connectionStatusToastDebouncer;
 
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -106,8 +121,8 @@ public class SyncSettingsActivity extends BaseActivity {
 		BusProvider.getMainThreadBus().register(this);
 
 		setSupportActionBar(toolbar);
-		syncToCurrentSignedInState();
-		syncToCurrentServerConnectionState();
+		showCurrentSignedInState(false);
+		showCurrentServerConnectionState();
 
 		ActionBar actionBar = getSupportActionBar();
 		if (actionBar != null) {
@@ -137,6 +152,10 @@ public class SyncSettingsActivity extends BaseActivity {
 			syncSubscription.unsubscribe();
 		}
 
+		if (connectionStatusToastDebouncer != null) {
+			connectionStatusToastDebouncer.destroy();
+		}
+
 		BusProvider.getMainThreadBus().unregister(this);
 		syncLogAdapter.onDestroy();
 		realm.close();
@@ -146,17 +165,57 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.menu_sync, menu);
+
+		@MenuRes int menuId = BuildConfig.DEBUG ? R.menu.menu_sync_debug : R.menu.menu_sync;
+		inflater.inflate(menuId, menu);
+
 		signOutMenuItem = menu.findItem(R.id.menuItemSignOut);
-		syncToCurrentSignedInState();
+		connectionStatusMenuItem = menu.findItem(R.id.menuItemConnectionStatus);
+		toggleServerConnectionMenuItem = menu.findItem(R.id.menuItemToggleServerConnection);
+		getRemoteStatusMenuItem = menu.findItem(R.id.menuItemGetSyncServerStatus);
+		syncNowMenuItem = menu.findItem(R.id.menuItemSyncNow);
+		resetAndSyncMenuItem = menu.findItem(R.id.menuItemResetAndSync);
+
+		showCurrentSignedInState(false);
+		showCurrentServerConnectionState();
+
 		return true;
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
+
+			case R.id.menuItemConnectionStatus:
+				showCurrentServerConnectionState();
+				return true;
+
 			case R.id.menuItemSignOut:
-				signOut();
+				querySignOut();
+				return true;
+
+			case R.id.menuItemToggleServerConnection:
+				if (isConnectedToServer()) {
+					disconnect();
+				} else {
+					connect();
+				}
+				return true;
+
+			case R.id.menuItemGetSyncServerStatus:
+				remoteStatus();
+				return true;
+
+			case R.id.menuItemShowModelOverview:
+				showModelOverview();
+				return true;
+
+			case R.id.menuItemSyncNow:
+				syncNow();
+				return true;
+
+			case R.id.menuItemResetAndSync:
+				queryResetAndSync();
 				return true;
 
 			case android.R.id.home:
@@ -191,21 +250,18 @@ public class SyncSettingsActivity extends BaseActivity {
 		}
 	}
 
-	@OnClick(R.id.connectButton)
 	void connect() {
-		Log.i(TAG, "connect: connecting to sync server");
+		Log.d(TAG, "connect: connecting to sync server");
 		SyncManager.getInstance().getSyncServerConnection().connect();
 	}
 
-	@OnClick(R.id.disconnectButton)
 	void disconnect() {
-		Log.i(TAG, "disconnect: disconnecting from sync server");
+		Log.d(TAG, "disconnect: disconnecting from sync server");
 		SyncManager.getInstance().getSyncServerConnection().disconnect();
 	}
 
-	@OnClick(R.id.statusButton)
 	void remoteStatus() {
-		Log.i(TAG, "remoteStatus: getting remoteStatus from sync server");
+		Log.d(TAG, "remoteStatus: getting remoteStatus from sync server");
 
 		SyncManager syncManager = SyncManager.getInstance();
 		SyncApi syncApi = syncManager.getSyncApi();
@@ -226,7 +282,6 @@ public class SyncSettingsActivity extends BaseActivity {
 					.subscribe(new Observer<Response<RemoteStatus>>() {
 						@Override
 						public void onCompleted() {
-							Log.i(TAG, "onCompleted: ");
 						}
 
 						@Override
@@ -237,7 +292,7 @@ public class SyncSettingsActivity extends BaseActivity {
 						@Override
 						public void onNext(Response<RemoteStatus> statusResponse) {
 							if (statusResponse.isSuccessful()) {
-								Log.i(TAG, "remoteStatus() - remoteStatus: " + statusResponse.body());
+								Log.d(TAG, "remoteStatus() - remoteStatus: " + statusResponse.body());
 							} else {
 								Log.e(TAG, "remoteStatus() - failed, code; " + statusResponse.code() + " message: " + statusResponse.message());
 							}
@@ -246,23 +301,20 @@ public class SyncSettingsActivity extends BaseActivity {
 		}
 	}
 
-	@OnClick(R.id.modelOverviewButton)
 	void showModelOverview() {
-		Log.i(TAG, "showModelOverview:");
 		startActivity(new Intent(this, ModelOverviewActivity.class));
 	}
 
-	@OnClick(R.id.syncNowButton)
 	void syncNow() {
 
 		SyncManager syncManager = SyncManager.getInstance();
 		if (syncManager.isSyncing()) {
-			Log.i(TAG, "syncNow: currently syncing, never mind...");
+			Log.d(TAG, "syncNow: currently syncing, never mind...");
 			return;
 		}
 
 		if (!syncManager.isConnected()) {
-			Log.i(TAG, "syncNow: not connected to server...");
+			Log.d(TAG, "syncNow: not connected to server...");
 			return;
 		}
 
@@ -281,22 +333,35 @@ public class SyncSettingsActivity extends BaseActivity {
 
 					@Override
 					public void onNext(SyncReport syncReport) {
-						Log.i(TAG, "sync - onNext: SUCCESS, I GUESS. syncReport: " + syncReport);
+						Log.d(TAG, "sync - onNext: SUCCESS - syncReport: " + syncReport);
 					}
 				});
 	}
 
-	@OnClick(R.id.resetAndSyncButton)
+	void queryResetAndSync() {
+		new AlertDialog.Builder(this)
+			.setTitle(R.string.reset_and_sync_dialog_title)
+			.setMessage(R.string.reset_and_sync_dialog_message)
+			.setPositiveButton(R.string.reset_and_sync_dialog_positive_action_title, new DialogInterface.OnClickListener() {
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+					resetAndSync();
+				}
+			})
+			.setNegativeButton(android.R.string.cancel, null)
+			.show();
+	}
+
 	void resetAndSync() {
 
 		SyncManager syncManager = SyncManager.getInstance();
 		if (syncManager.isSyncing()) {
-			Log.i(TAG, "syncNow: currently syncing, never mind...");
+			Log.d(TAG, "syncNow: currently syncing, never mind...");
 			return;
 		}
 
 		if (!syncManager.isConnected()) {
-			Log.i(TAG, "resetAndSync: not connected to server...");
+			Log.d(TAG, "resetAndSync: not connected to server...");
 			return;
 		}
 
@@ -324,7 +389,7 @@ public class SyncSettingsActivity extends BaseActivity {
 
 					@Override
 					public void onNext(SyncReport syncReport) {
-						Log.i(TAG, "resetAndSync - onNext: SUCCESS, I GUESS. syncReport: " + syncReport);
+						Log.d(TAG, "resetAndSync - onNext: SUCCESS - syncReport: " + syncReport);
 					}
 				});
 	}
@@ -337,104 +402,171 @@ public class SyncSettingsActivity extends BaseActivity {
 		syncLogAdapter.notifyDataSetChanged();
 	}
 
+	void querySignOut() {
+		new AlertDialog.Builder(this)
+				.setTitle(R.string.sign_out_dialog_title)
+				.setMessage(R.string.sign_out_dialog_message)
+				.setPositiveButton(R.string.sign_out_dialog_positive_action_title, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						signOut();
+					}
+				})
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
+	}
+
 	void signOut() {
 		SignInManager.getInstance().signOut();
 	}
 
 	@Subscribe
 	public void onSignedIn(SignInEvent event) {
-		showSignedInState(event.getAccount());
+		showCurrentSignedInState(true);
 	}
 
 	@Subscribe
 	public void onSignedOut(SignOutEvent event) {
-		showSignedOutState();
+		showCurrentSignedInState(true);
 	}
 
 	@Subscribe
 	public void onSyncServerConnectionStatusChanged(SyncServerConnectionStatusEvent event) {
 
-		@StringRes int textId = 0;
+		@StringRes int statusRes = 0;
+		@DrawableRes int iconRes = 0;
+		boolean connected = false;
 
 		switch (event.getStatus()) {
 			case DISCONNECTED:
-				textId = R.string.sync_server_connection_status_disconnected;
+				statusRes = R.string.sync_server_connection_status_disconnected;
+				iconRes = R.drawable.ic_sync_disconnected;
 				break;
+
 			case CONNECTING:
-				textId = R.string.sync_server_connection_status_connecting;
+				statusRes = R.string.sync_server_connection_status_connecting;
+				iconRes = R.drawable.ic_sync_connecting;
 				break;
+
 			case AUTHORIZING:
-				textId = R.string.sync_server_connection_status_authorizing;
+				statusRes = R.string.sync_server_connection_status_authorizing;
+				iconRes = R.drawable.ic_sync_connecting;
 				break;
+
 			case CONNECTED:
-				textId = R.string.sync_server_connection_status_connected;
+				statusRes = R.string.sync_server_connection_status_connected;
+				iconRes = R.drawable.ic_sync_connected;
+				connected = true;
 				break;
 		}
 
-		Log.d(TAG, "onSyncServerConnectionStatusChanged: " + getString(textId));
-		connectedTextView.setText(textId);
+		if (connectionStatusMenuItem != null) {
+			connectionStatusMenuItem.setIcon(iconRes);
+		}
+
+		if (toggleServerConnectionMenuItem != null) {
+			toggleServerConnectionMenuItem.setTitle(connected ? R.string.sync_menu_disconnect : R.string.sync_menu_connect);
+		}
+
+
+		if (connectionStatusToastDebouncer == null) {
+			connectionStatusToastDebouncer = new Debouncer<>(CONNECTION_STATUS_TOAST_DEBOUNCE_MILLIS, new Action1<String>() {
+				@Override
+				public void call(String s) {
+					Toast.makeText(SyncSettingsActivity.this, s, Toast.LENGTH_SHORT).show();
+				}
+			});
+		}
+
+		connectionStatusToastDebouncer.send(getString(statusRes));
 	}
 
 
-	private void syncToCurrentSignedInState() {
+	private void showCurrentSignedInState(boolean animate) {
+
 		SignInAccount account = SignInManager.getInstance().getAccount();
-		if (account != null) {
-			showSignedInState(account);
-		} else {
-			showSignedOutState();
+		boolean signedIn = account != null;
+
+		showView(signedInView, signedIn, animate);
+		showView(signedOutView, !signedIn, animate);
+
+		if (signedIn) {
+			Picasso.with(this).load(account.getPhotoUrl()).into(avatarImageView);
+			userEmailTextView.setText(account.getEmail());
+			userNameTextView.setText(account.getDisplayName());
+			userIdTextView.setText(getString(R.string.user_id_text_view, account.getId()));
+		}
+
+		// this can be called from onCreate - and menu isn't available yet
+		if (signOutMenuItem != null) {
+			signOutMenuItem.setVisible(signedIn);
+		}
+
+		// these items are only defined in the debug menu
+		if (toggleServerConnectionMenuItem != null) {
+			toggleServerConnectionMenuItem.setVisible(signedIn);
+			getRemoteStatusMenuItem.setVisible(signedIn);
+			syncNowMenuItem.setVisible(signedIn);
+			resetAndSyncMenuItem.setVisible(signedIn);
+			connectionStatusMenuItem.setVisible(signedIn);
 		}
 	}
 
-	private void syncToCurrentServerConnectionState() {
+	private void showView(final View v, boolean visible, boolean animate) {
+		if (animate) {
+
+			if (visible) {
+				v.setVisibility(View.VISIBLE);
+			}
+
+			ViewPropertyAnimatorCompat animator = ViewCompat.animate(v)
+					.alpha(visible ? 1 : 0)
+					.setDuration(ANIMATION_DURATION_MILLIS);
+
+			if (!visible) {
+				animator.withEndAction(new Runnable() {
+					@Override
+					public void run() {
+						v.setVisibility(View.GONE);
+					}
+				});
+			}
+
+		} else {
+			v.setVisibility(visible ? View.VISIBLE : View.GONE);
+		}
+	}
+
+
+	private boolean isConnectedToServer() {
+		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
+		if (connection != null) {
+			return connection.isConnected();
+		} else {
+			return false;
+		}
+	}
+
+	private void showCurrentServerConnectionState() {
 		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
 
-		boolean connected = false;
-		@StringRes int textId = 0;
+		SyncServerConnectionStatusEvent.Status status = SyncServerConnectionStatusEvent.Status.DISCONNECTED;
 		if (connection.isConnecting()) {
-			textId = R.string.sync_server_connection_status_connecting;
+			status = SyncServerConnectionStatusEvent.Status.CONNECTING;
 		} else if (connection.isConnected()) {
 			if (connection.isAuthenticating()) {
-				textId = R.string.sync_server_connection_status_authorizing;
+				status = SyncServerConnectionStatusEvent.Status.AUTHORIZING;
 			} else if (connection.isAuthenticated()) {
-				textId = R.string.sync_server_connection_status_connected;
-				connected = true;
+				status = SyncServerConnectionStatusEvent.Status.CONNECTED;
 			}
-		} else {
-			textId = R.string.sync_server_connection_status_disconnected;
 		}
 
-		if (textId != 0) {
-			connectedTextView.setText(textId);
-		}
-	}
-
-	void showSignedOutState() {
-		signedInView.setVisibility(View.GONE);
-		signedOutView.setVisibility(View.VISIBLE);
-
-		if (signOutMenuItem != null) {
-			signOutMenuItem.setVisible(false);
-		}
-	}
-
-	void showSignedInState(SignInAccount account) {
-		signedInView.setVisibility(View.VISIBLE);
-		signedOutView.setVisibility(View.GONE);
-
-		if (signOutMenuItem != null) {
-			signOutMenuItem.setVisible(true);
-		}
-
-		Picasso.with(this).load(account.getPhotoUrl()).into(avatarImageView);
-		userEmailTextView.setText(account.getEmail());
-		userNameTextView.setText(account.getDisplayName());
-		userIdTextView.setText(getString(R.string.user_id_text_view, account.getId()));
+		onSyncServerConnectionStatusChanged(new SyncServerConnectionStatusEvent(status));
 	}
 
 	void showSyncLogEntryDetail(SyncLogEntry entry) {
 		startActivity(SyncLogEntryDetailActivity.getIntent(this, entry.getUuid()));
 	}
-
 
 	///////////////////////////////////////////////////////////////////
 

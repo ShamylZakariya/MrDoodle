@@ -95,5 +95,18 @@
 	<string name="dialog_delete_doodle_positive_button_title">Delete</string>
 	<string name="deleted_document_explanation_title">Deleted</string>
 	<string name="deleted_document_explanation_message">This doodle has been deleted on another device</string>
+	<string name="sync_menu_connect">Connect</string>
+	<string name="sync_menu_disconnect">Disconnect</string>
+	<string name="sync_menu_status">Status</string>
+	<string name="sync_menu_show_model_overview">Show Model Overview</string>
+	<string name="sync_menu_sync_now">Sync</string>
+	<string name="sync_menu_reset_and_sync">Reset &amp; Sync</string>
+	<string name="reset_and_sync_dialog_title">Reset &amp; Sync?</string>
+	<string name="reset_and_sync_dialog_message">This will delete all local data, and will then pull the current sync state from the server.</string>
+	<string name="reset_and_sync_dialog_positive_action_title">Reset &amp; Sync</string>
+	<string name="sign_out_dialog_title">Sign Out?</string>
+	<string name="sign_out_dialog_message">Signing out will disable sync with other devices, however no data will be lost.</string>
+	<string name="sign_out_dialog_positive_action_title">Sign Out</string>
+	<string name="connection_status">connection status</string>
 
 </resources>

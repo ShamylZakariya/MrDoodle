@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
+
+	<item android:id="@+id/menuItemConnectionStatus"
+	      android:icon="@drawable/ic_sync_disconnected"
+	      android:title="@string/connection_status"
+	      app:showAsAction="always"/>
+
+	<item android:id="@+id/menuItemShowModelOverview"
+	      android:title="@string/sync_menu_show_model_overview"
+	      android:icon="@drawable/ic_model"
+	      app:showAsAction="ifRoom"/>
+
+	<item android:id="@+id/menuItemToggleServerConnection"
+	      android:title="@string/sync_menu_connect"
+	      app:showAsAction="never"/>
+
+	<item android:id="@+id/menuItemGetSyncServerStatus"
+	      android:title="@string/sync_menu_status"
+	      app:showAsAction="never"/>
+
+	<item android:id="@+id/menuItemSyncNow"
+	      android:title="@string/sync_menu_sync_now"
+	      app:showAsAction="never"/>
+
+	<item android:id="@+id/menuItemResetAndSync"
+	      android:title="@string/sync_menu_reset_and_sync"
+	      app:showAsAction="never"/>
+
+	<item android:id="@+id/menuItemSignOut"
+	      android:title="@string/sync_menu_sign_out"
+	      android:orderInCategory="100"
+	      app:showAsAction="never"/>
+
+</menu>

@@ -2,12 +2,12 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
       xmlns:app="http://schemas.android.com/apk/res-auto">
 
-	<item android:id="@+id/menuItemSync"
+	<item android:id="@+id/menuItemShowSyncSettings"
 	      android:title="@string/menu_item_sync"
 	      android:orderInCategory="100"
 	      app:showAsAction="never"/>
 
-	<item android:id="@+id/menuItemAbout"
+	<item android:id="@+id/menuItemShowAbout"
 	      android:title="@string/menu_item_about"
 	      android:orderInCategory="101"
 	      app:showAsAction="never"/>

@@ -46,6 +46,7 @@
 				android:layout_height="wrap_content"
 				android:layout_gravity="center_vertical|center_horizontal"
 				/>
+
 		</LinearLayout>
 
 		<LinearLayout
@@ -68,14 +69,14 @@
 
 				<org.zakariya.mrdoodle.ui.view.CircularImageView
 					android:id="@+id/avatarImageView"
-					android:layout_width="48dp"
-					android:layout_height="48dp"/>
+					android:layout_width="96dp"
+					android:layout_height="96dp"/>
 
 				<LinearLayout
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
 					android:layout_gravity="start|center_vertical"
-					android:layout_marginStart="8dp"
+					android:layout_marginStart="16dp"
 					android:layout_weight="1"
 					android:orientation="vertical">
 
@@ -103,76 +104,6 @@
 						/>
 
 				</LinearLayout>
-
-			</LinearLayout>
-
-			<TextView
-				android:id="@+id/connectedTextView"
-				style="@style/Body1"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:layout_gravity="center_vertical"
-				android:paddingLeft="@dimen/activity_horizontal_margin"
-				android:paddingRight="@dimen/activity_horizontal_margin"
-				tools:text="Connected"
-				/>
-
-			<LinearLayout
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:orientation="horizontal"
-				android:paddingBottom="@dimen/activity_vertical_margin"
-				android:paddingLeft="@dimen/activity_horizontal_margin"
-				android:paddingRight="@dimen/activity_horizontal_margin"
-				android:paddingTop="@dimen/activity_vertical_margin">
-
-				<Button
-					android:id="@+id/connectButton"
-					style="@style/Widget.AppCompat.Button"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:text="Connect"
-					android:visibility="gone"/>
-
-				<Button
-					android:id="@+id/disconnectButton"
-					style="@style/Widget.AppCompat.Button"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:text="Disconnect"
-					android:visibility="gone"/>
-
-				<Button
-					android:id="@+id/statusButton"
-					style="@style/Widget.AppCompat.Button"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:text="Status"
-					android:visibility="visible"/>
-
-				<Button
-					android:id="@+id/modelOverviewButton"
-					style="@style/Widget.AppCompat.Button"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:text="Model"
-					android:visibility="visible"/>
-
-				<Button
-					android:id="@+id/syncNowButton"
-					style="@style/Widget.AppCompat.Button"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:text="@string/sync_now_button"
-					android:visibility="visible"/>
-
-				<Button
-					android:id="@+id/resetAndSyncButton"
-					style="@style/Widget.AppCompat.Button"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:text="@string/sync_reset_button"
-					android:visibility="visible"/>
 
 			</LinearLayout>
 

@@ -1,5 +1,11 @@
 #UX
 
+- Make a method on MrDoodleApplication that returns the canonical build #, and use that elsewhere in app
+- Use the canonical build # as a header in HTTP calls
+- Add a killswitch file on another server, say, shamylzakariya.github.io. it would be a JSON file with contents like: {
+	"discontinued": null || "MrDoodle sync services have been discontinued, sorry"
+}
+
 - Sync Settings
 	Move Status/Model/Sync/Reset&Sync to a menu
 	Rethink UI, make it look more "account page"

@@ -167,11 +167,11 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-			case R.id.menuItemSync:
+			case R.id.menuItemShowSyncSettings:
 				showSync();
 				return true;
 
-			case R.id.menuItemAbout:
+			case R.id.menuItemShowAbout:
 				showAbout();
 				return true;
 
