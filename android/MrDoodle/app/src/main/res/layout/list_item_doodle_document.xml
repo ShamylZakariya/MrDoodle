@@ -20,7 +20,7 @@
 		android:layout_height="match_parent"
 		android:background="@color/windowBackground"
 		android:scaleType="center"
-		android:src="@drawable/placeholder_rendering_thumbnail"
+		android:src="@drawable/thumbnail_placeholder"
 		android:tint="@color/placeholderIconTint"
 		tools:ignore="ContentDescription"
 		/>

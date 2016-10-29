@@ -3,7 +3,7 @@
 	<color name="primary">#73E9E4</color>
 	<color name="primaryMiddleDark">#6CDDD8</color>
 	<color name="primaryDark">#66D1CC</color>
-	<color name="primaryLight">#bcf4f1</color>
+	<color name="primaryLight">#F1FCFC</color>
 	<color name="accent">#F9E900</color>
 	<color name="windowBackground">#ffffff</color>
 	<color name="textColor">#263238</color>
@@ -17,8 +17,8 @@
 
 
 	<color name="rule">#deeded</color>
-	<color name="placeholderIconTint">#649390</color>
-	<color name="doodleGridBackgroundColor">#F1FCFC</color>
+	<color name="placeholderIconTint">@color/primary</color>
+	<color name="doodleGridBackgroundColor">@color/primaryLight</color>
 	<color name="doodleBackground">#FFFFFFFF</color>
 	<color name="trouble">#e24e2a</color>
 
