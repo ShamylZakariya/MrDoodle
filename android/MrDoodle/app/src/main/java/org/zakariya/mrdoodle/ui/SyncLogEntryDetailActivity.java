@@ -3,7 +3,6 @@ package org.zakariya.mrdoodle.ui;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.ActionBar;
@@ -12,7 +11,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
-import android.util.Log;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -21,7 +19,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import org.zakariya.mrdoodle.BuildConfig;
 import org.zakariya.mrdoodle.MrDoodleApplication;
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.signin.SignInManager;
@@ -185,14 +182,6 @@ public class SyncLogEntryDetailActivity extends AppCompatActivity {
 
 
 		String versionInfo = MrDoodleApplication.getInstance().getVersionString();
-		try {
-			PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
-			versionInfo = info.versionName + " : " + info.versionCode + " : " + BuildConfig.GitBranch + " : " + BuildConfig.GitHash;
-		} catch (Exception e) {
-			Log.e(TAG, "Unable to extract package info: " + e);
-			versionInfo = "Unable to determine MrDoodle version";
-		}
-
 		String message = getString(R.string.sync_log_entry_detail_send_email_message,
 				versionInfo,
 				syncLogEntry.getDate().toString(),

@@ -81,7 +81,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	public String getVersionString() {
 		try {
 			PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
-			return info.versionName;
+			return info.versionName + " (" + BuildConfig.GitBranch + ")";
 
 		} catch (PackageManager.NameNotFoundException e) {
 			Log.e(TAG, "Unable to get app version info!?");

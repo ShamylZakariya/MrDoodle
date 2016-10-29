@@ -1,6 +1,8 @@
 #UX
 
-- Make a method on MrDoodleApplication that returns the canonical build #, and use that elsewhere in app
+- switch placeholder graphics from PNGs to vector
+- update GSM deps
+
 - Use the canonical build # as a header in HTTP calls
 - Add a killswitch file on another server, say, shamylzakariya.github.io. it would be a JSON file with contents like: {
 	"discontinued": null || "MrDoodle sync services have been discontinued, sorry"
