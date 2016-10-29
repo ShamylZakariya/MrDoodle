@@ -1,4 +1,4 @@
-#UX
+#CURRENTLY
 
 - switch placeholder graphics from PNGs to vector
 - update GSM deps
@@ -13,14 +13,55 @@
 		what does it show? Would it encourage signing in for sync when not signed in?
 
 
+#NEXT
+Landscape layout for sync settings, about screen
+
 #BUGS
 
 - still have this issue:
-java.lang.RuntimeException: Could not dispatch event: class org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent to handler [EventHandler public void org.zakariya.mrdoodle.ui.DoodleDocumentGridFragment.onDoodleDocumentCreated(org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent)]: Illegal State: Object is no longer valid to operate on. Was it deleted by another thread?
+10-29 14:00:44.510 22263-22263/org.zakariya.mrdoodle E/AndroidRuntime: FATAL EXCEPTION: main
+                                                                       Process: org.zakariya.mrdoodle, PID: 22263
+                                                                       java.lang.RuntimeException: Could not dispatch event: class org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent to handler [EventHandler public void org.zakariya.mrdoodle.ui.DoodleDocumentGridFragment.onDoodleDocumentCreated(org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent)]: Illegal State: Object is no longer valid to operate on. Was it deleted by another thread?
+                                                                           at com.squareup.otto.Bus.throwRuntimeException(Bus.java:460)
+                                                                           at com.squareup.otto.Bus.dispatch(Bus.java:387)
+                                                                           at com.squareup.otto.Bus.dispatchQueuedEvents(Bus.java:368)
+                                                                           at com.squareup.otto.Bus.post(Bus.java:337)
+                                                                           at org.zakariya.mrdoodle.MrDoodleApplication$1.run(MrDoodleApplication.java:177)
+                                                                           at android.os.Handler.handleCallback(Handler.java:739)
+                                                                           at android.os.Handler.dispatchMessage(Handler.java:95)
+                                                                           at android.os.Looper.loop(Looper.java:148)
+                                                                           at android.app.ActivityThread.main(ActivityThread.java:5417)
+                                                                           at java.lang.reflect.Method.invoke(Native Method)
+                                                                           at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:726)
+                                                                           at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:616)
+                                                                        Caused by: java.lang.IllegalStateException: Illegal State: Object is no longer valid to operate on. Was it deleted by another thread?
+                                                                           at io.realm.internal.UncheckedRow.nativeGetTimestamp(Native Method)
+                                                                           at io.realm.internal.UncheckedRow.getDate(UncheckedRow.java:148)
+                                                                           at io.realm.DoodleDocumentRealmProxy.realmGet$creationDate(DoodleDocumentRealmProxy.java:109)
+                                                                           at org.zakariya.mrdoodle.model.DoodleDocument.getCreationDate(DoodleDocument.java:302)
+                                                                           at org.zakariya.mrdoodle.adapters.DoodleDocumentAdapter$1.compare(DoodleDocumentAdapter.java:108)
+                                                                           at org.zakariya.mrdoodle.adapters.DoodleDocumentAdapter$1.compare(DoodleDocumentAdapter.java:105)
+                                                                           at java.util.TimSort.countRunAndMakeAscending(TimSort.java:320)
+                                                                           at java.util.TimSort.sort(TimSort.java:185)
+                                                                           at java.util.Arrays.sort(Arrays.java:1998)
+                                                                           at java.util.Collections.sort(Collections.java:1900)
+                                                                           at org.zakariya.mrdoodle.adapters.DoodleDocumentAdapter.sortDocuments(DoodleDocumentAdapter.java:386)
+                                                                           at org.zakariya.mrdoodle.adapters.DoodleDocumentAdapter.onItemAdded(DoodleDocumentAdapter.java:224)
+                                                                           at org.zakariya.mrdoodle.ui.DoodleDocumentGridFragment.onDoodleDocumentCreated(DoodleDocumentGridFragment.java:451)
+                                                                           at java.lang.reflect.Method.invoke(Native Method)
+                                                                           at com.squareup.otto.EventHandler.handleEvent(EventHandler.java:89)
+                                                                           at com.squareup.otto.Bus.dispatch(Bus.java:385)
+                                                                           at com.squareup.otto.Bus.dispatchQueuedEvents(Bus.java:368) 
+                                                                           at com.squareup.otto.Bus.post(Bus.java:337) 
+                                                                           at org.zakariya.mrdoodle.MrDoodleApplication$1.run(MrDoodleApplication.java:177) 
+                                                                           at android.os.Handler.handleCallback(Handler.java:739) 
+                                                                           at android.os.Handler.dispatchMessage(Handler.java:95) 
+                                                                           at android.os.Looper.loop(Looper.java:148) 
+                                                                           at android.app.ActivityThread.main(ActivityThread.java:5417) 
+                                                                           at java.lang.reflect.Method.invoke(Native Method) 
+                                                                           at com.android.internal.os.ZygoteInit$MethodAndArgsCaller.run(ZygoteInit.java:726) 
+                                                                           at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:616) 
 
-	I backgrounded and restored MrDoodle to connect to the server and reset the exponential reconnect timeout. I'm guessing the grid fragment never disconnected from the event bus????
-
-	Also saw this on a first run when a lot of deletions happened. Looked like a Doodle was accessed after deletion, which threw an exception, which (maybe???) killed the fragment, then the Bus died attempting to signal said fragment. Perhaps the dispatch was queued on a handler and sent after the fragment was destroyed because of exception?
 
 #TODO
 

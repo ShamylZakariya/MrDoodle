@@ -433,6 +433,7 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Subscribe
 	public void onSignedOut(SignOutEvent event) {
 		showCurrentSignedInState(true);
+		Toast.makeText(this, R.string.signed_out, Toast.LENGTH_SHORT).show();
 	}
 
 	@Subscribe
@@ -473,19 +474,23 @@ public class SyncSettingsActivity extends BaseActivity {
 			toggleServerConnectionMenuItem.setTitle(connected ? R.string.sync_menu_disconnect : R.string.sync_menu_connect);
 		}
 
+		if (isSignedIn()) {
+			if (connectionStatusToastDebouncer == null) {
+				connectionStatusToastDebouncer = new Debouncer<>(CONNECTION_STATUS_TOAST_DEBOUNCE_MILLIS, new Action1<String>() {
+					@Override
+					public void call(String s) {
+						Toast.makeText(SyncSettingsActivity.this, s, Toast.LENGTH_SHORT).show();
+					}
+				});
+			}
 
-		if (connectionStatusToastDebouncer == null) {
-			connectionStatusToastDebouncer = new Debouncer<>(CONNECTION_STATUS_TOAST_DEBOUNCE_MILLIS, new Action1<String>() {
-				@Override
-				public void call(String s) {
-					Toast.makeText(SyncSettingsActivity.this, s, Toast.LENGTH_SHORT).show();
-				}
-			});
+			connectionStatusToastDebouncer.send(getString(statusRes));
 		}
-
-		connectionStatusToastDebouncer.send(getString(statusRes));
 	}
 
+	private boolean isSignedIn() {
+		return SignInManager.getInstance().getAccount() != null;
+	}
 
 	private void showCurrentSignedInState(boolean animate) {
 
@@ -554,19 +559,7 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	private void showCurrentServerConnectionState() {
 		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
-
-		SyncServerConnectionStatusEvent.Status status = SyncServerConnectionStatusEvent.Status.DISCONNECTED;
-		if (connection.isConnecting()) {
-			status = SyncServerConnectionStatusEvent.Status.CONNECTING;
-		} else if (connection.isConnected()) {
-			if (connection.isAuthenticating()) {
-				status = SyncServerConnectionStatusEvent.Status.AUTHORIZING;
-			} else if (connection.isAuthenticated()) {
-				status = SyncServerConnectionStatusEvent.Status.CONNECTED;
-			}
-		}
-
-		onSyncServerConnectionStatusChanged(new SyncServerConnectionStatusEvent(status));
+		onSyncServerConnectionStatusChanged(new SyncServerConnectionStatusEvent(connection));
 	}
 
 	void showSyncLogEntryDetail(SyncLogEntry entry) {

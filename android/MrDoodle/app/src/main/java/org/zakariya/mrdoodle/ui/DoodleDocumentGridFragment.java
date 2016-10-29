@@ -5,6 +5,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.DrawableRes;
 import android.support.annotation.MenuRes;
 import android.support.annotation.Nullable;
 import android.support.design.widget.AppBarLayout;
@@ -37,6 +38,12 @@ import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
+import org.zakariya.mrdoodle.net.SyncServerConnection;
+import org.zakariya.mrdoodle.net.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.signin.SignInManager;
+import org.zakariya.mrdoodle.signin.events.SignInEvent;
+import org.zakariya.mrdoodle.signin.events.SignOutEvent;
+import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.LockState;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
@@ -77,14 +84,16 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Bind(R.id.emptyView)
 	View emptyView;
 
-	AppBarLayout appBarLayout;
+	private AppBarLayout appBarLayout;
 
-	Realm realm;
-	RecyclerView.LayoutManager layoutManager;
-	DoodleDocumentAdapter adapter;
+	private Realm realm;
+	private DoodleDocumentAdapter adapter;
 
 	private BottomSheetMenuDialog bottomSheetDialog;
 	private String documentQueuedToDelete;
+
+	private MenuItem connectionStatusMenuItem;
+	private MenuItem signInMenuItem;
 
 	@State
 	String selectedDocumentUuid;
@@ -97,12 +106,15 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Override
 	public void onCreate(@Nullable Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		BusProvider.getMainThreadBus().register(this);
 		realm = Realm.getDefaultInstance();
 		Icepick.restoreInstanceState(this, savedInstanceState);
 	}
 
 	@Override
 	public void onDestroy() {
+		BusProvider.getMainThreadBus().unregister(this);
+
 		if (bottomSheetDialog != null) {
 			bottomSheetDialog.dismiss();
 		}
@@ -126,14 +138,10 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Override
 	public void onResume() {
 		super.onResume();
-		BusProvider.getMainThreadBus().register(this);
-		adapter.reload();
-	}
 
-	@Override
-	public void onPause() {
-		BusProvider.getMainThreadBus().unregister(this);
-		super.onPause();
+		adapter.reload();
+		showCurrentSignedInState();
+		showCurrentServerConnectionState();
 	}
 
 	@Override
@@ -162,14 +170,22 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Override
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
 		inflater.inflate(R.menu.menu_doodle_document_grid, menu);
+
+		connectionStatusMenuItem = menu.findItem(R.id.menuItemConnectionStatus);
+		signInMenuItem = menu.findItem(R.id.menuItemSignIn);
+
+		showCurrentSignedInState();
+		showCurrentServerConnectionState();
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-			case R.id.menuItemShowSyncSettings:
-				showSync();
+			case R.id.menuItemConnectionStatus:
+			case R.id.menuItemSignIn:
+				showSyncSettings();
 				return true;
+
 			case R.id.menuItemShowAbout:
 				showAbout();
 				return true;
@@ -192,7 +208,7 @@ public class DoodleDocumentGridFragment extends Fragment
 		int columns = (int) Math.ceil((float) displayWidth / maxItemSize);
 
 
-		layoutManager = new GridLayoutManager(getContext(), columns);
+		RecyclerView.LayoutManager layoutManager = new GridLayoutManager(getContext(), columns);
 		recyclerView.setLayoutManager(layoutManager);
 		recyclerView.addOnItemTouchListener(new RecyclerItemClickListener(getContext(), recyclerView, this));
 
@@ -368,11 +384,63 @@ public class DoodleDocumentGridFragment extends Fragment
 		startActivity(AboutActivity.getIntent(getContext()));
 	}
 
-	void showSync() {
+	void showSyncSettings() {
 		startActivity(SyncSettingsActivity.getIntent(getContext()));
 	}
 
+	void showCurrentSignedInState() {
+		if (connectionStatusMenuItem != null) {
+			SignInAccount account = SignInManager.getInstance().getAccount();
+			boolean signedIn = account != null;
+
+			connectionStatusMenuItem.setVisible(signedIn);
+			signInMenuItem.setVisible(!signedIn);
+		}
+	}
+
+	private void showCurrentServerConnectionState() {
+		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
+		onSyncServerConnectionStatusChanged(new SyncServerConnectionStatusEvent(connection));
+	}
+
 	///////////////////////////////////////////////////////////////////
+
+	@Subscribe
+	public void onSignedIn(SignInEvent event) {
+		showCurrentSignedInState();
+	}
+
+	@Subscribe
+	public void onSignedOut(SignOutEvent event) {
+		showCurrentSignedInState();
+	}
+
+	@Subscribe
+	public void onSyncServerConnectionStatusChanged(SyncServerConnectionStatusEvent event) {
+
+		@DrawableRes int iconRes = 0;
+		switch (event.getStatus()) {
+			case DISCONNECTED:
+				iconRes = R.drawable.ic_sync_disconnected;
+				break;
+
+			case CONNECTING:
+				iconRes = R.drawable.ic_sync_connecting;
+				break;
+
+			case AUTHORIZING:
+				iconRes = R.drawable.ic_sync_connecting;
+				break;
+
+			case CONNECTED:
+				iconRes = R.drawable.ic_sync_connected;
+				break;
+		}
+
+		if (connectionStatusMenuItem != null) {
+			connectionStatusMenuItem.setIcon(iconRes);
+		}
+	}
 
 	@Subscribe
 	public void onDoodleDocumentCreated(DoodleDocumentCreatedEvent event) {

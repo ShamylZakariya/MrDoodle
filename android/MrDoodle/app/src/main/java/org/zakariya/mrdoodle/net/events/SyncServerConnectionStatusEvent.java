@@ -1,5 +1,7 @@
 package org.zakariya.mrdoodle.net.events;
 
+import org.zakariya.mrdoodle.net.SyncServerConnection;
+
 /**
  * Created by shamyl on 8/10/16.
  */
@@ -16,6 +18,20 @@ public class SyncServerConnectionStatusEvent {
 
 	public SyncServerConnectionStatusEvent(Status status) {
 		this.status = status;
+	}
+
+	public SyncServerConnectionStatusEvent(SyncServerConnection connection) {
+		status = SyncServerConnectionStatusEvent.Status.DISCONNECTED;
+
+		if (connection.isConnecting()) {
+			status = SyncServerConnectionStatusEvent.Status.CONNECTING;
+		} else if (connection.isConnected()) {
+			if (connection.isAuthenticating()) {
+				status = SyncServerConnectionStatusEvent.Status.AUTHORIZING;
+			} else if (connection.isAuthenticated()) {
+				status = SyncServerConnectionStatusEvent.Status.CONNECTED;
+			}
+		}
 	}
 
 	public Status getStatus() {
@@ -36,5 +52,10 @@ public class SyncServerConnectionStatusEvent {
 
 	public boolean isConnected() {
 		return status == Status.CONNECTED;
+	}
+
+	@Override
+	public String toString() {
+		return "[SyncServerConnectionStatusEvent status: " + status + "]";
 	}
 }

@@ -2,14 +2,21 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
       xmlns:app="http://schemas.android.com/apk/res-auto">
 
-	<item android:id="@+id/menuItemShowSyncSettings"
+	<item android:id="@+id/menuItemConnectionStatus"
 	      android:title="@string/menu_item_sync"
+	      android:icon="@drawable/ic_sync_connected"
 	      android:orderInCategory="100"
+	      app:showAsAction="ifRoom"/>
+
+	<item android:id="@+id/menuItemSignIn"
+	      android:title="@string/menu_item_sign_in"
+	      android:orderInCategory="101"
 	      app:showAsAction="never"/>
+
 
 	<item android:id="@+id/menuItemShowAbout"
 	      android:title="@string/menu_item_about"
-	      android:orderInCategory="101"
+	      android:orderInCategory="102"
 	      app:showAsAction="never"/>
 
 </menu>
