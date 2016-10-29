@@ -12,6 +12,7 @@ import java.util.List;
 public class SyncReport {
 	private List<RemoteChangeReport> remoteChangeReports;
 	private long timestampHeadSeconds = 0;
+	private boolean didResetLocalStore;
 
 	public SyncReport(long timestampHeadSeconds) {
 		this.timestampHeadSeconds = timestampHeadSeconds;
@@ -29,6 +30,14 @@ public class SyncReport {
 
 	public long getTimestampHeadSeconds() {
 		return timestampHeadSeconds;
+	}
+
+	public boolean didResetLocalStore() {
+		return didResetLocalStore;
+	}
+
+	public void setDidResetLocalStore(boolean didResetLocalStore) {
+		this.didResetLocalStore = didResetLocalStore;
 	}
 
 	@Override

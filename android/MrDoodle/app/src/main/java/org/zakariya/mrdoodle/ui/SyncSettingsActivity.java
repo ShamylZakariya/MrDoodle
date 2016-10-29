@@ -32,6 +32,7 @@ import com.squareup.picasso.Picasso;
 
 import org.zakariya.mrdoodle.BuildConfig;
 import org.zakariya.mrdoodle.R;
+import org.zakariya.mrdoodle.events.DoodleDocumentStoreWillBeClearedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.net.SyncApi;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
@@ -364,6 +365,8 @@ public class SyncSettingsActivity extends BaseActivity {
 			Log.d(TAG, "resetAndSync: not connected to server...");
 			return;
 		}
+
+		BusProvider.getMainThreadBus().post(new DoodleDocumentStoreWillBeClearedEvent());
 
 		SyncManager.LocalStoreDeleter deleter = new SyncManager.LocalStoreDeleter() {
 			@Override

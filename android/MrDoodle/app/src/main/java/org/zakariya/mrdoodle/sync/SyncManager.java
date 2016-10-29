@@ -343,7 +343,11 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		changeJournal.clear(false);
 
 		// this will now pull the "truth" from the server since we have no local state
-		return performSync();
+		SyncReport report = performSync();
+
+		// flag that local store was deleted
+		report.setDidResetLocalStore(true);
+		return report;
 	}
 
 	public void start() {

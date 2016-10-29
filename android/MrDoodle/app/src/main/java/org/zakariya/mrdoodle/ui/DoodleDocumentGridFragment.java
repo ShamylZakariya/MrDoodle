@@ -36,6 +36,8 @@ import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.adapters.DoodleDocumentAdapter;
 import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentStoreWasClearedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentStoreWillBeClearedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
@@ -434,6 +436,16 @@ public class DoodleDocumentGridFragment extends Fragment
 				connectionStatusMenuItem.setIcon(iconRes);
 			}
 		}
+	}
+
+	@Subscribe
+	public void onDoodleDocumentStoreWillBeCleared(DoodleDocumentStoreWillBeClearedEvent e) {
+		adapter.clear();
+	}
+
+	@Subscribe
+	public void onDoodleDocumentStoreWasClearedEvent(DoodleDocumentStoreWasClearedEvent e) {
+		adapter.clear();
 	}
 
 	@Subscribe

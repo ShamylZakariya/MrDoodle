@@ -16,6 +16,7 @@ import org.zakariya.mrdoodle.events.ApplicationDidBackgroundEvent;
 import org.zakariya.mrdoodle.events.ApplicationDidResumeEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
+import org.zakariya.mrdoodle.events.DoodleDocumentStoreWasClearedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.model.DoodleDocumentNotFoundException;
@@ -29,6 +30,8 @@ import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import io.realm.Realm;
@@ -146,19 +149,19 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 	@Override
 	public void didCompleteSync(SyncReport report) {
-		startChangeNotifier(report.getRemoteChangeReports());
+		startChangeNotifier(report.getRemoteChangeReports(), report.didResetLocalStore());
 	}
 
 	@Override
 	public void didFailSync(Throwable failure) {
-		startChangeNotifier(null);
+		startChangeNotifier(null, false);
 	}
 
 	private void stopChangeNotifier() {
 		localChangeListener.setActive(false);
 	}
 
-	private void startChangeNotifier(@Nullable final List<RemoteChangeReport> changes) {
+	private void startChangeNotifier(@Nullable final List<RemoteChangeReport> changes, final boolean didResetLocalStore) {
 
 		// this may be called from a background thread. We need to prevent a race condition
 		// where using BusProvider.postOnMainThread will cause the events to be posted at a
@@ -172,7 +175,35 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 				// be certain these events won't be consumed
 				localChangeListener.setActive(false);
 				Bus bus = BusProvider.getMainThreadBus();
+
+				// notify that the local store was cleared
+				if (didResetLocalStore) {
+					bus.post(new DoodleDocumentStoreWasClearedEvent());
+				}
+
 				if (changes != null) {
+
+					// sort changes to process deletions before the rest. This handles
+					// the situation where below, when blasting out all changes, all the
+					// deletions are removed from storage (e.g., RecyclerView.Adapter)
+					// before additions and updates are processed. This fixes a specific
+					// bug where when adding/updating docs the adapter would sort the
+					// contents, and might end up touching deleted documents
+
+					Collections.sort(changes, new Comparator<RemoteChangeReport>() {
+						@Override
+						public int compare(RemoteChangeReport r0, RemoteChangeReport r1) {
+							if (r0.getAction() == RemoteChangeReport.Action.DELETE) {
+								return -1;
+							} else if (r1.getAction() == RemoteChangeReport.Action.DELETE) {
+								return +1;
+							} else {
+								return 0;
+							}
+						}
+					});
+
+
 					for (RemoteChangeReport report : changes) {
 						switch(report.getAction()) {
 							case CREATE:

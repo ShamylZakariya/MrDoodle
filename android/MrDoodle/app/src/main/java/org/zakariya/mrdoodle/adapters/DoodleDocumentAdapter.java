@@ -354,6 +354,13 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 		return items.size();
 	}
 
+	public void clear() {
+		this.items.clear();
+		this.hiddenItems.clear();
+		notifyDataSetChanged();
+		updateEmptyView();
+	}
+
 	public void reload() {
 
 		SyncManager syncManager = SyncManager.getInstance();
@@ -378,8 +385,8 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 
 
 		sortDocuments();
-		updateEmptyView();
 		notifyDataSetChanged();
+		updateEmptyView();
 	}
 
 	private void sortDocuments() {
