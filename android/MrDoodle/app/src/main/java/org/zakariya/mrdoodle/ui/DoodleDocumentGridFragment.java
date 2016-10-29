@@ -417,28 +417,22 @@ public class DoodleDocumentGridFragment extends Fragment
 
 	@Subscribe
 	public void onSyncServerConnectionStatusChanged(SyncServerConnectionStatusEvent event) {
-
-		@DrawableRes int iconRes = 0;
-		switch (event.getStatus()) {
-			case DISCONNECTED:
-				iconRes = R.drawable.ic_sync_disconnected;
-				break;
-
-			case CONNECTING:
-				iconRes = R.drawable.ic_sync_connecting;
-				break;
-
-			case AUTHORIZING:
-				iconRes = R.drawable.ic_sync_connecting;
-				break;
-
-			case CONNECTED:
-				iconRes = R.drawable.ic_sync_connected;
-				break;
-		}
-
 		if (connectionStatusMenuItem != null) {
-			connectionStatusMenuItem.setIcon(iconRes);
+
+			@DrawableRes int iconRes = 0;
+			switch (event.getStatus()) {
+				case DISCONNECTED:
+					iconRes = R.drawable.ic_sync_disconnected;
+					break;
+
+				case CONNECTED:
+					iconRes = R.drawable.ic_sync_connected;
+					break;
+			}
+
+			if (iconRes != 0) {
+				connectionStatusMenuItem.setIcon(iconRes);
+			}
 		}
 	}
 

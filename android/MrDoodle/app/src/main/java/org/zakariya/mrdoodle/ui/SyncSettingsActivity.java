@@ -47,7 +47,6 @@ import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.model.SyncLogEntry;
 import org.zakariya.mrdoodle.util.BusProvider;
-import org.zakariya.mrdoodle.util.Debouncer;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
 
 import java.text.DateFormat;
@@ -64,7 +63,6 @@ import rx.Observable;
 import rx.Observer;
 import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
 /**
@@ -101,17 +99,18 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Bind(R.id.syncHistoryRecyclerView)
 	RecyclerView syncHistoryRecyclerView;
 
-	MenuItem toggleServerConnectionMenuItem;
-	MenuItem getRemoteStatusMenuItem;
-	MenuItem syncNowMenuItem;
-	MenuItem resetAndSyncMenuItem;
-	MenuItem signOutMenuItem;
-	MenuItem connectionStatusMenuItem;
+	private MenuItem toggleServerConnectionMenuItem;
+	private MenuItem getRemoteStatusMenuItem;
+	private MenuItem syncNowMenuItem;
+	private MenuItem resetAndSyncMenuItem;
+	private MenuItem signOutMenuItem;
+	private MenuItem connectionStatusMenuItem;
 
-	Realm realm;
-	SyncLogAdapter syncLogAdapter;
-	Subscription syncSubscription;
-	Debouncer<String> connectionStatusToastDebouncer;
+	private Realm realm;
+	private SyncLogAdapter syncLogAdapter;
+	private Subscription syncSubscription;
+	private boolean connected;
+	private boolean showConnectionStatusToastOnce;
 
 	public static Intent getIntent(Context context) {
 		return new Intent(context, SyncSettingsActivity.class);
@@ -155,10 +154,6 @@ public class SyncSettingsActivity extends BaseActivity {
 	protected void onDestroy() {
 		if (syncSubscription != null && !syncSubscription.isUnsubscribed()) {
 			syncSubscription.unsubscribe();
-		}
-
-		if (connectionStatusToastDebouncer != null) {
-			connectionStatusToastDebouncer.destroy();
 		}
 
 		BusProvider.getMainThreadBus().unregister(this);
@@ -345,16 +340,16 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	void queryResetAndSync() {
 		new AlertDialog.Builder(this)
-			.setTitle(R.string.reset_and_sync_dialog_title)
-			.setMessage(R.string.reset_and_sync_dialog_message)
-			.setPositiveButton(R.string.reset_and_sync_dialog_positive_action_title, new DialogInterface.OnClickListener() {
-				@Override
-				public void onClick(DialogInterface dialog, int which) {
-					resetAndSync();
-				}
-			})
-			.setNegativeButton(android.R.string.cancel, null)
-			.show();
+				.setTitle(R.string.reset_and_sync_dialog_title)
+				.setMessage(R.string.reset_and_sync_dialog_message)
+				.setPositiveButton(R.string.reset_and_sync_dialog_positive_action_title, new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						resetAndSync();
+					}
+				})
+				.setNegativeButton(android.R.string.cancel, null)
+				.show();
 	}
 
 	void resetAndSync() {
@@ -441,22 +436,13 @@ public class SyncSettingsActivity extends BaseActivity {
 
 		@StringRes int statusRes = 0;
 		@DrawableRes int iconRes = 0;
-		boolean connected = false;
+		boolean wasConnected = this.connected;
 
 		switch (event.getStatus()) {
 			case DISCONNECTED:
+				connected = false;
 				statusRes = R.string.sync_server_connection_status_disconnected;
 				iconRes = R.drawable.ic_sync_disconnected;
-				break;
-
-			case CONNECTING:
-				statusRes = R.string.sync_server_connection_status_connecting;
-				iconRes = R.drawable.ic_sync_connecting;
-				break;
-
-			case AUTHORIZING:
-				statusRes = R.string.sync_server_connection_status_authorizing;
-				iconRes = R.drawable.ic_sync_connecting;
 				break;
 
 			case CONNECTED:
@@ -466,7 +452,15 @@ public class SyncSettingsActivity extends BaseActivity {
 				break;
 		}
 
-		if (connectionStatusMenuItem != null) {
+		// we don't want to repeatedly show "Disconnected" toasts as the system attempts reconnects
+		// if showConnectionStatusToastOnce is true, it means show the toast anyway. this is used
+		// when tapping on connection status menu item
+		if ((wasConnected != connected || showConnectionStatusToastOnce) && isSignedIn() ) {
+			Toast.makeText(SyncSettingsActivity.this, statusRes, Toast.LENGTH_SHORT).show();
+			showConnectionStatusToastOnce = false;
+		}
+
+		if (connectionStatusMenuItem != null && iconRes != 0) {
 			connectionStatusMenuItem.setIcon(iconRes);
 		}
 
@@ -474,18 +468,6 @@ public class SyncSettingsActivity extends BaseActivity {
 			toggleServerConnectionMenuItem.setTitle(connected ? R.string.sync_menu_disconnect : R.string.sync_menu_connect);
 		}
 
-		if (isSignedIn()) {
-			if (connectionStatusToastDebouncer == null) {
-				connectionStatusToastDebouncer = new Debouncer<>(CONNECTION_STATUS_TOAST_DEBOUNCE_MILLIS, new Action1<String>() {
-					@Override
-					public void call(String s) {
-						Toast.makeText(SyncSettingsActivity.this, s, Toast.LENGTH_SHORT).show();
-					}
-				});
-			}
-
-			connectionStatusToastDebouncer.send(getString(statusRes));
-		}
 	}
 
 	private boolean isSignedIn() {
@@ -549,15 +531,11 @@ public class SyncSettingsActivity extends BaseActivity {
 
 
 	private boolean isConnectedToServer() {
-		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
-		if (connection != null) {
-			return connection.isConnected();
-		} else {
-			return false;
-		}
+		return connected;
 	}
 
 	private void showCurrentServerConnectionState() {
+		showConnectionStatusToastOnce = true;
 		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
 		onSyncServerConnectionStatusChanged(new SyncServerConnectionStatusEvent(connection));
 	}
