@@ -1,6 +1,8 @@
 package org.zakariya.mrdoodle;
 
 import android.app.Activity;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -60,6 +62,8 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		Realm.setDefaultConfiguration(realmConfiguration);
 
 		initSingletons();
+
+		Log.i(TAG, "onCreate: Started MrDoodleApplication version: " + getVersionString());
 	}
 
 	public static MrDoodleApplication getInstance() {
@@ -72,6 +76,18 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 	public BackgroundWatcher getBackgroundWatcher() {
 		return backgroundWatcher;
+	}
+
+	public String getVersionString() {
+		try {
+			PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+			return info.versionName;
+
+		} catch (PackageManager.NameNotFoundException e) {
+			Log.e(TAG, "Unable to get app version info!?");
+		}
+
+		return null;
 	}
 
 	public void onApplicationBackgrounded() {

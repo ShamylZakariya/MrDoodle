@@ -6,12 +6,9 @@
 	"discontinued": null || "MrDoodle sync services have been discontinued, sorry"
 }
 
-- Sync Settings
-	Move Status/Model/Sync/Reset&Sync to a menu
-	Rethink UI, make it look more "account page"
-
 - MainActivity
 	Put a sync status type icon in the header?
+		what does it show? Would it encourage signing in for sync when not signed in?
 
 
 #BUGS

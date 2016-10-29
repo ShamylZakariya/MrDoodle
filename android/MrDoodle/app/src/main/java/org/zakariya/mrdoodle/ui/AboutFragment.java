@@ -1,16 +1,14 @@
 package org.zakariya.mrdoodle.ui;
 
-import android.content.pm.PackageInfo;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
-import android.text.TextUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import org.zakariya.mrdoodle.MrDoodleApplication;
 import org.zakariya.mrdoodle.R;
 
 import butterknife.Bind;
@@ -47,18 +45,7 @@ public class AboutFragment extends Fragment {
 		View v = inflater.inflate(R.layout.fragment_about, container, false);
 		ButterKnife.bind(this, v);
 
-		try {
-			PackageInfo packageInfo = getActivity().getPackageManager().getPackageInfo(getActivity().getPackageName(), 0);
-
-			if (!TextUtils.isEmpty(packageInfo.versionName)) {
-				versionTextView.setText(getString(R.string.about_version_version_and_build, packageInfo.versionName, packageInfo.versionCode));
-			} else {
-				versionTextView.setText(getString(R.string.about_version_build, packageInfo.versionCode));
-			}
-
-		} catch (Exception e) {
-			Log.e(TAG, "Unable to get app version info!?");
-		}
+		versionTextView.setText(MrDoodleApplication.getInstance().getVersionString());
 
 		return v;
 	}

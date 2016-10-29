@@ -1,5 +1,6 @@
 package org.zakariya.mrdoodle.ui;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -111,6 +112,10 @@ public class SyncSettingsActivity extends BaseActivity {
 	SyncLogAdapter syncLogAdapter;
 	Subscription syncSubscription;
 	Debouncer<String> connectionStatusToastDebouncer;
+
+	public static Intent getIntent(Context context) {
+		return new Intent(context, SyncSettingsActivity.class);
+	}
 
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {

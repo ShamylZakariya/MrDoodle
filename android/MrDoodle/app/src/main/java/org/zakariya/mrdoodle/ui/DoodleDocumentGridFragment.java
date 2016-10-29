@@ -170,13 +170,8 @@ public class DoodleDocumentGridFragment extends Fragment
 			case R.id.menuItemShowSyncSettings:
 				showSync();
 				return true;
-
 			case R.id.menuItemShowAbout:
 				showAbout();
-				return true;
-
-			case R.id.menuItemShowModelOverview:
-				showModelOverview();
 				return true;
 		}
 
@@ -370,15 +365,11 @@ public class DoodleDocumentGridFragment extends Fragment
 	}
 
 	void showAbout() {
-		startActivity(new Intent(getContext(), AboutActivity.class));
+		startActivity(AboutActivity.getIntent(getContext()));
 	}
 
 	void showSync() {
-		startActivity(new Intent(getContext(), SyncSettingsActivity.class));
-	}
-
-	void showModelOverview() {
-		startActivity(new Intent(getContext(), ModelOverviewActivity.class));
+		startActivity(SyncSettingsActivity.getIntent(getContext()));
 	}
 
 	///////////////////////////////////////////////////////////////////
