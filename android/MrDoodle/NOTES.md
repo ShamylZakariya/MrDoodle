@@ -4,6 +4,8 @@ Test inability to connect more thoroughly. Try assigning an invalid IP address.
 
 #CURRENTLY
 
+- design better icon
+- design better empty graphic
 - Landscape layout for sync settings, about screen
 - switch placeholder graphics from PNGs to vector
 - update GSM deps
