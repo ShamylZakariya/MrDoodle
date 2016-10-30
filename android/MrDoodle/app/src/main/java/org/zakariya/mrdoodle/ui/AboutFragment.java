@@ -16,7 +16,7 @@ import butterknife.ButterKnife;
 import icepick.Icepick;
 
 /**
- * Created by shamyl on 12/28/15.
+ * Fragment that shows info about the application
  */
 public class AboutFragment extends Fragment {
 
@@ -37,6 +37,14 @@ public class AboutFragment extends Fragment {
 	public void onSaveInstanceState(Bundle outState) {
 		Icepick.saveInstanceState(this, outState);
 		super.onSaveInstanceState(outState);
+	}
+
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+
+		// register with leak canary
+ 		MrDoodleApplication.getRefWatcher(getActivity()).watch(this);
 	}
 
 	@Nullable
