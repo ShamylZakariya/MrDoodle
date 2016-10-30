@@ -1,17 +1,16 @@
+#BUGS
+
+Test inability to connect more thoroughly. Try assigning an invalid IP address.
+
 #CURRENTLY
 
+- Landscape layout for sync settings, about screen
 - switch placeholder graphics from PNGs to vector
 - update GSM deps
 
 - Add a killswitch file on another server, say, shamylzakariya.github.io. it would be a JSON file with contents like: {
 	"discontinued": null || "MrDoodle sync services have been discontinued, sorry"
 }
-
-#NEXT
-Landscape layout for sync settings, about screen
-
-#BUGS
-
 
 #TODO
 

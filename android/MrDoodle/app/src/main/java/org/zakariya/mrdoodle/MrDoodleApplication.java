@@ -1,6 +1,7 @@
 package org.zakariya.mrdoodle;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -9,6 +10,8 @@ import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import com.squareup.leakcanary.LeakCanary;
+import com.squareup.leakcanary.RefWatcher;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
@@ -38,7 +41,13 @@ import io.realm.Realm;
 import io.realm.RealmConfiguration;
 
 /**
- * Created by shamyl on 12/20/15.
+ * MrDoodleApplication
+ * Fires up some singleton "services".
+ * The MrDoodleApplication is responsible for acting as a "bridge" between the application user data
+ * and the sync manager. When the user modifies local data, the application observes this, and forwards
+ * edit notifications to the sync manager. When the sync manager finishes a sync, the syn report is consumed
+ * by the application and document create/update/delete events are fired for the application UI to
+ * observe.
  */
 public class MrDoodleApplication extends android.app.Application implements SyncManager.SyncStateListener {
 
@@ -50,12 +59,25 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	private RealmConfiguration realmConfiguration;
 	private LocalChangeListener localChangeListener;
 	private Handler handler;
+	private RefWatcher refWatcher;
+
+	public static RefWatcher getRefWatcher(Context context) {
+		MrDoodleApplication application = (MrDoodleApplication) context.getApplicationContext();
+		return application.refWatcher;
+	}
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		instance = this;
 
+		if (LeakCanary.isInAnalyzerProcess(this)) {
+			// This process is dedicated to LeakCanary for heap analysis - we're done here
+			return;
+		}
+
+		refWatcher = LeakCanary.install(this);
+
+		instance = this;
 		handler = new Handler(Looper.getMainLooper());
 		backgroundWatcher = new BackgroundWatcher(this, false);
 		realmConfiguration = new RealmConfiguration.Builder(this)

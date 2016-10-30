@@ -32,6 +32,7 @@ import com.github.rubensousa.bottomsheetbuilder.BottomSheetMenuDialog;
 import com.github.rubensousa.bottomsheetbuilder.adapter.BottomSheetItemClickListener;
 import com.squareup.otto.Subscribe;
 
+import org.zakariya.mrdoodle.MrDoodleApplication;
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.adapters.DoodleDocumentAdapter;
 import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
@@ -135,6 +136,9 @@ public class DoodleDocumentGridFragment extends Fragment
 		realm.close();
 		realm = null;
 		super.onDestroy();
+
+		// register with leak canary
+		MrDoodleApplication.getRefWatcher(getActivity()).watch(this);
 	}
 
 	@Override

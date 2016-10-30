@@ -21,10 +21,10 @@ import org.zakariya.doodle.model.Doodle;
  * represents a viewport, translation, and scaling. The DoodleCanvas also
  * dispatches touch events, handling two-finger touches which aren't consumed
  * by the doodle.
- *
+ * <p>
  * Generally, one will create a DoodleView, assign a DoodleCanvas to it, and finally
  * assign a doodle to the DoodleCanvas.
- *
+ * <p>
  * DoodleCanvas is parcelable, and intended to be stateful during screen rotations.
  * It will maintain the center of the viewport through rotations.
  */
@@ -124,6 +124,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Assign the doodle view enclosing this doodle.
+	 *
 	 * @param view the wrapping DoodleView
 	 */
 	public void setDoodleView(DoodleView view) {
@@ -150,6 +151,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Notify the enclosing DoodleView to repaint a sub rect of the view
+	 *
 	 * @param rect a dirty rect to update
 	 */
 	public void invalidate(RectF rect) {
@@ -162,6 +164,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Draw the enclosed Doodle into the provided canvas with the current transform
+	 *
 	 * @param canvas a canvas to draw into
 	 */
 	public void draw(Canvas canvas) {
@@ -182,11 +185,12 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Draw the enclosed doodle with constraints. This functionality exists mostly for thumbnail rendering. While this method resizes and assigns a new transform, the previous size and transform will be re-applied afterwards.
-	 * @param canvas a canvas to draw into
-	 * @param width width of canvas
-	 * @param height height of canvas
+	 *
+	 * @param canvas      a canvas to draw into
+	 * @param width       width of canvas
+	 * @param height      height of canvas
 	 * @param fitContents if true, a transform will be set which guarantees contents will be center-fit to the width/height
-	 * @param fitPadding amount of padding in pixels around the doodle (if fitContents is true)
+	 * @param fitPadding  amount of padding in pixels around the doodle (if fitContents is true)
 	 */
 	public void draw(Canvas canvas, int width, int height, boolean fitContents, float fitPadding) {
 		boolean clamped = isCanvasScaleClamped();
@@ -224,7 +228,8 @@ public class DoodleCanvas implements Parcelable {
 	/**
 	 * Resize the canvas and internal viewport. Will be forwarded to doodle, which may use width/height
 	 * info to generate bitmap backing stores, etc.
-	 * @param newWidth new width of canvas
+	 *
+	 * @param newWidth  new width of canvas
 	 * @param newHeight new height of canvas
 	 */
 	public void resize(int newWidth, int newHeight) {
@@ -272,6 +277,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * For debugging purposes, you may want to see the rect passed to DoodleCanvas::invalidate(Rect)
+	 *
 	 * @param drawInvalidationRect if true, draw invalidation rect when updating
 	 */
 	public void setDrawInvalidationRect(boolean drawInvalidationRect) {
@@ -288,6 +294,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Turn on or off the drawing of a coordinate grid
+	 *
 	 * @param drawCoordinateGrid if true, draw the coordinate grid
 	 */
 	public void setDrawCoordinateGrid(boolean drawCoordinateGrid) {
@@ -304,6 +311,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Turn on or off the drawing of the viewport (generally for debugging purposes)
+	 *
 	 * @param drawViewport if true, draw the viewport
 	 */
 	public void setDrawViewport(boolean drawViewport) {
@@ -320,6 +328,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Turn on or off the drawing of a bounding rect around the canvas contents (generally for debugging purposes)
+	 *
 	 * @param drawCanvasContentBoundingRect if true, draw content bounding rect
 	 */
 	public void setDrawCanvasContentBoundingRect(boolean drawCanvasContentBoundingRect) {
@@ -336,6 +345,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * If drawing the coordinate grid (shouldDrawCoordinateGrid()), set its size.
+	 *
 	 * @param coordinateGridSize the size of the coordinate grid
 	 */
 	public void setCoordinateGridSize(float coordinateGridSize) {
@@ -351,6 +361,7 @@ public class DoodleCanvas implements Parcelable {
 	 * Since fingers are big and fat, this is the scaling fudge factor for two-finger touch
 	 * wiggle to be considered a tap. I.e, since touching with two fingers initiates a translation operation,
 	 * this is the minimum amount of translation allowed to trigger a tap when the two-fingers are lifted.
+	 *
 	 * @param minPinchTranslationForTap
 	 */
 	public void setMinPinchTranslationForTap(float minPinchTranslationForTap) {
@@ -365,6 +376,7 @@ public class DoodleCanvas implements Parcelable {
 	 * Since fingers are big and fat, this is the scaling fudge factor for two-finger touch
 	 * wiggle to be considered a tap. I.e, since touching with two fingers initiates a scaling operation,
 	 * this is the minimum amount of scale allowed to trigger a tap when the two-fingers are lifted.
+	 *
 	 * @param minPinchScalingForTap
 	 */
 	public void setMinPinchScalingForTap(float minPinchScalingForTap) {
@@ -380,6 +392,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Set the minimum allowable scale for the canvas. This only applies if scale is clamped.
+	 *
 	 * @param minCanvasScale the minimum allowable scale for the canvas
 	 */
 	public void setMinCanvasScale(float minCanvasScale) {
@@ -396,6 +409,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Set the maximum allowable scale for the canvas. This only applies if scale is clamped.
+	 *
 	 * @param maxScale the minimum allowable scale for the canvas
 	 */
 	public void setMaxCanvasScale(float maxScale) {
@@ -405,6 +419,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Turn on or off the clamping of canvas scale the the min/max set via setMinCanvasScale and setMaxCanvasScale.
+	 *
 	 * @param transformRangeClampingEnabled if true, transforms will clamp scale to the current min/max
 	 */
 	public void setCanvasScaleClamped(boolean transformRangeClampingEnabled) {
@@ -594,6 +609,7 @@ public class DoodleCanvas implements Parcelable {
 
 	/**
 	 * Disable edge swipes from edges specified in the mask
+	 *
 	 * @param mask a logical or of EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM and EDGE_RIGHT
 	 */
 	public void setDisabledEdgeSwipeMask(int mask) {
@@ -610,6 +626,7 @@ public class DoodleCanvas implements Parcelable {
 	/**
 	 * Get the width, in pixels, of the disabled edge region around the canvas
 	 * which will prevent new touch events from being consumed.
+	 *
 	 * @return the width of the disabled region that  prevents touches from starting
 	 */
 	public float getDisabledEdgeWidth() {
@@ -670,9 +687,6 @@ public class DoodleCanvas implements Parcelable {
 	}
 
 	protected boolean onTouchEventBegin(@NonNull MotionEvent event) {
-
-		Log.i(TAG, "onTouchEventBegin: x: " + event.getX() + ", y: " + event.getY() + " viewportScreenRect: " + viewportScreenRect);
-
 		touchDiscarded = false;
 		if (disabledEdgeSwipeMask != 0) {
 			if ((disabledEdgeSwipeMask & EDGE_TOP) == EDGE_TOP) {
@@ -735,9 +749,6 @@ public class DoodleCanvas implements Parcelable {
 		if (touchDiscarded) {
 			return false;
 		}
-
-		Log.i(TAG, "onTouchEventMove: x: " + event.getX() + ", y: " + event.getY() + " viewportScreenRect: " + viewportScreenRect);
-
 
 		if (event.getPointerCount() == 1 && !performingPinchOperations) {
 			return doodle.onTouchEventMove(event);
