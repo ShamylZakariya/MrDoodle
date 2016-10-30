@@ -19,6 +19,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import org.zakariya.mrdoodle.BuildConfig;
 import org.zakariya.mrdoodle.MrDoodleApplication;
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.signin.SignInManager;
@@ -99,38 +100,35 @@ public class SyncLogEntryDetailActivity extends AppCompatActivity {
 			Icepick.restoreInstanceState(this, savedInstanceState);
 		}
 
+		if (BuildConfig.DEBUG && TextUtils.isEmpty(syncLogEntryId)) {
+			throw new IllegalArgumentException("syncLogEntryId must be provided");
+		}
 
 		realm = Realm.getDefaultInstance();
-		if (!TextUtils.isEmpty(syncLogEntryId)) {
+		syncLogEntry = SyncLogEntry.get(realm, syncLogEntryId);
+		if (syncLogEntry != null) {
 
-			syncLogEntry = SyncLogEntry.get(realm, syncLogEntryId);
-			if (syncLogEntry != null) {
+			DateFormat dateFormat = DateFormat.getDateInstance();
+			DateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
+			Date syncDate = syncLogEntry.getDate();
+			dateTextView.setText(getString(R.string.sync_log_entry_detail_date,
+					dateFormat.format(syncDate),
+					timeFormat.format(syncDate)));
 
-				DateFormat dateFormat = DateFormat.getDateInstance();
-				DateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
-				Date syncDate = syncLogEntry.getDate();
-				dateTextView.setText(getString(R.string.sync_log_entry_detail_date,
-						dateFormat.format(syncDate),
-						timeFormat.format(syncDate)));
-
-				if (TextUtils.isEmpty(syncLogEntry.getFailure())) {
-					statusTextView.setText(getString(R.string.sync_log_entry_detail_successful_sync));
-					failureTextView.setVisibility(View.GONE);
-				} else {
-					statusTextView.setText(getString(R.string.sync_log_entry_detail_unsuccessful_sync));
-					failureTextView.setText(syncLogEntry.getFailure());
-					failureTextView.setVisibility(View.VISIBLE);
-				}
-
-				logItemRecyclerView.setLayoutManager(new StickyHeaderLayoutManager());
-				logItemRecyclerView.setAdapter(new SyncLogEntryLineItemAdapter(syncLogEntry.getLineItems()));
-
+			if (TextUtils.isEmpty(syncLogEntry.getFailure())) {
+				statusTextView.setText(getString(R.string.sync_log_entry_detail_successful_sync));
+				failureTextView.setVisibility(View.GONE);
 			} else {
-				throw new IllegalArgumentException("EXTRA_SYNC_LOG_ID must refer to a valid SyncLogEntry");
+				statusTextView.setText(getString(R.string.sync_log_entry_detail_unsuccessful_sync));
+				failureTextView.setText(syncLogEntry.getFailure());
+				failureTextView.setVisibility(View.VISIBLE);
 			}
 
+			logItemRecyclerView.setLayoutManager(new StickyHeaderLayoutManager());
+			logItemRecyclerView.setAdapter(new SyncLogEntryLineItemAdapter(syncLogEntry.getLineItems()));
+
 		} else {
-			throw new IllegalArgumentException("EXTRA_SYNC_LOG_ID must be provided");
+			throw new IllegalArgumentException("EXTRA_SYNC_LOG_ID must refer to a valid SyncLogEntry");
 		}
 	}
 
@@ -138,6 +136,12 @@ public class SyncLogEntryDetailActivity extends AppCompatActivity {
 	protected void onDestroy() {
 		realm.close();
 		super.onDestroy();
+	}
+
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		Icepick.saveInstanceState(this, outState);
+		super.onSaveInstanceState(outState);
 	}
 
 	@Override
