@@ -785,13 +785,6 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			public void afterTextChanged(Editable s) {
 
 				String title = s.toString();
-
-				// disallow empty titles
-				if (TextUtils.isEmpty(title)) {
-					title = getString(R.string.untitled_document);
-					titleEditText.setText(title);
-				}
-
 				setDocumentName(title);
 
 				// since the name has changed, resized the edit text
@@ -818,6 +811,17 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 				if (!hasFocus) {
 					hideKeyboard();
 					goFullscreen();
+
+					// disallow empty titles
+					String title = titleEditText.getText().toString();
+					if (TextUtils.isEmpty(title)) {
+
+						title = getString(R.string.untitled_document);
+						setDocumentName(title);
+
+						titleEditText.setText(title);
+						titleEditText.requestLayout();
+					}
 				}
 			}
 		});
