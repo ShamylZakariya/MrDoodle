@@ -33,7 +33,7 @@
 			android:background="@color/primary"
 			android:minHeight="?attr/actionBarSize"
 			app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
-			app:theme="@style/AppTheme.Toolbar"
+			android:theme="@style/AppTheme.Toolbar"
 			app:titleTextAppearance="@style/AppTheme.Toolbar.Title">
 
 			<android.support.design.widget.TextInputLayout
