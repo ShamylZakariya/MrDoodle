@@ -458,7 +458,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		// we don't want to repeatedly show "Disconnected" toasts as the system attempts reconnects
 		// if showConnectionStatusToastOnce is true, it means show the toast anyway. this is used
 		// when tapping on connection status menu item
-		if ((wasConnected != connected || showConnectionStatusToastOnce) && isSignedIn() ) {
+		if ((statusRes != 0) && (wasConnected != connected || showConnectionStatusToastOnce) && isSignedIn() ) {
 			Toast.makeText(SyncSettingsActivity.this, statusRes, Toast.LENGTH_SHORT).show();
 			showConnectionStatusToastOnce = false;
 		}
