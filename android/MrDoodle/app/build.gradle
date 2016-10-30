@@ -103,6 +103,11 @@ dependencies {
 	testCompile 'junit:junit:4.12'
 	androidTestCompile 'junit:junit:4.12'
 
+	// Android Studio 2.2.2 can't show the UI editor with RecyclerView 25.0.0
+//	compile 'com.android.support:design:24.1.1'
+//	compile 'com.android.support:recyclerview-v7:24.1.1'
+//	compile 'com.android.support:appcompat-v7:24.1.1'
+
 	compile 'com.android.support:design:25.0.0'
 	compile 'com.android.support:recyclerview-v7:25.0.0'
 	compile 'com.android.support:appcompat-v7:25.0.0'
