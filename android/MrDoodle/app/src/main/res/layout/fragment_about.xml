@@ -1,61 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.design.widget.CoordinatorLayout
+<LinearLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	xmlns:tools="http://schemas.android.com/tools">
+	android:orientation="vertical"
+	android:paddingBottom="@dimen/activity_vertical_margin"
+	android:paddingLeft="@dimen/activity_horizontal_margin"
+	android:paddingRight="@dimen/activity_horizontal_margin"
+	android:paddingTop="@dimen/activity_vertical_margin">
 
-	<android.support.v4.widget.NestedScrollView
+	<ImageView
+		android:layout_marginTop="64dp"
 		android:layout_width="match_parent"
-		android:layout_height="match_parent">
+		android:layout_height="0dp"
+		android:layout_gravity="center_horizontal|center_vertical"
+		android:layout_weight="1"
+		android:scaleType="fitCenter"
+		android:src="@drawable/app"/>
 
-		<LinearLayout
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		android:layout_weight="2"
+		android:orientation="vertical"
+		android:gravity="center_vertical">
+
+		<TextView
+			style="@style/Display1"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:layout_gravity="center_vertical"
-			android:paddingLeft="@dimen/activity_horizontal_margin"
-			android:paddingRight="@dimen/activity_horizontal_margin"
-			android:paddingTop="@dimen/activity_vertical_margin"
-			android:paddingBottom="@dimen/activity_vertical_margin"
-			android:orientation="vertical">
+			android:gravity="center"
+			android:text="@string/app_name"/>
 
-			<ImageView
-				android:layout_width="128dp"
-				android:layout_height="128dp"
-				android:src="@drawable/app"
-				android:layout_gravity="center_horizontal|center_vertical"/>
+		<TextView
+			android:id="@+id/versionTextView"
+			style="@style/Body1"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:gravity="center"
+			tools:text="v1.0"/>
 
-			<TextView
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:gravity="center"
-				style="@style/Display1"
-				android:text="@string/app_name"/>
+		<TextView
+			android:id="@+id/attributionsTextView"
+			style="@style/Body2"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_marginTop="24dp"
+			android:autoLink="all"
+			android:gravity="center"
+			android:linksClickable="true"
+			android:text="@string/about_attributions"
+			android:textColorLink="@color/primaryDark"
+			/>
 
-			<TextView
-				android:id="@+id/versionTextView"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:gravity="center"
-				style="@style/Body1"
-				tools:text="v1.0"/>
-
-			<TextView
-				android:id="@+id/attributionsTextView"
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				style="@style/Body2"
-				android:text="@string/about_attributions"
-			    android:autoLink="all"
-			    android:linksClickable="true"
-			    android:textColorLink="@color/primaryDark"
-			    android:gravity="center"
-			    android:layout_marginTop="24dp"
-				/>
+	</LinearLayout>
 
 
-		</LinearLayout>
+</LinearLayout>
 
-	</android.support.v4.widget.NestedScrollView>
-
-</android.support.design.widget.CoordinatorLayout>

@@ -53,30 +53,31 @@
 			android:id="@+id/signedIn"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
-			android:orientation="vertical"
+			android:orientation="horizontal"
 			android:visibility="gone"
 			tools:visibility="visible">
 
 			<LinearLayout
-				android:layout_width="match_parent"
+				android:layout_width="0dp"
 				android:layout_height="wrap_content"
-				android:orientation="horizontal"
+				android:layout_weight="1"
+				android:orientation="vertical"
+				android:layout_gravity="center"
 				android:paddingBottom="@dimen/activity_vertical_margin"
 				android:paddingLeft="@dimen/activity_horizontal_margin"
 				android:paddingRight="@dimen/activity_horizontal_margin"
-				android:paddingTop="24dp">
+				android:paddingTop="@dimen/activity_vertical_margin">
 
 				<org.zakariya.mrdoodle.ui.view.CircularImageView
 					android:id="@+id/avatarImageView"
 					android:layout_width="96dp"
-					android:layout_height="96dp"/>
+					android:layout_height="96dp"
+					android:layout_gravity="center"/>
 
 				<LinearLayout
-					android:layout_width="0dp"
+					android:layout_width="match_parent"
 					android:layout_height="wrap_content"
-					android:layout_gravity="start|center_vertical"
-					android:layout_marginStart="16dp"
-					android:layout_weight="1"
+					android:layout_marginTop="16dp"
 					android:orientation="vertical">
 
 					<TextView
@@ -85,6 +86,7 @@
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
 						android:textSize="18sp"
+						android:gravity="center_horizontal"
 						tools:text="Shamyl Zakariya"/>
 
 					<TextView
@@ -92,6 +94,7 @@
 						style="@style/Body1"
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
+						android:gravity="center_horizontal"
 						tools:text="shamyl@gmail.com"/>
 
 					<TextView
@@ -99,6 +102,7 @@
 						style="@style/Body1"
 						android:layout_width="match_parent"
 						android:layout_height="wrap_content"
+						android:gravity="center_horizontal"
 						tools:text="UserId"
 						/>
 
@@ -107,45 +111,49 @@
 			</LinearLayout>
 
 			<LinearLayout
-				android:layout_width="match_parent"
-				android:layout_height="wrap_content"
-				android:orientation="horizontal"
-				android:paddingLeft="@dimen/activity_horizontal_margin"
+				android:layout_width="0dp"
+				android:layout_height="match_parent"
+				android:layout_weight="2"
+				android:orientation="vertical"
 				android:paddingRight="@dimen/activity_horizontal_margin">
 
-				<TextView
-					style="@style/Body2"
-					android:layout_width="0dp"
+				<LinearLayout
+					android:layout_width="match_parent"
 					android:layout_height="wrap_content"
-					android:layout_gravity="center_vertical"
-					android:layout_weight="1"
-					android:text="@string/sync_history"
-					android:textAllCaps="true"
-					android:textColor="@color/primaryDark"/>
+					android:orientation="horizontal">
 
-				<Button
-					android:id="@+id/clearSyncHistoryButton"
-					style="@style/Widget.AppCompat.Button.Borderless"
-					android:layout_width="wrap_content"
-					android:layout_height="wrap_content"
-					android:layout_gravity="center_vertical"
-					android:text="@string/sync_history_clear"
-					android:visibility="visible"/>
+					<TextView
+						style="@style/Body2"
+						android:layout_width="0dp"
+						android:layout_height="wrap_content"
+						android:layout_gravity="center_vertical"
+						android:layout_weight="1"
+						android:paddingLeft="@dimen/activity_horizontal_margin"
+						android:text="@string/sync_history"
+						android:textAllCaps="true"
+						android:textColor="@color/primaryDark"/>
+
+					<Button
+						android:id="@+id/clearSyncHistoryButton"
+						style="@style/Widget.AppCompat.Button.Borderless"
+						android:layout_width="wrap_content"
+						android:layout_height="wrap_content"
+						android:layout_gravity="center_vertical"
+						android:text="@string/sync_history_clear"
+						android:visibility="visible"/>
+
+				</LinearLayout>
+
+				<android.support.v7.widget.RecyclerView
+					android:id="@+id/syncHistoryRecyclerView"
+					android:layout_width="match_parent"
+					android:layout_height="0dp"
+					android:layout_weight="1"
+					android:scrollbarStyle="insideOverlay"
+					android:scrollbars="vertical"/>
 
 			</LinearLayout>
-
-
-			<android.support.v7.widget.RecyclerView
-				android:id="@+id/syncHistoryRecyclerView"
-				android:layout_width="match_parent"
-				android:layout_height="0dp"
-				android:layout_weight="1"
-				android:scrollbarStyle="insideOverlay"
-				android:scrollbars="vertical"/>
-
-
 		</LinearLayout>
-
 
 	</FrameLayout>
 
