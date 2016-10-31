@@ -1036,7 +1036,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 				.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						NavUtils.navigateUpFromSameTask(DoodleActivity.this);
+						finish();
 					}
 				})
 				.setCancelable(false)
@@ -1071,7 +1071,7 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		resultData.putExtra(RESULT_SHOULD_DELETE_DOODLE, true);
 		setResult(RESULT_OK, resultData);
 
-		NavUtils.navigateUpFromSameTask(this);
+		finish();
 	}
 
 	private boolean isNavigationBarRightOfContent() {

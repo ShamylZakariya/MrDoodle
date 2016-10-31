@@ -1,5 +1,6 @@
 #BUGS
 
+Determine when to use Activity.finish() v NavigateUpFromSingleTask
 Test inability to connect more thoroughly. Try assigning an invalid IP address.
 
 #CURRENTLY
