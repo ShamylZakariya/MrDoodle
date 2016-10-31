@@ -6,7 +6,7 @@
 	"prefix":"dev",
 	"authenticator": {
 		"enabled":true,
-		"useMockAuthenticator":false,
+		"useMockAuthenticator":true,
 		"whitelist_grace_period_seconds": 3600,
 		"mock": {
 			"tokens": {

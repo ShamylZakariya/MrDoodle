@@ -26,7 +26,7 @@ import org.zakariya.mrdoodle.model.DoodleDocumentNotFoundException;
 import org.zakariya.mrdoodle.net.model.RemoteChangeReport;
 import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.signin.SignInManager;
-import org.zakariya.mrdoodle.signin.techniques.GoogleSignInTechnique;
+import org.zakariya.mrdoodle.signin.techniques.MockSignInTechnique;
 import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
@@ -146,8 +146,8 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	private void initSingletons() {
 		DoodleThumbnailRenderer.init(this);
 
-		SignInManager.init(new GoogleSignInTechnique(this));
-		//SignInManager.init(new MockSignInTechnique(this));
+		//SignInManager.init(new GoogleSignInTechnique(this));
+		SignInManager.init(new MockSignInTechnique(this));
 
 		// build the sync manager, providing mechanism for serializing/de-serializing our model type
 		SyncConfiguration configuration = new SyncConfiguration();
