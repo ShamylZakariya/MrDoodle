@@ -50,7 +50,7 @@ import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.LockState;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
-import org.zakariya.mrdoodle.ui.itemdecorators.BorderItemDecoration;
+import org.zakariya.mrdoodle.ui.itemdecorators.SeparatorDecoration;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleShareHelper;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
@@ -221,9 +221,9 @@ public class DoodleDocumentGridFragment extends Fragment
 		recyclerView.setLayoutManager(layoutManager);
 		recyclerView.addOnItemTouchListener(new RecyclerItemClickListener(getContext(), recyclerView, this));
 
-		recyclerView.addItemDecoration(new BorderItemDecoration(
-				getResources().getDimension(R.dimen.doodle_grid_item_edge_width),
-				ContextCompat.getColor(getContext(), R.color.doodleGridBackgroundColor)
+		recyclerView.addItemDecoration(new SeparatorDecoration(
+				getResources().getDimensionPixelSize(R.dimen.doodle_grid_item_edge_width),
+				true
 		));
 
 		adapter = new DoodleDocumentAdapter(recyclerView, getContext(), columns, getResources().getDimension(R.dimen.doodle_grid_item_thumbnail_padding), emptyView);
