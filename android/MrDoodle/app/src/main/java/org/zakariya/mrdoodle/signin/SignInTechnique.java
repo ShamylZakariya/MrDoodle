@@ -1,5 +1,6 @@
 package org.zakariya.mrdoodle.signin;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.support.annotation.Nullable;
 
@@ -72,5 +73,11 @@ public interface SignInTechnique {
 	 */
 	void handleSignInIntentResult(Intent data);
 
-
+	/**
+	 * Check for the availability of the authentication service, showing an informational dialog if not available.
+	 * @param activity the activity which will host the error dialog if auth is not available
+	 * @param requestCode the code which will be passed to the error dialog, which you can listen for in onActivityResult
+	 * @return true if auth service available, false otherwise
+	 */
+	boolean checkAvailability(Activity activity, int requestCode);
 }

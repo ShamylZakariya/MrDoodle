@@ -1,5 +1,6 @@
 package org.zakariya.mrdoodle.signin.techniques;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -15,6 +16,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.OptionalPendingResult;
 import com.google.android.gms.common.api.ResultCallback;
@@ -47,9 +49,9 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 	private boolean disconnected;
 	private List<AuthenticationTokenReceiver> authenticationTokenReceivers = new ArrayList<>();
 	private Gson gson = new Gson();
-	boolean isRenewingConnection;
-	int connectionSuspendedCount = 0;
-	Handler reconnectHandler = new Handler();
+	private boolean isRenewingConnection;
+	private int connectionSuspendedCount = 0;
+	private Handler reconnectHandler = new Handler();
 
 
 	public GoogleSignInTechnique(Context context) {
@@ -160,6 +162,21 @@ public class GoogleSignInTechnique implements SignInTechnique, GoogleApiClient.O
 	public void handleSignInIntentResult(Intent data) {
 		GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
 		setGoogleSignInResult(result);
+	}
+
+	@Override
+	public boolean checkAvailability(Activity activity, int requestCode) {
+		GoogleApiAvailability googleAPI = GoogleApiAvailability.getInstance();
+		int result = googleAPI.isGooglePlayServicesAvailable(activity);
+		if(result != ConnectionResult.SUCCESS) {
+			if(googleAPI.isUserResolvableError(result)) {
+				googleAPI.getErrorDialog(activity, result, requestCode).show();
+			}
+
+			return false;
+		}
+
+		return true;
 	}
 
 	@Nullable

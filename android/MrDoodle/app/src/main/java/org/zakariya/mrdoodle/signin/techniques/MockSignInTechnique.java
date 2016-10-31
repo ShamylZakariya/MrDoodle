@@ -1,5 +1,6 @@
 package org.zakariya.mrdoodle.signin.techniques;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -84,6 +85,11 @@ public class MockSignInTechnique implements SignInTechnique {
 	}
 
 	@Override
+	public boolean checkAvailability(Activity activity, int requestCode) {
+		return true;
+	}
+
+	@Override
 	public void signIn() {
 		signedIn = true;
 		getPreferences().edit().putBoolean(PREF_KEY_SIGNED_IN, signedIn).commit();
@@ -100,7 +106,7 @@ public class MockSignInTechnique implements SignInTechnique {
 		throw new UnsupportedOperationException("MockSignInTechnique doesn't use a sign-in intent");
 	}
 
-	SharedPreferences getPreferences() {
+	private SharedPreferences getPreferences() {
 		return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 	}
 }

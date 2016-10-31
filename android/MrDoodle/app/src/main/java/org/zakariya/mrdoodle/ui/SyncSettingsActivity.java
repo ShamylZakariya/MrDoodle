@@ -56,6 +56,8 @@ import java.util.concurrent.Callable;
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import icepick.Icepick;
+import icepick.State;
 import io.realm.Realm;
 import io.realm.RealmChangeListener;
 import io.realm.RealmResults;
@@ -73,8 +75,10 @@ public class SyncSettingsActivity extends BaseActivity {
 
 	private static final String TAG = "SyncSettingsActivity";
 	private static final int RC_GET_SIGN_IN = 1;
+	private static final int RC_AUTH_UNAVAILABLE = 2;
 	private static final int CONNECTION_STATUS_TOAST_DEBOUNCE_MILLIS = 250;
 	private static final long ANIMATION_DURATION_MILLIS = 250;
+
 
 	@Bind(R.id.toolbar)
 	Toolbar toolbar;
@@ -100,6 +104,12 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Bind(R.id.syncHistoryRecyclerView)
 	RecyclerView syncHistoryRecyclerView;
 
+	@State
+	boolean connected;
+
+	@State
+	boolean showConnectionStatusToastOnce;
+
 	private MenuItem toggleServerConnectionMenuItem;
 	private MenuItem getRemoteStatusMenuItem;
 	private MenuItem syncNowMenuItem;
@@ -110,8 +120,6 @@ public class SyncSettingsActivity extends BaseActivity {
 	private Realm realm;
 	private SyncLogAdapter syncLogAdapter;
 	private Subscription syncSubscription;
-	private boolean connected;
-	private boolean showConnectionStatusToastOnce;
 
 	public static Intent getIntent(Context context) {
 		return new Intent(context, SyncSettingsActivity.class);
@@ -120,6 +128,10 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		if (savedInstanceState != null) {
+			Icepick.restoreInstanceState(this, savedInstanceState);
+		}
 
 		setContentView(R.layout.activity_sync_settings);
 		ButterKnife.bind(this);
@@ -149,6 +161,8 @@ public class SyncSettingsActivity extends BaseActivity {
 			public void onLongItemClick(View view, int position) {
 			}
 		}));
+
+		userIdTextView.setVisibility(BuildConfig.DEBUG ? View.VISIBLE : View.GONE);
 	}
 
 	@Override
@@ -161,6 +175,12 @@ public class SyncSettingsActivity extends BaseActivity {
 		syncLogAdapter.onDestroy();
 		realm.close();
 		super.onDestroy();
+	}
+
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		Icepick.saveInstanceState(this, outState);
+		super.onSaveInstanceState(outState);
 	}
 
 	@Override
@@ -232,22 +252,34 @@ public class SyncSettingsActivity extends BaseActivity {
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
 
-		if (requestCode == RC_GET_SIGN_IN) {
-			SignInManager signInManager = SignInManager.getInstance();
-			SignInTechnique technique = signInManager.getSignInTechnique();
-			technique.handleSignInIntentResult(data);
+		switch (requestCode) {
+			case RC_GET_SIGN_IN: {
+				if (resultCode == RESULT_OK) {
+					SignInManager signInManager = SignInManager.getInstance();
+					SignInTechnique technique = signInManager.getSignInTechnique();
+					technique.handleSignInIntentResult(data);
+				}
+				break;
+			}
+			case RC_AUTH_UNAVAILABLE: {
+				Log.d(TAG, "onActivityResult() called with: requestCode = [" + requestCode + "], resultCode = [" + resultCode + "], data = [" + data + "]");
+				break;
+			}
 		}
+
 	}
 
 	@OnClick(R.id.signInButton)
 	void signIn() {
 		SignInManager signInManager = SignInManager.getInstance();
 		SignInTechnique technique = signInManager.getSignInTechnique();
-		if (technique.requiresSignInIntent()) {
-			Intent signInIntent = SignInManager.getInstance().getSignInTechnique().getSignInIntent();
-			startActivityForResult(signInIntent, RC_GET_SIGN_IN);
-		} else {
-			technique.signIn();
+		if (technique.checkAvailability(this, RC_AUTH_UNAVAILABLE)) {
+			if (technique.requiresSignInIntent()) {
+				Intent signInIntent = SignInManager.getInstance().getSignInTechnique().getSignInIntent();
+				startActivityForResult(signInIntent, RC_GET_SIGN_IN);
+			} else {
+				technique.signIn();
+			}
 		}
 	}
 

@@ -12,7 +12,6 @@ import org.zakariya.mrdoodle.signin.model.SignInAccount;
  */
 public class SignInManager {
 
-	private static final String TAG = "SignInManager";
 	private static SignInManager instance;
 
 	private SignInTechnique technique;
