@@ -1,14 +1,11 @@
 #BUGS
 
-Determine when to use Activity.finish() v NavigateUpFromSingleTask
 Test inability to connect more thoroughly. Try assigning an invalid IP address.
 
 #CURRENTLY
 
 - design better icon
 - design better empty graphic
-- Landscape layout for sync settings, about screen
-- switch placeholder graphics from PNGs to vector
 - update GSM deps
 
 - Add a killswitch file on another server, say, shamylzakariya.github.io. it would be a JSON file with contents like: {
