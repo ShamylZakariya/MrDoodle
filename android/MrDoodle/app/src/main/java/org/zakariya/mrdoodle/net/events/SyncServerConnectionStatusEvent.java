@@ -1,9 +1,12 @@
 package org.zakariya.mrdoodle.net.events;
 
+import android.support.annotation.Nullable;
+
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 
 /**
- * Created by shamyl on 8/10/16.
+ * SyncServerConnectionStatusEvent
+ * Event fired as connection status with server changes
  */
 public class SyncServerConnectionStatusEvent {
 
@@ -14,14 +17,17 @@ public class SyncServerConnectionStatusEvent {
 		CONNECTED
 	}
 
-	Status status;
+	private Status status;
+	private Exception error;
 
-	public SyncServerConnectionStatusEvent(Status status) {
+	public SyncServerConnectionStatusEvent(Status status, @Nullable Exception error) {
 		this.status = status;
+		this.error = error;
 	}
 
 	public SyncServerConnectionStatusEvent(SyncServerConnection connection) {
 		status = SyncServerConnectionStatusEvent.Status.DISCONNECTED;
+		error = connection.getMostRecentError();
 
 		if (connection.isConnecting()) {
 			status = SyncServerConnectionStatusEvent.Status.CONNECTING;
@@ -54,8 +60,12 @@ public class SyncServerConnectionStatusEvent {
 		return status == Status.CONNECTED;
 	}
 
+	public Exception getError() {
+		return error;
+	}
+
 	@Override
 	public String toString() {
-		return "[SyncServerConnectionStatusEvent status: " + status + "]";
+		return "[SyncServerConnectionStatusEvent status: " + status + ", error: " + error + "]";
 	}
 }

@@ -57,6 +57,11 @@
 			android:visibility="gone"
 			tools:visibility="visible">
 
+			<include
+				android:layout_width="match_parent"
+				android:layout_height="wrap_content"
+				layout="@layout/disconnected_message"/>
+
 			<LinearLayout
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"

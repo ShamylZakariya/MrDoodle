@@ -32,7 +32,7 @@ public class SyncServerConnection extends WebSocketConnection {
 		void onConnectingToSyncServer();
 		void onConnectedAndAuthorizedToSyncServer();
 		void onSyncServerRemoteStatusReceived(RemoteStatus remoteStatus);
-		void onDisconnectedFromSyncServer();
+		void onDisconnectedFromSyncServer(Exception error);
 	}
 
 	private static final String TAG = SyncServerConnection.class.getSimpleName();
@@ -85,11 +85,11 @@ public class SyncServerConnection extends WebSocketConnection {
 			listener.onConnectingToSyncServer();
 		}
 
-		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTING));
+		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTING, null));
 	}
 
 	private void notifyAuthorizationBegun(){
-		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.AUTHORIZING));
+		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.AUTHORIZING, null));
 	}
 
 	private void notifyOnRemoteStatusReceived(RemoteStatus status) {
@@ -98,18 +98,18 @@ public class SyncServerConnection extends WebSocketConnection {
 		}
 	}
 
-	private void notifyOnDisconnected() {
+	private void notifyOnDisconnected(@Nullable Exception error) {
 
 		// the WebSocketConnection constructor immediately sets connection status to DISCONNECTED
 		// before our constructor can create the notificationListeners array. So we have to check.
 
 		if (notificationListeners != null) {
 			for (NotificationListener listener : notificationListeners) {
-				listener.onDisconnectedFromSyncServer();
+				listener.onDisconnectedFromSyncServer(error);
 			}
 		}
 
-		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.DISCONNECTED));
+		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.DISCONNECTED, error));
 	}
 
 	private void notifyOnConnectedAndAuthorized() {
@@ -118,7 +118,7 @@ public class SyncServerConnection extends WebSocketConnection {
 			listener.onConnectedAndAuthorizedToSyncServer();
 		}
 
-		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTED));
+		BusProvider.postOnMainThread(new SyncServerConnectionStatusEvent(SyncServerConnectionStatusEvent.Status.CONNECTED, null));
 
 	}
 
@@ -204,7 +204,7 @@ public class SyncServerConnection extends WebSocketConnection {
 			case DISCONNECTED:
 				authenticating = false;
 				authenticated = false;
-				notifyOnDisconnected();
+				notifyOnDisconnected(getMostRecentError());
 				break;
 
 			default:

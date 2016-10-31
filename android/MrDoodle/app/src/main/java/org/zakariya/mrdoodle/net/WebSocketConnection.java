@@ -2,6 +2,7 @@ package org.zakariya.mrdoodle.net;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -27,7 +28,7 @@ public class WebSocketConnection extends WebSocketAdapter {
 	private static final long MAX_RECONNECT_DELAY_MILLIS = 1000 * 60 * 5;
 	private static final int TIMEOUT = 5000;
 
-	protected enum ConnectionStatus {
+	enum ConnectionStatus {
 		NONE,
 		DISCONNECTED,
 		CONNECTING,
@@ -39,7 +40,8 @@ public class WebSocketConnection extends WebSocketAdapter {
 	private String host;
 	private WebSocket webSocket;
 	private ConnectionStatus connectionStatus = ConnectionStatus.NONE;
-	protected Gson gson = new Gson();
+	private Exception error;
+	Gson gson = new Gson();
 
 	private int failureCount = 0;
 	private Handler reconnectHandler = new Handler(Looper.getMainLooper());
@@ -50,7 +52,7 @@ public class WebSocketConnection extends WebSocketAdapter {
 		}
 	};
 
-	public WebSocketConnection(String host) {
+	WebSocketConnection(String host) {
 		Log.d(TAG, "WebSocketConnection() called with: " + "host = [" + host + "]");
 		this.host = host;
 		setConnectionStatus(ConnectionStatus.DISCONNECTED);
@@ -61,6 +63,19 @@ public class WebSocketConnection extends WebSocketAdapter {
 	 */
 	public String getHost() {
 		return host;
+	}
+
+	/**
+	 * Get the most recently reported error, for error reporting. The error is only assigned in an
+	 * error case (e.g. bad network, bad authorization, etc). If a subsequent connection attempt
+	 * succeeds, the error will still be set. Do not use the presence of the exception as indicative
+	 * of an error state. This merely reports the last recorded error state. One exception: calling disconnect()
+	 * will null the error state.
+	 * @return an Exception describing the last connection error, or null if connection is valid.
+	 */
+	@Nullable
+	public Exception getMostRecentError() {
+		return error;
 	}
 
 	/**
@@ -99,10 +114,11 @@ public class WebSocketConnection extends WebSocketAdapter {
 	}
 
 	/**
-	 * Disconnect from host
+	 * Disconnect from host, and null the error state.
 	 */
 	public void disconnect() {
 
+		error = null;
 		clearScheduledReconnect();
 
 		if (isConnected() || isConnecting()) {
@@ -166,6 +182,8 @@ public class WebSocketConnection extends WebSocketAdapter {
 	@Override
 	public void onConnectError(WebSocket websocket, WebSocketException exception) throws Exception {
 		super.onConnectError(websocket, exception);
+		error = exception;
+
 		Log.e(TAG, "onConnectError() called with: " + "websocket = [" + websocket + "], exception = [" + exception + "]");
 
 		// if we haven't canceled connect, keep trying

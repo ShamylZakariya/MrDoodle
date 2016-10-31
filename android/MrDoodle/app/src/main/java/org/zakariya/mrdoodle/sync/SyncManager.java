@@ -605,8 +605,8 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	@Override
-	public void onDisconnectedFromSyncServer() {
-		Log.i(TAG, "onConnectedAndAuthorizedToSyncServer: disconnected from sync server");
+	public void onDisconnectedFromSyncServer(Exception e) {
+		Log.i(TAG, "onDisconnectedFromSyncServer: disconnected from sync server, error: " + e);
 		connected = false;
 		syncApi.setDeviceId(null);
 	}

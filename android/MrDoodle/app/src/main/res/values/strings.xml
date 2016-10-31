@@ -106,7 +106,8 @@
 	<string name="sign_out_dialog_title">Sign Out?</string>
 	<string name="sign_out_dialog_message">Signing out will disable sync with other devices, however no data will be lost.</string>
 	<string name="sign_out_dialog_positive_action_title">Sign Out</string>
-	<string name="connection_status">connection status</string>
+	<string name="connection_status">Connection Status</string>
 	<string name="signed_out">Signed out</string>
+	<string name="disconnected_message_title">Disconnected</string>
 
 </resources>
