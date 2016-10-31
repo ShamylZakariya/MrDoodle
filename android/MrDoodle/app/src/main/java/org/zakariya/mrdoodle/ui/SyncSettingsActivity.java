@@ -71,6 +71,8 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
+import static org.zakariya.mrdoodle.R.string.sync_server_connection_status_connected;
+
 /**
  * Created by shamyl on 1/2/16.
  */
@@ -128,7 +130,7 @@ public class SyncSettingsActivity extends BaseActivity {
 	private Realm realm;
 	private SyncLogAdapter syncLogAdapter;
 	private Subscription syncSubscription;
-	private Debouncer<Pair<Boolean,String>> disconnectionMessageDebouncer;
+	private Debouncer<Pair<Boolean, String>> disconnectionMessageDebouncer;
 
 	public static Intent getIntent(Context context) {
 		return new Intent(context, SyncSettingsActivity.class);
@@ -176,9 +178,9 @@ public class SyncSettingsActivity extends BaseActivity {
 
 		// to minimize flicker during reconnect attempts, we will use a debouncer. the first
 		// value, the boolean, is whether to show the message, the second is the error message
-		disconnectionMessageDebouncer = new Debouncer<>(500, new Action1<Pair<Boolean,String>>() {
+		disconnectionMessageDebouncer = new Debouncer<>(500, new Action1<Pair<Boolean, String>>() {
 			@Override
-			public void call(Pair<Boolean,String> payload) {
+			public void call(Pair<Boolean, String> payload) {
 				disconnectedMessageBox.setVisibility(payload.first ? View.VISIBLE : View.GONE);
 				if (!TextUtils.isEmpty(payload.second)) {
 					disconnectedExplanationTextView.setVisibility(View.VISIBLE);
@@ -228,7 +230,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		resetAndSyncMenuItem = menu.findItem(R.id.menuItemResetAndSync);
 
 		showCurrentSignedInState(false);
-		showCurrentServerConnectionState();
+		showCurrentServerConnectionState(false);
 
 		return true;
 	}
@@ -238,7 +240,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		switch (item.getItemId()) {
 
 			case R.id.menuItemConnectionStatus:
-				showCurrentServerConnectionState();
+				showCurrentServerConnectionState(true);
 				return true;
 
 			case R.id.menuItemSignOut:
@@ -302,7 +304,7 @@ public class SyncSettingsActivity extends BaseActivity {
 	protected void onResume() {
 		super.onResume();
 		showCurrentSignedInState(false);
-		showCurrentServerConnectionState();
+		showCurrentServerConnectionState(false);
 	}
 
 	@OnClick(R.id.signInButton)
@@ -508,24 +510,23 @@ public class SyncSettingsActivity extends BaseActivity {
 		@DrawableRes int iconRes = 0;
 
 		switch (event.getStatus()) {
-			case DISCONNECTED:
+			case DISCONNECTED: {
 				connected = false;
 				iconRes = R.drawable.ic_sync_disconnected;
+				showDisconnectionMessage(formatDisconnectionError(event.getError()));
 				break;
+			}
 
-			case CONNECTED:
-				iconRes = R.drawable.ic_sync_connected;
+			case CONNECTED: {
+				boolean wasConnected = this.connected;
 				connected = true;
+				iconRes = R.drawable.ic_sync_connected;
+				hideDisconnectionMessage();
+				if (!wasConnected) {
+					Toast.makeText(SyncSettingsActivity.this, sync_server_connection_status_connected, Toast.LENGTH_SHORT).show();
+				}
 				break;
-		}
-
-		Log.d(TAG, "onSyncServerConnectionStatusChanged() called with: event = [" + event + "] connected: " + connected);
-
-		if (connected) {
-			hideDisconnectionMessage();
-			Toast.makeText(SyncSettingsActivity.this, R.string.sync_server_connection_status_connected, Toast.LENGTH_SHORT).show();
-		} else {
-			showDisconnectionMessage(formatDisconnectionError(event.getError()));
+			}
 		}
 
 		if (connectionStatusMenuItem != null && iconRes != 0) {
@@ -602,9 +603,18 @@ public class SyncSettingsActivity extends BaseActivity {
 		return connected;
 	}
 
-	private void showCurrentServerConnectionState() {
+	private void showCurrentServerConnectionState(boolean toastStatus) {
 		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
 		onSyncServerConnectionStatusChanged(new SyncServerConnectionStatusEvent(connection));
+
+		if (toastStatus) {
+			Toast.makeText(this,
+					this.connected
+							? sync_server_connection_status_connected
+							: R.string.sync_server_connection_status_disconnected,
+					Toast.LENGTH_SHORT).show();
+		}
+
 	}
 
 	void showSyncLogEntryDetail(SyncLogEntry entry) {
@@ -616,11 +626,11 @@ public class SyncSettingsActivity extends BaseActivity {
 	}
 
 	void showDisconnectionMessage(String message) {
-		disconnectionMessageDebouncer.send(new Pair<>(true,message));
+		disconnectionMessageDebouncer.send(new Pair<>(true, message));
 	}
 
-	void hideDisconnectionMessage(){
-		disconnectionMessageDebouncer.send(new Pair<Boolean,String>(false,null));
+	void hideDisconnectionMessage() {
+		disconnectionMessageDebouncer.send(new Pair<Boolean, String>(false, null));
 	}
 
 	///////////////////////////////////////////////////////////////////

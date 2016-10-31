@@ -177,7 +177,10 @@ public class DoodleDocumentGridFragment extends Fragment
 	public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
 		inflater.inflate(R.menu.menu_doodle_document_grid, menu);
 
+		// status will be shown only when signed in and connection status is established
 		connectionStatusMenuItem = menu.findItem(R.id.menuItemConnectionStatus);
+		connectionStatusMenuItem.setVisible(false);
+
 		signInMenuItem = menu.findItem(R.id.menuItemSignIn);
 
 		showCurrentSignedInState();
@@ -395,18 +398,19 @@ public class DoodleDocumentGridFragment extends Fragment
 	}
 
 	void showCurrentSignedInState() {
-		if (connectionStatusMenuItem != null) {
-			SignInAccount account = SignInManager.getInstance().getAccount();
-			boolean signedIn = account != null;
-
-			connectionStatusMenuItem.setVisible(signedIn);
-			signInMenuItem.setVisible(!signedIn);
+		if (signInMenuItem != null) {
+			signInMenuItem.setVisible(!isSignedIn());
 		}
 	}
 
 	private void showCurrentServerConnectionState() {
 		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
 		onSyncServerConnectionStatusChanged(new SyncServerConnectionStatusEvent(connection));
+	}
+
+	private boolean isSignedIn() {
+		SignInAccount account = SignInManager.getInstance().getAccount();
+		return account != null;
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -437,6 +441,7 @@ public class DoodleDocumentGridFragment extends Fragment
 			}
 
 			if (iconRes != 0) {
+				connectionStatusMenuItem.setVisible(isSignedIn());
 				connectionStatusMenuItem.setIcon(iconRes);
 			}
 		}
