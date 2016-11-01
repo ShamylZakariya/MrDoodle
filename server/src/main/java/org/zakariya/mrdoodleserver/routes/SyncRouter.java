@@ -36,7 +36,7 @@ import static spark.Spark.*;
  * SyncRouter
  * Establishes the REST routes used for sync operations.
  */
-public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreatedListener {
+public class SyncRouter extends Router implements WebSocketConnection.WebSocketConnectionCreatedListener {
 
 	private static final Logger logger = LoggerFactory.getLogger(SyncRouter.class);
 
@@ -45,7 +45,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	public static final String REQUEST_HEADER_WRITE_TOKEN = "X-Write-Token";
 	public static final String REQUEST_HEADER_DEVICE_ID = "X-Device-ID";
 
-	private static final String DEFAULT_STORAGE_PREFIX = "dev";
 	private static final boolean READ_WRITE_LOCK_IS_FAIR = true;
 
 	private static final String RESPONSE_TYPE_JSON = MediaType.JSON_UTF_8.toString();
@@ -57,18 +56,13 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private static Map<String, SyncManager> syncManagersByAccountId = new HashMap<>();
 	private static Map<String, ReentrantReadWriteLock> readWriteLocksByAccountId = new HashMap<>();
 
-	private Configuration configuration;
 	private Authenticator authenticator;
-	private JedisPool jedisPool;
-	private String storagePrefix;
-	private ResponseTransformer jsonResponseTransformer = new JsonResponseTransformer();
 	private UserRecordAccess userRecordAccess;
 
 	public SyncRouter(Configuration configuration, Authenticator authenticator, JedisPool jedisPool) {
-		this.configuration = configuration;
+		super(configuration, jedisPool);
 		this.authenticator = authenticator;
-		this.jedisPool = jedisPool;
-		this.storagePrefix = configuration.get("prefix", DEFAULT_STORAGE_PREFIX);
+		userRecordAccess = new UserRecordAccess(getJedisPool(), getStoragePrefix());
 	}
 
 	public void configureRoutes() {
@@ -79,23 +73,23 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		before(basePath + "/*", this::checkRequiredPreconditions);
 		before(basePath + "/*", this::recordUserVisit);
 
-		get(basePath + "/status", this::getStatus, jsonResponseTransformer);
-		get(basePath + "/changes", this::getChanges, jsonResponseTransformer);
+		get(basePath + "/status", this::getStatus, getJsonResponseTransformer());
+		get(basePath + "/changes", this::getChanges, getJsonResponseTransformer());
 
 		// get a write session token
 		get(basePath + "/writeSession/start", this::startWriteSession);
 		// end a write session using token received above
-		delete(basePath + "/writeSession/sessions/:token", this::commitWriteSession, jsonResponseTransformer);
+		delete(basePath + "/writeSession/sessions/:token", this::commitWriteSession, getJsonResponseTransformer());
 
 		// blobs
 		get(basePath + "/blob/:blobId", this::getBlob);
-		put(basePath + "/blob/:blobId", this::putBlob, jsonResponseTransformer);
-		delete(basePath + "/blob/:blobId", this::deleteBlob, jsonResponseTransformer);
+		put(basePath + "/blob/:blobId", this::putBlob, getJsonResponseTransformer());
+		delete(basePath + "/blob/:blobId", this::deleteBlob, getJsonResponseTransformer());
 
 		// locks
-		put(basePath + "/locks/:documentId", this::requestLock, jsonResponseTransformer);
-		delete(basePath + "/locks/:documentId", this::releaseLock, jsonResponseTransformer);
-		get(basePath + "/locks/:documentId", this::isLocked, jsonResponseTransformer);
+		put(basePath + "/locks/:documentId", this::requestLock, getJsonResponseTransformer());
+		delete(basePath + "/locks/:documentId", this::releaseLock, getJsonResponseTransformer());
+		get(basePath + "/locks/:documentId", this::isLocked, getJsonResponseTransformer());
 	}
 
 	///////////////////////////////////////////////////////////////////
@@ -151,11 +145,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 
 		String authToken = request.headers(REQUEST_HEADER_AUTH);
 		User user = authenticator.getUser(authToken);
-		logger.info("recordUserVisit user: {}", user);
-
-		if (userRecordAccess == null) {
-			userRecordAccess = new UserRecordAccess(jedisPool, storagePrefix);
-		}
 
 		// record this user's visit
 		userRecordAccess.recordUserVisit(user);
@@ -503,7 +492,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	///////////////////////////////////////////////////////////////////
 
 	private String getBasePath() {
-		return "/api/" + configuration.get("version") + "/sync/:accountId";
+		return "/api/" + getApiVersion() + "/sync/:accountId";
 	}
 
 	private synchronized ReentrantReadWriteLock getReadWriteLockForAccount(String accountId) {
@@ -517,13 +506,13 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	}
 
 	private SyncManager getSyncManagerForAccount(String accountId) {
-		Preconditions.checkNotNull(jedisPool, "jedisPool instance must be set");
+		Preconditions.checkNotNull(getJedisPool(), "jedisPool instance must be set");
 		Preconditions.checkArgument(accountId != null && !accountId.isEmpty(), "accountId must be non-null and non-empty");
 
 		SyncManager syncManager = syncManagersByAccountId.get(accountId);
 
 		if (syncManager == null) {
-			syncManager = new SyncManager(configuration, jedisPool, storagePrefix, accountId);
+			syncManager = new SyncManager(getConfiguration(), getJedisPool(), getStoragePrefix(), accountId);
 			syncManagersByAccountId.put(accountId, syncManager);
 		}
 
@@ -540,18 +529,6 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		logger.error(message);
 		response.type(RESPONSE_TYPE_TEXT);
 		halt(code, message);
-	}
-
-	///////////////////////////////////////////////////////////////////
-
-	private class JsonResponseTransformer implements ResponseTransformer {
-
-		private ObjectMapper objectMapper = new ObjectMapper();
-
-		@Override
-		public String render(Object o) throws Exception {
-			return objectMapper.writeValueAsString(o);
-		}
 	}
 
 	///////////////////////////////////////////////////////////////////

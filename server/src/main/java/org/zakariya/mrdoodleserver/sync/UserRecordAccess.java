@@ -7,7 +7,9 @@ import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * UserRecordAccess
@@ -44,6 +46,10 @@ public class UserRecordAccess {
 		try (Jedis jedis = jedisPool.getResource()) {
 			return jedis.smembers(getUserSetJedisKey());
 		}
+	}
+
+	public Set<User> getUsers() {
+		return getUserIds().stream().map(this::getUser).collect(Collectors.toSet());
 	}
 
 	public User getUser(String userId) {

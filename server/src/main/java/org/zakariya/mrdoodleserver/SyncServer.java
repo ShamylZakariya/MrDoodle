@@ -7,6 +7,7 @@ import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.auth.Whitelist;
 import org.zakariya.mrdoodleserver.auth.techniques.GoogleIdTokenAuthenticator;
 import org.zakariya.mrdoodleserver.auth.techniques.MockAuthenticator;
+import org.zakariya.mrdoodleserver.routes.DashboardRouter;
 import org.zakariya.mrdoodleserver.routes.SyncRouter;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.util.Configuration;
@@ -88,6 +89,11 @@ public class SyncServer {
 		webSocket(WebSocketConnection.getRoute(configuration), WebSocketConnection.class);
 
 		syncRouter.configureRoutes();
+
+		// build the dashboard router
+		DashboardRouter dashboardRouter = new DashboardRouter(configuration, jedisPool);
+		dashboardRouter.configureRoutes();
+
 		init();
 	}
 
