@@ -1,6 +1,7 @@
 package org.zakariya.mrdoodleserver.auth.techniques;
 
 import org.zakariya.mrdoodleserver.auth.Authenticator;
+import org.zakariya.mrdoodleserver.auth.User;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -14,29 +15,29 @@ import java.util.Set;
  */
 public class MockAuthenticator implements Authenticator {
 
-	private Map<String, String> tokenToIdMap;
+	private Map<String, User> tokenToUserMap;
 	private Set<String> whitelist = new HashSet<>();
 
 	/**
 	 * Create a mock authenticator which will reject any auth request
 	 */
 	public MockAuthenticator() {
-		tokenToIdMap = new HashMap<>();
+		tokenToUserMap = new HashMap<>();
 	}
 
 	/**
 	 * Create a mock authenticator which will accept a fake auth token, and return a user id.
 	 *
-	 * @param tokenToIdMap map of fake tokens to fake user ids
+	 * @param tokenToUserMap map of fake tokens to fake user ids
 	 */
-	public MockAuthenticator(Map<String, String> tokenToIdMap) {
-		this.tokenToIdMap = new HashMap<>(tokenToIdMap);
+	public MockAuthenticator(Map<String, User> tokenToUserMap) {
+		this.tokenToUserMap = new HashMap<>(tokenToUserMap);
 	}
 
 	@Nullable
 	@Override
-	public String verify(String token) {
-		return tokenToIdMap.get(token);
+	public User verify(String token) {
+		return getUser(token);
 	}
 
 	@Override
@@ -52,5 +53,11 @@ public class MockAuthenticator implements Authenticator {
 	@Override
 	public boolean isInWhitelist(String token) {
 		return whitelist.contains(token);
+	}
+
+	@Nullable
+	@Override
+	public User getUser(String token) {
+		return tokenToUserMap.get(token);
 	}
 }

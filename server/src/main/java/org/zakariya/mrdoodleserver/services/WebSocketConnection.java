@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
+import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.util.Configuration;
 
 import java.io.IOException;
@@ -250,8 +251,8 @@ public class WebSocketConnection {
 				// if we didn't authenticate a new session just now
 				// we need to confirm that user's auth is still valid
 				if (!didAuthenticate) {
-					String accountId = authenticator.verify(authToken);
-					if (accountId == null) {
+					User user = authenticator.verify(authToken);
+					if (user == null) {
 
 						// the authorization must have expired
 						deauthenticate(userSession);
@@ -275,8 +276,10 @@ public class WebSocketConnection {
 	private String authenticate(Session userSession, String authToken) {
 		if (authToken != null && !authToken.isEmpty()) {
 
-			String accountId = authenticator.verify(authToken);
-			if (accountId != null && !accountId.isEmpty()) {
+			User user = authenticator.verify(authToken);
+			if (user != null) {
+
+				String accountId = user.getId();
 
 				// and move this session to our authenticated region
 				accountIdsByUserSession.put(userSession, accountId);

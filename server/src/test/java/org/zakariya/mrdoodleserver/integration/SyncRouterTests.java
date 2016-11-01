@@ -4,12 +4,15 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.routes.SyncRouter;
 import org.zakariya.mrdoodleserver.sync.TimestampRecord;
+import org.zakariya.mrdoodleserver.sync.UserRecordAccess;
 import org.zakariya.mrdoodleserver.sync.transport.LockStatus;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
 import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
 
+import java.util.Date;
 import java.util.Map;
 
 import static org.junit.Assert.*;
@@ -23,6 +26,7 @@ public class SyncRouterTests extends BaseIntegrationTest {
 
 	// sourced from test-server-configuration.json
 	private static final String ACCOUNT_ID = "12345";
+	private static final String ACCOUNT_EMAIL = "foo@email.com";
 	private static final String DEVICE_ID_0 = "abcde";
 	private static final String DEVICE_ID_1 = "fghij";
 
@@ -363,5 +367,43 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		assertTrue("Status for DEVICE_ID_1 foreign locks should be empty", status.foreignLockedDocumentIds.isEmpty());
 
 	}
+
+	@Test
+	public void testUserRecord() {
+
+		long nowSeconds = getTimestampSeconds();
+
+		// just make an authorized request of the server to tickle the UserRecord
+		request("GET", getPath() + "status", authHeader(DEVICE_ID_0));
+
+		UserRecordAccess userRecordAccess = new UserRecordAccess(getJedisPool(), getStoragePrefix());
+		User user = userRecordAccess.getUser(ACCOUNT_ID);
+
+		assertNotNull("User should have been recorded by UserRecordAccess when API access happened", user);
+		assertEquals("User ids should match", user.getId(), ACCOUNT_ID);
+		assertEquals("User emails should match", user.getEmail(), ACCOUNT_EMAIL);
+
+		// check if timestamp is similar
+
+		long userAccessTimestamp = userRecordAccess.getUserVisitTimestampSeconds(ACCOUNT_ID);
+		long delta = userAccessTimestamp - nowSeconds;
+		assertTrue("Timestamp should be sane", (delta >= 0 && delta < 10));
+
+		// now wait a beat tickle, and then check if the timestamp is newer
+		try {
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
+		request("GET", getPath() + "status", authHeader(DEVICE_ID_0));
+		long userAccessTimestamp2 = userRecordAccess.getUserVisitTimestampSeconds(ACCOUNT_ID);
+		assertTrue("After waiting 2 seconds, and tickling API, user access timestamp should be newer than last check", userAccessTimestamp2 > userAccessTimestamp);
+	}
+
+	private long getTimestampSeconds() {
+		return (new Date()).getTime() / 1000;
+	}
+
 
 }

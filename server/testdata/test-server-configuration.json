@@ -8,7 +8,7 @@
 		"useMockAuthenticator": true,
 		"mock": {
 			"tokens": {
-				"VALID-MOCK-TOKEN-I-GUESS": "12345"
+				"VALID-MOCK-TOKEN-I-GUESS": "12345:foo@email.com"
 			}
 		}
 	},
@@ -22,5 +22,4 @@
 			}
 		}
 	}
-}
 }

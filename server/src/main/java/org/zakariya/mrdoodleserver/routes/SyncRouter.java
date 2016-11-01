@@ -7,11 +7,9 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
+import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
-import org.zakariya.mrdoodleserver.sync.BlobStore;
-import org.zakariya.mrdoodleserver.sync.LockManager;
-import org.zakariya.mrdoodleserver.sync.SyncManager;
-import org.zakariya.mrdoodleserver.sync.TimestampRecord;
+import org.zakariya.mrdoodleserver.sync.*;
 import org.zakariya.mrdoodleserver.sync.transport.LockStatus;
 import org.zakariya.mrdoodleserver.sync.transport.Status;
 import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
@@ -62,15 +60,14 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	private Configuration configuration;
 	private Authenticator authenticator;
 	private JedisPool jedisPool;
-	private boolean authenticationEnabled;
 	private String storagePrefix;
 	private ResponseTransformer jsonResponseTransformer = new JsonResponseTransformer();
+	private UserRecordAccess userRecordAccess;
 
 	public SyncRouter(Configuration configuration, Authenticator authenticator, JedisPool jedisPool) {
 		this.configuration = configuration;
 		this.authenticator = authenticator;
 		this.jedisPool = jedisPool;
-		this.authenticationEnabled = configuration.getBoolean("authenticator/enabled", true);
 		this.storagePrefix = configuration.get("prefix", DEFAULT_STORAGE_PREFIX);
 	}
 
@@ -80,6 +77,7 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		// all api calls must authenticate
 		before(basePath + "/*", this::authenticate);
 		before(basePath + "/*", this::checkRequiredPreconditions);
+		before(basePath + "/*", this::recordUserVisit);
 
 		get(basePath + "/status", this::getStatus, jsonResponseTransformer);
 		get(basePath + "/changes", this::getChanges, jsonResponseTransformer);
@@ -103,29 +101,27 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 	///////////////////////////////////////////////////////////////////
 
 	private void authenticate(Request request, Response response) {
-		if (authenticationEnabled) {
-			String authToken = request.headers(REQUEST_HEADER_AUTH);
-			if (authToken == null || authToken.isEmpty()) {
-				sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Missing authorization token");
+		String authToken = request.headers(REQUEST_HEADER_AUTH);
+		if (authToken == null || authToken.isEmpty()) {
+			sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Missing authorization token");
+		} else {
+			User user;
+
+			try {
+				user = authenticator.verify(authToken);
+			} catch (Exception e) {
+				sendErrorAndHalt(response, 500, "SyncRouter::authenticate - Unable to verify authorization token, error: " + e.getLocalizedMessage(), e);
+				return;
+			}
+
+			String pathAccountId = request.params("accountId");
+			if (user != null) {
+				// token passed validation, but only allows access to :accountId subpath
+				if (!user.getId().equals(pathAccountId)) {
+					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + user.getId() + " is valid, but does not grant access to path: " + pathAccountId);
+				}
 			} else {
-				String verifiedId = null;
-
-				try {
-					verifiedId = authenticator.verify(authToken);
-				} catch (Exception e) {
-					sendErrorAndHalt(response, 500, "SyncRouter::authenticate - Unable to verify authorization token, error: " + e.getLocalizedMessage(), e);
-					return;
-				}
-
-				String pathAccountId = request.params("accountId");
-				if (verifiedId != null) {
-					// token passed validation, but only allows access to :accountId subpath
-					if (!verifiedId.equals(pathAccountId)) {
-						sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + verifiedId + " is valid, but does not grant access to account: " + pathAccountId);
-					}
-				} else {
-					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Invalid authorization token");
-				}
+				sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Invalid authorization token");
 			}
 		}
 	}
@@ -149,6 +145,20 @@ public class SyncRouter implements WebSocketConnection.WebSocketConnectionCreate
 		} else {
 			sendErrorAndHalt(response, 400, "SyncRouter::checkRequiredPreconditions - Missing accountId");
 		}
+	}
+
+	private void recordUserVisit(Request request, Response response) {
+
+		String authToken = request.headers(REQUEST_HEADER_AUTH);
+		User user = authenticator.getUser(authToken);
+		logger.info("recordUserVisit user: {}", user);
+
+		if (userRecordAccess == null) {
+			userRecordAccess = new UserRecordAccess(jedisPool, storagePrefix);
+		}
+
+		// record this user's visit
+		userRecordAccess.recordUserVisit(user);
 	}
 
 	@Nullable

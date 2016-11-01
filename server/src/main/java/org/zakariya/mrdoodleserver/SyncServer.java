@@ -3,6 +3,7 @@ package org.zakariya.mrdoodleserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
+import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.auth.Whitelist;
 import org.zakariya.mrdoodleserver.auth.techniques.GoogleIdTokenAuthenticator;
 import org.zakariya.mrdoodleserver.auth.techniques.MockAuthenticator;
@@ -13,6 +14,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -110,7 +112,7 @@ public class SyncServer {
 		}
 	}
 
-	private static JedisPool buildJedisPool(Configuration configuration) {
+	public static JedisPool buildJedisPool(Configuration configuration) {
 		JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
 		jedisPoolConfig.setMaxTotal(128);
 
@@ -136,14 +138,14 @@ public class SyncServer {
 				return new MockAuthenticator();
 			}
 
-			// we need to convert Map<String,Object> -> Map<String,String>
-			Map<String, String> tokens = tokensMap
-					.entrySet()
-					.stream()
-					.collect(Collectors.toMap(Map.Entry::getKey, e -> (String) e.getValue()));
+			Map<String,User> tokens = new HashMap<>();
+			for (String token : tokensMap.keySet()) {
+				String value = tokensMap.get(token).toString();
+				String bits[] = value.split(":");
+				tokens.put(token, new User(bits[0], bits[1], null));
+			}
 
 			return new MockAuthenticator(tokens);
-
 		} else {
 
 			String oauthServerId = configuration.get("authenticator/google/oauth_server_id");

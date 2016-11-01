@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jetbrains.annotations.Nullable;
 import org.zakariya.mrdoodleserver.SyncServer;
 import org.zakariya.mrdoodleserver.util.Configuration;
+import redis.clients.jedis.JedisPool;
 import spark.Spark;
 import spark.utils.IOUtils;
 
@@ -25,6 +26,8 @@ import static org.junit.Assert.fail;
 public class BaseIntegrationTest {
 
 	private static Configuration configuration;
+	private static JedisPool jedisPool;
+	private static String storagePrefix;
 
 	static void startServer(String configurationFilePath) {
 		assertNull(configuration);
@@ -34,6 +37,11 @@ public class BaseIntegrationTest {
 
 		// start server, flushing storage
 		SyncServer.start(configuration, true);
+
+		storagePrefix = configuration.get("prefix");
+
+		// get a jedis pool we can use for testing
+		jedisPool = SyncServer.buildJedisPool(configuration);
 
 		// wait for server to spin up?
 		try {
@@ -54,6 +62,14 @@ public class BaseIntegrationTest {
 
 		Spark.stop();
 		SyncServer.flushStorage(configuration);
+	}
+
+	static String getStoragePrefix() {
+		return storagePrefix;
+	}
+
+	static JedisPool getJedisPool() {
+		return jedisPool;
 	}
 
 	static class Header {
