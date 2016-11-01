@@ -9,13 +9,8 @@ import javax.annotation.Nullable;
  */
 public class User {
 
-	@JsonProperty
 	private String id;
-
-	@JsonProperty
 	private String email;
-
-	@JsonProperty
 	private String avatarUrl;
 
 	public User(String id, String email, @Nullable String avatarUrl) {
