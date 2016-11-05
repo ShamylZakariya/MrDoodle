@@ -1,7 +1,7 @@
 package org.zakariya.mrdoodleserver.sync.transport;
 
 /**
- * Created by shamyl on 11/1/16.
+ * Simple User object vended by the DashboardRouter
  */
 public class User {
 
