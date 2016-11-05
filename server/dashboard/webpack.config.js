@@ -25,17 +25,13 @@ module.exports = {
 				include: __dirname + '/app',
 				loader: "babel-loader"
 			}
-			// {
-			// 	test: /\.css$/,
-			// 	loader: "style!css"
-			// }
 		]
 	},
 	plugins: [
 		HTMLWebpackPluginConfig,
 		new CopyWebpackPlugin([
 			{
-				from: "./app/styles.css", // only CSS, ignoring SASS, etc
+				from: "./app/styles.css"
 			}
 		])
 	]
