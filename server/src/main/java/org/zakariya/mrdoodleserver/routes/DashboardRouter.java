@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static spark.Spark.externalStaticFileLocation;
 import static spark.Spark.get;
 
 /**
@@ -27,7 +28,7 @@ public class DashboardRouter extends Router {
 		this.userRecordAccess = new UserRecordAccess(getJedisPool(), getStoragePrefix());
 	}
 
-	public void configureRoutes() {
+	public void initializeRoutes() {
 		String basePath = getBasePath();
 
 		// get list of all users who have used this service - returns User[]

@@ -9,7 +9,7 @@ import spark.ResponseTransformer;
 /**
  * Base class for Routers
  */
-abstract class Router {
+public abstract class Router {
 
 	private Configuration configuration;
 	private JedisPool jedisPool;
@@ -51,7 +51,7 @@ abstract class Router {
 		return new JsonResponseTransformer();
 	}
 
-	public abstract void configureRoutes();
+	public abstract void initializeRoutes();
 
 	///////////////////////////////////////////////////////////////////
 

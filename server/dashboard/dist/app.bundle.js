@@ -51,11 +51,15 @@
 /* 1 */
 /***/ function(module, exports) {
 
-	'use strict';
+	"use strict";
 
-	setTimeout(function () {
-		console.log('arrow functions!');
-	}, 1000);
+	console.log("Making test call to dashboard API");
+
+	$.getJSON("http://localhost:4567/api/v1/dashboard/users").done(function (e) {
+		console.log('got data: ', e);
+	}).fail(function (e) {
+		console.error("failed: ", e);
+	});
 
 /***/ }
 /******/ ]);

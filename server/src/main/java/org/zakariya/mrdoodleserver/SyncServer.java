@@ -8,6 +8,7 @@ import org.zakariya.mrdoodleserver.auth.Whitelist;
 import org.zakariya.mrdoodleserver.auth.techniques.GoogleIdTokenAuthenticator;
 import org.zakariya.mrdoodleserver.auth.techniques.MockAuthenticator;
 import org.zakariya.mrdoodleserver.routes.DashboardRouter;
+import org.zakariya.mrdoodleserver.routes.Router;
 import org.zakariya.mrdoodleserver.routes.SyncRouter;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.util.Configuration;
@@ -18,8 +19,8 @@ import redis.clients.jedis.JedisPoolConfig;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
+import static spark.Spark.externalStaticFileLocation;
 import static spark.Spark.init;
 import static spark.Spark.webSocket;
 
@@ -80,19 +81,25 @@ public class SyncServer {
 			flushStorage(jedisPool, prefix);
 		}
 
-		// build the syncRouter. note, we have no control over when WebSocketConnection is created,
-		// so set up our router to be notified when it happens
-		SyncRouter syncRouter = new SyncRouter(configuration, authenticator, jedisPool);
-		WebSocketConnection.addOnWebSocketConnectionCreatedListener(syncRouter);
+		// set static files location
+		externalStaticFileLocation(configuration.get("staticFiles"));
 
+		// build routers
+		SyncRouter syncRouter = new SyncRouter(configuration, authenticator, jedisPool);
+		DashboardRouter dashboardRouter = new DashboardRouter(configuration, jedisPool);
+		Router routers[] = { syncRouter, dashboardRouter };
+
+		// set up the WebSocketConnection. Note, since Spark lazily creates it, we can't pass
+		// values to a constructor! So we need to use static values, which is hideous.
 		WebSocketConnection.authenticator = authenticator;
+		WebSocketConnection.addOnWebSocketConnectionCreatedListener(syncRouter);
 		webSocket(WebSocketConnection.getRoute(configuration), WebSocketConnection.class);
 
-		syncRouter.configureRoutes();
 
-		// build the dashboard router
-		DashboardRouter dashboardRouter = new DashboardRouter(configuration, jedisPool);
-		dashboardRouter.configureRoutes();
+		for (Router router : routers) {
+			router.initializeRoutes();
+		}
+
 
 		init();
 	}
@@ -144,7 +151,7 @@ public class SyncServer {
 				return new MockAuthenticator();
 			}
 
-			Map<String,User> tokens = new HashMap<>();
+			Map<String, User> tokens = new HashMap<>();
 			for (String token : tokensMap.keySet()) {
 				String value = tokensMap.get(token).toString();
 				String bits[] = value.split(":");

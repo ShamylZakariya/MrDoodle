@@ -14,5 +14,6 @@
 		}
 	},
 	"syncManager": {
-	}
+	},
+	"staticFiles": "dashboard/dist"
 }

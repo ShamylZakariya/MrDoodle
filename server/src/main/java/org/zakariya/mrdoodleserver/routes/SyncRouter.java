@@ -65,7 +65,7 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 		userRecordAccess = new UserRecordAccess(getJedisPool(), getStoragePrefix());
 	}
 
-	public void configureRoutes() {
+	public void initializeRoutes() {
 		String basePath = getBasePath();
 
 		// all api calls must authenticate
