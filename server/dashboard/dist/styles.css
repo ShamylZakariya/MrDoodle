@@ -1,3 +1,58 @@
+body {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  color: darkslategrey; }
 
+.appContainer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%; }
+
+.errorView {
+  margin: 1em;
+  padding: 1em 2em;
+  background: mediumvioletred;
+  color: white;
+  text-align: center;
+  border-radius: 2pt; }
+
+.users {
+  padding: 36px; }
+  .users h2 {
+    font-size: 16px;
+    font-weight: normal;
+    text-transform: uppercase; }
+  .users ul.user {
+    padding: 1em 0; }
+    .users ul.user::after {
+      clear: both;
+      content: "";
+      display: table; }
+    .users ul.user li {
+      font-size: 14px;
+      line-height: 14px; }
+    .users ul.user li.avatar {
+      float: left;
+      width: 72px;
+      height: 72px;
+      border-radius: 36px;
+      background: grey;
+      margin-right: 18px; }
+    .users ul.user li.email, .users ul.user li.id {
+      float: left;
+      margin-right: 2em; }
+    .users ul.user li.lastAccessDate {
+      float: right; }
+    .users ul.user li.email, .users ul.user li.id, .users ul.user li.lastAccessDate {
+      -webkit-transform: translateY(29px);
+      -moz-transform: translateY(29px);
+      -ms-transform: translateY(29px);
+      -o-transform: translateY(29px);
+      transform: translateY(29px); }
+    .users ul.user li.id, .users ul.user li.lastAccessDate {
+      text-transform: uppercase;
+      color: lightslategrey; }
 
 /*# sourceMappingURL=styles.css.map */

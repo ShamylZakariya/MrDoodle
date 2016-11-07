@@ -1,10 +1,73 @@
+var React = require('react');
+var ReactDOM = require('react-dom');
+var $ = require("./jquery-3.1.1");
 
-console.log("Making test call to dashboard API");
+var ErrorView = require('./components/ErrorView');
+var UserList = require('./components/UserList');
+var UserDetail = require('./components/UserDetail');
 
-$.getJSON("http://localhost:4567/api/v1/dashboard/users")
-	.done( e => {
-		console.log('got data: ', e);
-	})
-	.fail( e => {
-		console.error("failed: ", e);
-	});
+var App = React.createClass({
+
+	getInitialState: function() {
+		return {
+			users: [],
+			error: null,
+			selectedUser: null
+		}
+	},
+
+	componentDidMount: function() {
+		var self = this;
+		// for now, we're loading ALL users, ignoring page parameter
+		$.getJSON("http://localhost:4567/api/v1/dashboard/users")
+			.done(data => {
+				self.setState({
+					users: data.users,
+					error: null
+				});
+			})
+			.fail(e => {
+				self.setState({
+					users:[],
+					error: e.statusText
+				});
+			});
+	},
+
+	render: function() {
+
+		var userList = this.state.error ? null : <UserList users={this.state.users} click={this.showUserDetail}/>;
+		var errorView = this.state.error ? <ErrorView error={this.state.error}/> : null;
+		var userDetail = this.state.selectedUser ? <UserDetail user={this.state.selectedUser} close={this.handleCloseUserDetail}/> : null;
+
+		return (
+			<div className="container">
+				{userList}
+				{errorView}
+				{userDetail}
+			</div>
+		)
+	},
+
+	///////////////////////////////////////////////////////////////////
+
+	handleCloseUserDetail: function(){
+		this.setState({
+			selectedUser: null
+		})
+	},
+
+	showUserDetail: function(user) {
+		console.log('showUserDetail user: ', user.email);
+		this.setState({
+			selectedUser: user
+		});
+	}
+
+
+});
+
+ReactDOM.render(
+	<App />,
+	document.getElementById('app')
+);

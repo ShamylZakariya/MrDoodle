@@ -32,6 +32,9 @@ module.exports = {
 		new CopyWebpackPlugin([
 			{
 				from: "./app/styles.css"
+			},
+			{
+				from: "./app/reset.css"
 			}
 		])
 	]
