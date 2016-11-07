@@ -5,7 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
+import org.zakariya.mrdoodleserver.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Debouncer;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;

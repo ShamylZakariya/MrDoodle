@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodleserver.sync.transport;
+package org.zakariya.mrdoodleserver.transport;
 
 import java.util.ArrayList;
 import java.util.List;

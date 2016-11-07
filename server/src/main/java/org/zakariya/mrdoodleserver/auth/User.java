@@ -9,14 +9,30 @@ import javax.annotation.Nullable;
  */
 public class User {
 
+	@JsonProperty
 	private String id;
+
+	@JsonProperty
 	private String email;
+
+	@JsonProperty
 	private String avatarUrl;
+
+	@JsonProperty
+	private long lastAccessTimestamp;
 
 	public User(String id, String email, @Nullable String avatarUrl) {
 		this.id = id;
 		this.email = email;
 		this.avatarUrl = avatarUrl;
+		this.lastAccessTimestamp = -1;
+	}
+
+	public User(String id, String email, @Nullable String avatarUrl, long lastAccessTimestamp) {
+		this.id = id;
+		this.email = email;
+		this.avatarUrl = avatarUrl;
+		this.lastAccessTimestamp = lastAccessTimestamp;
 	}
 
 	public String getId() {
@@ -30,6 +46,10 @@ public class User {
 	@Nullable
 	public String getAvatarUrl() {
 		return avatarUrl;
+	}
+
+	public long getLastAccessTimestamp() {
+		return lastAccessTimestamp;
 	}
 
 	@Override

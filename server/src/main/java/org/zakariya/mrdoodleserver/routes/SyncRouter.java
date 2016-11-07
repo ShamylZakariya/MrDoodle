@@ -1,6 +1,5 @@
 package org.zakariya.mrdoodleserver.routes;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
 import org.eclipse.jetty.websocket.api.Session;
 import org.jetbrains.annotations.Nullable;
@@ -10,15 +9,14 @@ import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.*;
-import org.zakariya.mrdoodleserver.sync.transport.LockStatus;
-import org.zakariya.mrdoodleserver.sync.transport.Status;
-import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
+import org.zakariya.mrdoodleserver.transport.LockStatus;
+import org.zakariya.mrdoodleserver.transport.Status;
+import org.zakariya.mrdoodleserver.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import org.zakariya.mrdoodleserver.util.Preconditions;
 import redis.clients.jedis.JedisPool;
 import spark.Request;
 import spark.Response;
-import spark.ResponseTransformer;
 
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;

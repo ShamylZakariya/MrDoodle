@@ -3,7 +3,7 @@ package org.zakariya.mrdoodleserver.sync;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Before;
-import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
+import org.zakariya.mrdoodleserver.transport.TimestampRecordEntry;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 

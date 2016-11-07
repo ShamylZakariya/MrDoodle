@@ -8,9 +8,9 @@ import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.routes.SyncRouter;
 import org.zakariya.mrdoodleserver.sync.TimestampRecord;
 import org.zakariya.mrdoodleserver.sync.UserRecordAccess;
-import org.zakariya.mrdoodleserver.sync.transport.LockStatus;
-import org.zakariya.mrdoodleserver.sync.transport.Status;
-import org.zakariya.mrdoodleserver.sync.transport.TimestampRecordEntry;
+import org.zakariya.mrdoodleserver.transport.LockStatus;
+import org.zakariya.mrdoodleserver.transport.Status;
+import org.zakariya.mrdoodleserver.transport.TimestampRecordEntry;
 
 import java.util.Date;
 import java.util.Map;

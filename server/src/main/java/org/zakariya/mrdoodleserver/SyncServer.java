@@ -155,7 +155,7 @@ public class SyncServer {
 			for (String token : tokensMap.keySet()) {
 				String value = tokensMap.get(token).toString();
 				String bits[] = value.split(":");
-				tokens.put(token, new User(bits[0], bits[1], null));
+				tokens.put(token, new User(bits[0], bits[1], bits[2]));
 			}
 
 			return new MockAuthenticator(tokens);

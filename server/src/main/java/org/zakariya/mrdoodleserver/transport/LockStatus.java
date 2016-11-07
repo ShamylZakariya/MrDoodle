@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodleserver.sync.transport;
+package org.zakariya.mrdoodleserver.transport;
 
 /**
  * POJO response to lock requests.

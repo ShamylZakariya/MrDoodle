@@ -144,6 +144,8 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 		// TODO: Can we extract avatar URL from here? I can in the android side, I'm sure it's floating around in the idToken
 		// probably going to involve splitting token across '.' and finding the right segment to json parse, and then find the user data
 
+		logger.debug("recordUser token: {}", idToken);
+
 		String id = idToken.getPayload().getSubject();
 		String email = idToken.getPayload().getEmail();
 		user = new User(id, email, null);

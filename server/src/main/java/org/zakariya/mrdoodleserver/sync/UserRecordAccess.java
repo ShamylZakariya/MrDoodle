@@ -5,10 +5,9 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
+import redis.clients.jedis.params.Params;
 
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -48,8 +47,28 @@ public class UserRecordAccess {
 		}
 	}
 
+	public long getUserCount() {
+		try (Jedis jedis = jedisPool.getResource()) {
+			return jedis.scard(getUserSetJedisKey());
+		}
+	}
+
 	public Set<User> getUsers() {
 		return getUserIds().stream().map(this::getUser).collect(Collectors.toSet());
+	}
+
+	public List<User> getUsers(int page, int countPerPage) {
+		List<String> sortedUserIds = new ArrayList<>(getUserIds());
+		Collections.sort(sortedUserIds);
+		int start = page * countPerPage;
+		int end = start + countPerPage;
+		if (start < sortedUserIds.size()) {
+			end = Math.min(end, sortedUserIds.size());
+			List<String> userIds = sortedUserIds.subList(start, end);
+			return userIds.stream().map(this::getUser).collect(Collectors.toList());
+		} else {
+			return Collections.emptyList();
+		}
 	}
 
 	public User getUser(String userId) {
@@ -59,9 +78,17 @@ public class UserRecordAccess {
 			Transaction transaction = jedis.multi();
 			Response<String> email = transaction.hget(hashKey, FIELD_USER_EMAIL);
 			Response<String> avatarUrl = transaction.hget(hashKey, FIELD_USER_AVATAR_URL);
+			Response<String> timestampSeconds = transaction.hget(hashKey, FIELD_USER_TIMESTAMP_SECONDS);
 			transaction.exec();
 
-			return new User(userId, email.get(), avatarUrl.get());
+			long timestamp;
+			try {
+				timestamp = Long.parseLong(timestampSeconds.get());
+			} catch(NumberFormatException e) {
+				timestamp = 0;
+			}
+
+			return new User(userId, email.get(), avatarUrl.get(), timestamp);
 		}
 	}
 

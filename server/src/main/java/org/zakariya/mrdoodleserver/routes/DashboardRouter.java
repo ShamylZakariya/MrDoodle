@@ -1,17 +1,17 @@
 package org.zakariya.mrdoodleserver.routes;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.sync.UserRecordAccess;
-import org.zakariya.mrdoodleserver.sync.transport.User;
+import org.zakariya.mrdoodleserver.transport.UserPage;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.JedisPool;
 import spark.Request;
 import spark.Response;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
-import static spark.Spark.externalStaticFileLocation;
 import static spark.Spark.get;
 
 /**
@@ -20,8 +20,9 @@ import static spark.Spark.get;
  * TODO: Add some kind of authentication, presumably we'll use Google API OAuth on client side
  */
 public class DashboardRouter extends Router {
-
+	private static final Logger logger = LoggerFactory.getLogger(DashboardRouter.class);
 	private UserRecordAccess userRecordAccess;
+	private static final int USER_PAGE_SIZE = 100;
 
 	public DashboardRouter(Configuration configuration, JedisPool jedisPool) {
 		super(configuration, jedisPool);
@@ -35,16 +36,36 @@ public class DashboardRouter extends Router {
 		get(basePath + "/users", this::getUsers, getJsonResponseTransformer());
 	}
 
-	private List<User> getUsers(Request request, Response response) {
-		List<User> result = new ArrayList<>();
-		Set<org.zakariya.mrdoodleserver.auth.User> users = userRecordAccess.getUsers();
-		if (users != null) {
-			for (org.zakariya.mrdoodleserver.auth.User user : users) {
-				long timestamp = userRecordAccess.getUserVisitTimestampSeconds(user.getId());
-				result.add(new org.zakariya.mrdoodleserver.sync.transport.User(user.getId(), user.getEmail(), user.getAvatarUrl(), timestamp));
+	private UserPage getUsers(Request request, Response response) {
+		UserPage userPage = new UserPage();
+		userPage.users = new ArrayList<>();
+
+		int page = intQueryParam(request, "page", -1);
+		int pageSize = intQueryParam(request, "pageSize", USER_PAGE_SIZE);
+
+		if (page >= 0) {
+			userPage.page = page;
+			userPage.pageCount = (int) Math.ceil((double)userRecordAccess.getUserCount() / (double)pageSize);
+			userPage.users = userRecordAccess.getUsers(userPage.page, pageSize);
+		} else {
+			userPage.page = 0;
+			userPage.pageCount = 0;
+			userPage.users = new ArrayList<>(userRecordAccess.getUsers());
+			Collections.sort(userPage.users, (o1, o2) -> o1.getId().compareTo(o2.getId()));
+		}
+
+		return userPage;
+	}
+
+	private int intQueryParam(Request request, String param, int fallback) {
+		String strValue = request.queryParams(param);
+		if (strValue != null && strValue.length() > 0) {
+			try {
+				return Integer.parseInt(strValue);
+			} catch (NumberFormatException ignored) {
 			}
 		}
-		return result;
+		return fallback;
 	}
 
 	///////////////////////////////////////////////////////////////////
