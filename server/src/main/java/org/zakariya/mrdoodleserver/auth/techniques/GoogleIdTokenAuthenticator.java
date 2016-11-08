@@ -38,6 +38,7 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 	private Whitelist whitelist;
 	private Whitelist verifiedTokensWhitelist;
 	private Map<String, User> usersByToken = new HashMap<>();
+	private Map<String, User> usersByAccountId = new HashMap<>();
 
 	public GoogleIdTokenAuthenticator(String oathClientId, @Nullable Whitelist whitelist) {
 		checkArgument(oathClientId != null && oathClientId.length() > 0, "oath client id must be non-null & non-empty");
@@ -146,10 +147,19 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 
 		logger.debug("recordUser token: {}", idToken);
 
-		String id = idToken.getPayload().getSubject();
+		String accountId = idToken.getPayload().getSubject();
 		String email = idToken.getPayload().getEmail();
-		user = new User(id, email, null);
+		user = new User(accountId, email, null);
+
 		usersByToken.put(token, user);
+		usersByAccountId.put(user.getAccountId(), user);
+
 		return user;
+	}
+
+	@Nullable
+	@Override
+	public User getUserByAccountId(String accountId) {
+		return usersByAccountId.get(accountId);
 	}
 }

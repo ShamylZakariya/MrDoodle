@@ -24,4 +24,13 @@ public interface Authenticator {
 
 	@Nullable
 	User getUser(String token);
+
+	/**
+	 * Get the user associated with a given account id
+	 * Note: Authenticator implementations are responsible for caching User objects that have been authenticated.
+	 * @param accountId the account id
+	 * @return the user associated with this account, or null if none exists, or if this user hasn't been authenticated yet
+	 */
+	@Nullable
+	User getUserByAccountId(String accountId);
 }

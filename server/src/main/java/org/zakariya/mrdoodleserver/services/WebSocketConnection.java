@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.auth.User;
-import org.zakariya.mrdoodleserver.sync.UserRecordAccess;
 import org.zakariya.mrdoodleserver.util.Configuration;
 
 import java.io.IOException;
@@ -280,7 +279,7 @@ public class WebSocketConnection {
 			User user = authenticator.verify(authToken);
 			if (user != null) {
 
-				String accountId = user.getId();
+				String accountId = user.getAccountId();
 
 				// and move this session to our authenticated region
 				accountIdsByUserSession.put(userSession, accountId);

@@ -2,7 +2,6 @@ package org.zakariya.mrdoodleserver.routes;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.UserRecordAccess;
 import org.zakariya.mrdoodleserver.transport.UserConnectionInfo;
@@ -60,7 +59,7 @@ public class DashboardRouter extends Router {
 			userPage.page = 0;
 			userPage.pageCount = 0;
 			userPage.users = new ArrayList<>(userRecordAccess.getUsers());
-			Collections.sort(userPage.users, (o1, o2) -> o1.getId().compareTo(o2.getId()));
+			Collections.sort(userPage.users, (o1, o2) -> o1.getAccountId().compareTo(o2.getAccountId()));
 		}
 
 		return userPage;

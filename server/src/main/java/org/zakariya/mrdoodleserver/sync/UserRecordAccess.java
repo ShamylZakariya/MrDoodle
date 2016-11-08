@@ -5,7 +5,6 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
-import redis.clients.jedis.params.Params;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -35,9 +34,9 @@ public class UserRecordAccess {
 	 */
 	public void recordUserVisit(User user) {
 		try (Jedis jedis = jedisPool.getResource()) {
-			jedis.sadd(getUserSetJedisKey(), user.getId());
+			jedis.sadd(getUserSetJedisKey(), user.getAccountId());
 
-			String hashKey = getUserInfoHashJedisKey(user.getId());
+			String hashKey = getUserInfoHashJedisKey(user.getAccountId());
 			Transaction transaction = jedis.multi();
 			transaction.hset(hashKey, FIELD_USER_EMAIL, safe(user.getEmail()));
 			transaction.hset(hashKey, FIELD_USER_AVATAR_URL, safe(user.getAvatarUrl()));

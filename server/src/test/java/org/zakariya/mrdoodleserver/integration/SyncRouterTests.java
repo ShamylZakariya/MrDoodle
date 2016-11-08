@@ -380,7 +380,7 @@ public class SyncRouterTests extends BaseIntegrationTest {
 		User user = userRecordAccess.getUser(ACCOUNT_ID);
 
 		assertNotNull("User should have been recorded by UserRecordAccess when API access happened", user);
-		assertEquals("User ids should match", user.getId(), ACCOUNT_ID);
+		assertEquals("User ids should match", user.getAccountId(), ACCOUNT_ID);
 		assertEquals("User emails should match", user.getEmail(), ACCOUNT_EMAIL);
 
 		// check if timestamp is similar

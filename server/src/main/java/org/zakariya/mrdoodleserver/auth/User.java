@@ -10,7 +10,7 @@ import javax.annotation.Nullable;
 public class User {
 
 	@JsonProperty
-	private String id;
+	private String accountId;
 
 	@JsonProperty
 	private String email;
@@ -19,24 +19,24 @@ public class User {
 	private String avatarUrl;
 
 	@JsonProperty
-	private long lastAccessTimestamp;
+	private long lastAccessTimestampSeconds;
 
-	public User(String id, String email, @Nullable String avatarUrl) {
-		this.id = id;
+	public User(String accountId, String email, @Nullable String avatarUrl) {
+		this.accountId = accountId;
 		this.email = email;
 		this.avatarUrl = avatarUrl;
-		this.lastAccessTimestamp = -1;
+		this.lastAccessTimestampSeconds = -1;
 	}
 
-	public User(String id, String email, @Nullable String avatarUrl, long lastAccessTimestamp) {
-		this.id = id;
+	public User(String accountId, String email, @Nullable String avatarUrl, long lastAccessTimestampSeconds) {
+		this.accountId = accountId;
 		this.email = email;
 		this.avatarUrl = avatarUrl;
-		this.lastAccessTimestamp = lastAccessTimestamp;
+		this.lastAccessTimestampSeconds = lastAccessTimestampSeconds;
 	}
 
-	public String getId() {
-		return id;
+	public String getAccountId() {
+		return accountId;
 	}
 
 	public String getEmail() {
@@ -48,12 +48,12 @@ public class User {
 		return avatarUrl;
 	}
 
-	public long getLastAccessTimestamp() {
-		return lastAccessTimestamp;
+	public long getLastAccessTimestampSeconds() {
+		return lastAccessTimestampSeconds;
 	}
 
 	@Override
 	public String toString() {
-		return "[User id: " + id + " email: " + email + " avatarUrl: " + avatarUrl + "]";
+		return "[User id: " + accountId + " email: " + email + " avatarUrl: " + avatarUrl + "]";
 	}
 }

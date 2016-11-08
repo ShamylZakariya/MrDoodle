@@ -1,6 +1,5 @@
 package org.zakariya.mrdoodleserver.routes;
 
-import com.google.common.net.MediaType;
 import org.eclipse.jetty.websocket.api.Session;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -110,8 +109,8 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 			String pathAccountId = request.params("accountId");
 			if (user != null) {
 				// token passed validation, but only allows access to :accountId subpath
-				if (!user.getId().equals(pathAccountId)) {
-					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + user.getId() + " is valid, but does not grant access to path: " + pathAccountId);
+				if (!user.getAccountId().equals(pathAccountId)) {
+					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Authorization token for account: " + user.getAccountId() + " is valid, but does not grant access to path: " + pathAccountId);
 				}
 			} else {
 				sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Invalid authorization token");
@@ -528,6 +527,11 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 			public void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId) {
 				SyncManager syncManager = getSyncManagerForAccount(accountId);
 				syncManager.onUserSessionConnected(connection, session, accountId);
+
+				User user = authenticator.getUserByAccountId(accountId);
+				if (user != null) {
+					userRecordAccess.recordUserVisit(user);
+				}
 			}
 
 			@Override

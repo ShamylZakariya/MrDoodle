@@ -16,6 +16,7 @@ import java.util.Set;
 public class MockAuthenticator implements Authenticator {
 
 	private Map<String, User> tokenToUserMap;
+	private Map<String, User> accountIdToUserMap = new HashMap<>();
 	private Set<String> whitelist = new HashSet<>();
 
 	/**
@@ -32,6 +33,11 @@ public class MockAuthenticator implements Authenticator {
 	 */
 	public MockAuthenticator(Map<String, User> tokenToUserMap) {
 		this.tokenToUserMap = new HashMap<>(tokenToUserMap);
+
+		for (User user : this.tokenToUserMap.values()) {
+			accountIdToUserMap.put(user.getAccountId(), user);
+		}
+
 	}
 
 	@Nullable
@@ -59,5 +65,11 @@ public class MockAuthenticator implements Authenticator {
 	@Override
 	public User getUser(String token) {
 		return tokenToUserMap.get(token);
+	}
+
+	@Nullable
+	@Override
+	public User getUserByAccountId(String accountId) {
+		return accountIdToUserMap.get(accountId);
 	}
 }
