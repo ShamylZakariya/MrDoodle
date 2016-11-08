@@ -525,6 +525,7 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 		connection.addUserSessionStatusChangeListener(new WebSocketConnection.OnUserSessionStatusChangeListener() {
 			@Override
 			public void onUserSessionConnected(WebSocketConnection connection, Session session, String accountId) {
+
 				SyncManager syncManager = getSyncManagerForAccount(accountId);
 				syncManager.onUserSessionConnected(connection, session, accountId);
 

@@ -1,5 +1,9 @@
 package org.zakariya.mrdoodleserver.auth.techniques;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.HttpTransport;
@@ -15,10 +19,7 @@ import org.zakariya.mrdoodleserver.auth.Whitelist;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static org.zakariya.mrdoodleserver.util.Preconditions.checkArgument;
 
@@ -34,6 +35,8 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 
 	private static final HttpTransport transport = new NetHttpTransport();
 	private static final JsonFactory jsonFactory = new JacksonFactory();
+	private static final ObjectMapper mapper = new ObjectMapper();
+
 	private GoogleIdTokenVerifier googleIdTokenVerifier;
 	private Whitelist whitelist;
 	private Whitelist verifiedTokensWhitelist;
@@ -142,14 +145,23 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 			return user;
 		}
 
-		// TODO: Can we extract avatar URL from here? I can in the android side, I'm sure it's floating around in the idToken
-		// probably going to involve splitting token across '.' and finding the right segment to json parse, and then find the user data
+		// for some reason, GoogleIdToken doesn't parse the 'picture' element
+		// from the payload so we have to do it ourselves
 
-		logger.debug("recordUser token: {}", idToken);
-
+		UserInfoPayload payload = null;
+		try {
+			// user info is stored in the second chunk, which has to be base64 decoded
+			String bits[] = token.split("\\.");
+			byte[] userInfoPayload = Base64.getDecoder().decode(bits[1]);
+			payload = mapper.reader().forType(UserInfoPayload.class).readValue(userInfoPayload);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
 		String accountId = idToken.getPayload().getSubject();
 		String email = idToken.getPayload().getEmail();
-		user = new User(accountId, email, null);
+		String avatarUrl = payload != null ? payload.picture : null;
+		user = new User(accountId, email, avatarUrl);
 
 		usersByToken.put(token, user);
 		usersByAccountId.put(user.getAccountId(), user);
@@ -162,4 +174,14 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 	public User getUserByAccountId(String accountId) {
 		return usersByAccountId.get(accountId);
 	}
+
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	private static class UserInfoPayload {
+		@JsonProperty
+		public String sub;
+
+		@JsonProperty
+		public String picture;
+	}
+
 }
