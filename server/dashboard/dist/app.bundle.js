@@ -16572,29 +16572,25 @@
 				'li',
 				{ className: 'userListItem', onClick: this.handleClick },
 				React.createElement(
-					'ul',
-					{ className: 'user' },
+					'div',
+					{ className: 'avatar' },
+					React.createElement('img', { src: user.avatarUrl })
+				),
+				React.createElement(
+					'div',
+					{ className: 'info' },
 					React.createElement(
-						'li',
-						{ className: 'avatar' },
-						React.createElement('img', { src: user.avatarUrl })
-					),
-					React.createElement(
-						'li',
+						'div',
 						{ className: 'email' },
 						user.email
 					),
 					React.createElement(
-						'li',
+						'div',
 						{ className: 'id' },
-						React.createElement(
-							'span',
-							{ className: 'value' },
-							user.id
-						)
+						user.id
 					),
 					React.createElement(
-						'li',
+						'div',
 						{ className: 'lastAccessDate' },
 						formattedLastAccessDate
 					)
@@ -16614,12 +16610,13 @@
 /* 154 */
 /***/ function(module, exports, __webpack_require__) {
 
-	"use strict";
+	'use strict';
 
 	var React = __webpack_require__(2);
+	var moment = __webpack_require__(155);
 
 	var UserDetail = React.createClass({
-		displayName: "UserDetail",
+		displayName: 'UserDetail',
 
 
 		getDefaultProps: function getDefaultProps() {
@@ -16638,38 +16635,43 @@
 
 		render: function render() {
 			var user = this.props.user;
-			var avatar = !!user.avatarUrl ? React.createElement(
-				"li",
-				{ className: "avatar" },
-				user.avatarUrl
-			) : null;
+			var lastAccessDate = new Date(user.lastAccessTimestamp * 1000);
+			var formattedLastAccessDate = moment(lastAccessDate).format('MMMM Do YYYY, h:mm:ss a');
 
 			return React.createElement(
-				"div",
-				{ className: "userDetail" },
+				'div',
+				{ className: 'userDetail' },
 				React.createElement(
-					"a",
-					{ className: "close", onClick: this.handleClose },
-					"Close"
-				),
-				React.createElement(
-					"ul",
-					{ className: "userInfo" },
-					avatar,
+					'div',
+					{ className: 'window' },
 					React.createElement(
-						"li",
-						{ className: "email" },
-						user.email
+						'a',
+						{ className: 'close', onClick: this.handleClose },
+						'Close'
 					),
 					React.createElement(
-						"li",
-						{ className: "id" },
-						user.id
-					),
-					React.createElement(
-						"li",
-						{ className: "lastAccessTimestamp" },
-						user.lastAccessTimestamp
+						'div',
+						{ className: 'userInfo' },
+						React.createElement(
+							'div',
+							{ className: 'avatar' },
+							React.createElement('img', { src: user.avatarUrl })
+						),
+						React.createElement(
+							'div',
+							{ className: 'email' },
+							user.email
+						),
+						React.createElement(
+							'div',
+							{ className: 'id' },
+							user.id
+						),
+						React.createElement(
+							'div',
+							{ className: 'lastAccessDate' },
+							formattedLastAccessDate
+						)
 					)
 				)
 			);

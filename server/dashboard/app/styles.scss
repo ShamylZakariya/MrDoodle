@@ -1,9 +1,14 @@
 @import "bourbon/bourbon";
 
+$font-size: 14px;
+$avatar-size: 72px;
+
+
 body {
 	margin: 0;
 	font-family: 'Roboto', sans-serif;
-	color: darkslategrey;
+	color: #222;
+	font-size: $font-size;
 }
 
 .appContainer {
@@ -31,21 +36,14 @@ body {
 		font-size: 16px;
 		font-weight: normal;
 		text-transform: uppercase;
+		margin-bottom: 1em;
 	}
 
-	ul.user {
-
-		$font-size: 14px;
-		$avatar-size: 72px;
-
+	.userListItem {
+		cursor: pointer;
 		@include clearfix;
-		padding: 1em 0;
 
-		li {
-			font-size: $font-size;
-			line-height: $font-size;
-		}
-		li.avatar {
+		.avatar {
 			float: left;
 			width: $avatar-size;
 			height: $avatar-size;
@@ -54,22 +52,86 @@ body {
 			margin-right: $avatar-size/4;
 		}
 
-		li.email, li.id {
+		.info {
 			float: left;
-			margin-right: 2em;
+			@include transform(translateY($avatar-size/2) translateY(-50%));
+
+			> * {
+				margin: 0.5em 0;
+			}
 		}
 
-		li.lastAccessDate {
-			float: right;
+		.email {
+
 		}
 
-		li.email, li.id, li.lastAccessDate {
-			@include transform(translateY(($avatar-size/2) - ($font-size/2)));
-		}
-
-		li.id,li.lastAccessDate {
+		.id, .lastAccessDate {
+			color: darkgrey;
 			text-transform: uppercase;
-			color: lightslategrey;
+		}
+
+	}
+}
+
+.userDetail {
+
+	$inset: 40px;
+
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background: rgba(220,220,220,0.9);
+
+	.window {
+		position: absolute;
+		top: $inset;
+		right: $inset;
+		left: $inset;
+		background: white;
+		box-shadow: 0 4px 4px rgba(0,0,0,0.1);
+		border-radius: 4px;
+		padding: $inset $inset/2;
+	}
+
+	.close {
+		display: block;
+		position: absolute;
+		top: 1em;
+		left: $inset/2;
+		color: darkred;
+		text-transform: uppercase;
+		cursor: pointer;
+	}
+
+	.userInfo {
+
+
+		@include clearfix;
+		padding: 1em 0;
+
+		.avatar {
+			float: left;
+			width: $avatar-size;
+			height: $avatar-size;
+			border-radius: $avatar-size/2;
+			background: grey;
+			margin-right: $avatar-size/4;
+		}
+
+		> * {
+			margin: 0.5em 0; 
+		}
+
+		.email {
+			margin-top: $avatar-size/2 - $font-size/2;
+		}
+
+		.id, .lastAccessDate {
+			text-transform: uppercase;
+			color: darkgray;
 		}
 	}
+
 }

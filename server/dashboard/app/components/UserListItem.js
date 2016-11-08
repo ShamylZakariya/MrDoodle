@@ -20,12 +20,12 @@ var UserListItem = React.createClass({
 
 		return (
 			<li className="userListItem" onClick={this.handleClick}>
-				<ul className="user">
-					<li className="avatar"><img src={user.avatarUrl}/></li>
-					<li className="email">{user.email}</li>
-					<li className="id"><span className="value">{user.id}</span></li>
-					<li className="lastAccessDate">{formattedLastAccessDate}</li>
-				</ul>
+				<div className="avatar"><img src={user.avatarUrl}/></div>
+				<div className="info">
+					<div className="email">{user.email}</div>
+					<div className="id">{user.id}</div>
+					<div className="lastAccessDate">{formattedLastAccessDate}</div>
+				</div>
 			</li>
 		)
 	},

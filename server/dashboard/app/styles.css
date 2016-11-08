@@ -1,7 +1,8 @@
 body {
   margin: 0;
   font-family: 'Roboto', sans-serif;
-  color: darkslategrey; }
+  color: #222;
+  font-size: 14px; }
 
 .appContainer {
   position: absolute;
@@ -23,36 +24,77 @@ body {
   .users h2 {
     font-size: 16px;
     font-weight: normal;
-    text-transform: uppercase; }
-  .users ul.user {
-    padding: 1em 0; }
-    .users ul.user::after {
+    text-transform: uppercase;
+    margin-bottom: 1em; }
+  .users .userListItem {
+    cursor: pointer; }
+    .users .userListItem::after {
       clear: both;
       content: "";
       display: table; }
-    .users ul.user li {
-      font-size: 14px;
-      line-height: 14px; }
-    .users ul.user li.avatar {
+    .users .userListItem .avatar {
       float: left;
       width: 72px;
       height: 72px;
       border-radius: 36px;
       background: grey;
       margin-right: 18px; }
-    .users ul.user li.email, .users ul.user li.id {
+    .users .userListItem .info {
       float: left;
-      margin-right: 2em; }
-    .users ul.user li.lastAccessDate {
-      float: right; }
-    .users ul.user li.email, .users ul.user li.id, .users ul.user li.lastAccessDate {
-      -webkit-transform: translateY(29px);
-      -moz-transform: translateY(29px);
-      -ms-transform: translateY(29px);
-      -o-transform: translateY(29px);
-      transform: translateY(29px); }
-    .users ul.user li.id, .users ul.user li.lastAccessDate {
+      -webkit-transform: translateY(36px) translateY(-50%);
+      -moz-transform: translateY(36px) translateY(-50%);
+      -ms-transform: translateY(36px) translateY(-50%);
+      -o-transform: translateY(36px) translateY(-50%);
+      transform: translateY(36px) translateY(-50%); }
+      .users .userListItem .info > * {
+        margin: 0.5em 0; }
+    .users .userListItem .id, .users .userListItem .lastAccessDate {
+      color: darkgrey;
+      text-transform: uppercase; }
+
+.userDetail {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(220, 220, 220, 0.9); }
+  .userDetail .window {
+    position: absolute;
+    top: 40px;
+    right: 40px;
+    left: 40px;
+    background: white;
+    box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    padding: 40px 20px; }
+  .userDetail .close {
+    display: block;
+    position: absolute;
+    top: 1em;
+    left: 20px;
+    color: darkred;
+    text-transform: uppercase;
+    cursor: pointer; }
+  .userDetail .userInfo {
+    padding: 1em 0; }
+    .userDetail .userInfo::after {
+      clear: both;
+      content: "";
+      display: table; }
+    .userDetail .userInfo .avatar {
+      float: left;
+      width: 72px;
+      height: 72px;
+      border-radius: 36px;
+      background: grey;
+      margin-right: 18px; }
+    .userDetail .userInfo > * {
+      margin: 0.5em 0; }
+    .userDetail .userInfo .email {
+      margin-top: 29px; }
+    .userDetail .userInfo .id, .userDetail .userInfo .lastAccessDate {
       text-transform: uppercase;
-      color: lightslategrey; }
+      color: darkgray; }
 
 /*# sourceMappingURL=styles.css.map */

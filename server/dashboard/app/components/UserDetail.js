@@ -1,4 +1,5 @@
 var React = require('react');
+var moment = require('moment');
 
 var UserDetail = React.createClass({
 
@@ -20,20 +21,23 @@ var UserDetail = React.createClass({
 
 	render: function(){
 		var user = this.props.user;
-		var avatar = !!user.avatarUrl ? <li className="avatar">{user.avatarUrl}</li> : null;
+		var lastAccessDate = (new Date(user.lastAccessTimestamp * 1000));
+		var formattedLastAccessDate = moment(lastAccessDate).format('MMMM Do YYYY, h:mm:ss a');
 
 		return (
 			<div className="userDetail">
-				<a className="close" onClick={this.handleClose}>Close</a>
+				<div className="window">
+					<a className="close" onClick={this.handleClose}>Close</a>
 
-				<ul className="userInfo">
+					<div className="userInfo">
 
-					{avatar}
-					<li className="email">{user.email}</li>
-					<li className="id">{user.id}</li>
-					<li className="lastAccessTimestamp">{user.lastAccessTimestamp}</li>
+						<div className="avatar"><img src={user.avatarUrl}/></div>
+						<div className="email">{user.email}</div>
+						<div className="id">{user.id}</div>
+						<div className="lastAccessDate">{formattedLastAccessDate}</div>
 
-				</ul>
+					</div>
+				</div>
 			</div>
 		)
 	},
