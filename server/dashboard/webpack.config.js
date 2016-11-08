@@ -31,10 +31,14 @@ module.exports = {
 		HTMLWebpackPluginConfig,
 		new CopyWebpackPlugin([
 			{
-				from: "./app/styles.css"
+				context: './app/css',
+				from: "*.css",
+				to: "./css"
 			},
 			{
-				from: "./app/reset.css"
+				context: './app/images',
+				from: "*",
+				to: "./images"
 			}
 		])
 	]

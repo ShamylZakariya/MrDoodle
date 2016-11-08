@@ -23219,9 +23219,13 @@
 				'div',
 				{ className: 'users' },
 				React.createElement(
-					'h2',
-					null,
-					'Users'
+					'div',
+					{ className: 'toolbar' },
+					React.createElement(
+						'h2',
+						null,
+						'Users'
+					)
 				),
 				React.createElement(
 					'ul',

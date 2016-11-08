@@ -18,7 +18,10 @@ var UserList = React.createClass({
 
 		return (
 			<div className="users">
-				<h2>Users</h2>
+				<div className="toolbar">
+					<h2>Users</h2>
+
+				</div>
 				<ul className="userList">
 					{userItems}
 				</ul>
