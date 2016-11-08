@@ -58,12 +58,10 @@ var App = React.createClass({
 	},
 
 	showUserDetail: function(user) {
-		console.log('showUserDetail user: ', user.email);
 		this.setState({
 			selectedUser: user
 		});
 	}
-
 
 });
 

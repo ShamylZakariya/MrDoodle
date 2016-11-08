@@ -27,6 +27,7 @@ body {
     text-transform: uppercase;
     margin-bottom: 1em; }
   .users .userListItem {
+    margin: 1em 0;
     cursor: pointer; }
     .users .userListItem::after {
       clear: both;

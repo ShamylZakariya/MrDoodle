@@ -157,7 +157,7 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
 		String accountId = idToken.getPayload().getSubject();
 		String email = idToken.getPayload().getEmail();
 		String avatarUrl = payload != null ? payload.picture : null;

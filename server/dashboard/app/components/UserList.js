@@ -12,7 +12,7 @@ var UserList = React.createClass({
 	render: function () {
 		var userItems = this.props.users.map(function(user,index){
 			return (
-				<UserListItem user={user} click={this.props.click} key={user.id}/>
+				<UserListItem user={user} click={this.props.click} key={user.accountId}/>
 			)
 		}.bind(this));
 
