@@ -17,26 +17,12 @@ var App = React.createClass({
 	},
 
 	componentDidMount: function() {
-		var self = this;
-		// for now, we're loading ALL users, ignoring page parameter
-		$.getJSON("http://localhost:4567/api/v1/dashboard/users")
-			.done(data => {
-				self.setState({
-					users: data.users,
-					error: null
-				});
-			})
-			.fail(e => {
-				self.setState({
-					users:[],
-					error: e.statusText
-				});
-			});
+		this.performLoad();
 	},
 
 	render: function() {
 
-		var userList = this.state.error ? null : <UserList users={this.state.users} click={this.showUserDetail}/>;
+		var userList = this.state.error ? null : <UserList users={this.state.users} click={this.showUserDetail} reload={this.performLoad}/>;
 		var errorView = this.state.error ? <ErrorView error={this.state.error}/> : null;
 		var userDetail = this.state.selectedUser ? <UserDetail user={this.state.selectedUser} close={this.handleCloseUserDetail}/> : null;
 
@@ -50,6 +36,25 @@ var App = React.createClass({
 	},
 
 	///////////////////////////////////////////////////////////////////
+
+	performLoad: function() {
+		console.log('App::performLoad')
+
+		// for now, we're loading ALL users, ignoring page parameter
+		$.getJSON("http://localhost:4567/api/v1/dashboard/users")
+			.done(data => {
+				this.setState({
+					users: data.users,
+					error: null
+				});
+			})
+			.fail(e => {
+				this.setState({
+					users:[],
+					error: e.statusText
+				});
+			});
+	},
 
 	handleCloseUserDetail: function(){
 		this.setState({

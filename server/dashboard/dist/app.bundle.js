@@ -74,24 +74,12 @@
 		},
 
 		componentDidMount: function componentDidMount() {
-			var self = this;
-			// for now, we're loading ALL users, ignoring page parameter
-			$.getJSON("http://localhost:4567/api/v1/dashboard/users").done(function (data) {
-				self.setState({
-					users: data.users,
-					error: null
-				});
-			}).fail(function (e) {
-				self.setState({
-					users: [],
-					error: e.statusText
-				});
-			});
+			this.performLoad();
 		},
 
 		render: function render() {
 
-			var userList = this.state.error ? null : React.createElement(UserList, { users: this.state.users, click: this.showUserDetail });
+			var userList = this.state.error ? null : React.createElement(UserList, { users: this.state.users, click: this.showUserDetail, reload: this.performLoad });
 			var errorView = this.state.error ? React.createElement(ErrorView, { error: this.state.error }) : null;
 			var userDetail = this.state.selectedUser ? React.createElement(UserDetail, { user: this.state.selectedUser, close: this.handleCloseUserDetail }) : null;
 
@@ -105,6 +93,25 @@
 		},
 
 		///////////////////////////////////////////////////////////////////
+
+		performLoad: function performLoad() {
+			var _this = this;
+
+			console.log('App::performLoad');
+
+			// for now, we're loading ALL users, ignoring page parameter
+			$.getJSON("http://localhost:4567/api/v1/dashboard/users").done(function (data) {
+				_this.setState({
+					users: data.users,
+					error: null
+				});
+			}).fail(function (e) {
+				_this.setState({
+					users: [],
+					error: e.statusText
+				});
+			});
+		},
 
 		handleCloseUserDetail: function handleCloseUserDetail() {
 			this.setState({
@@ -23225,6 +23232,11 @@
 						'h2',
 						null,
 						'Users'
+					),
+					React.createElement(
+						'div',
+						{ className: 'item reload', onClick: this.props.reload },
+						'Reload'
 					)
 				),
 				React.createElement(

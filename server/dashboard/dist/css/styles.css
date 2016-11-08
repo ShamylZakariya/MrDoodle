@@ -19,6 +19,24 @@ body {
   text-align: center;
   border-radius: 2pt; }
 
+.toolbar::after {
+  clear: both;
+  content: "";
+  display: table; }
+.toolbar h2 {
+  float: left; }
+.toolbar .item {
+  float: right;
+  width: 24px;
+  height: 24px; }
+  .toolbar .item.reload {
+    background: url(../images/reload.png);
+    background-size: contain;
+    overflow: hidden;
+    text-indent: 101%;
+    white-space: nowrap;
+    cursor: pointer; }
+
 .users {
   padding: 36px; }
   .users h2 {

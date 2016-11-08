@@ -28,6 +28,27 @@ body {
 	border-radius: 2pt;
 }
 
+.toolbar {
+	@include clearfix;
+
+	h2 {
+		float: left;
+	}
+
+	.item {
+		float: right;
+		width: 24px;
+		height: 24px;
+
+		&.reload {
+			background: url(../images/reload.png);
+			background-size: contain;
+			@include hide-text();
+			cursor: pointer;
+		}
+	}
+}
+
 .users {
 
 	padding: 36px;
