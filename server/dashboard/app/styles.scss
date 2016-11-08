@@ -48,8 +48,10 @@ body {
 			width: $avatar-size;
 			height: $avatar-size;
 			border-radius: $avatar-size/2;
-			background: grey;
+			background-color: grey;
 			margin-right: $avatar-size/4;
+			overflow: hidden;
+			background-size: cover;
 		}
 
 		.info {
@@ -115,13 +117,56 @@ body {
 			float: left;
 			width: $avatar-size;
 			height: $avatar-size;
-			border-radius: $avatar-size/2;
-			background: grey;
 			margin-right: $avatar-size/4;
+			position: relative;
+
+			.avatarImage {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: $avatar-size;
+				height: $avatar-size;
+				border-radius: $avatar-size/2;
+				background: grey;
+				margin-right: $avatar-size/4;
+				overflow: hidden;
+				background-size: cover;
+			}
+
+			.connectedMarker {
+				$size: 22px;
+				position: absolute;
+				right: 0;
+				bottom: 0;
+				min-width: $size;
+				height: $size;
+				border-radius: $size/2;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+				background-color: forestgreen;
+				@include transform(translateY(50%));
+
+				.count {
+					display: inline-block;
+					color: white;
+					font-size: $size * 0.8;
+					line-height: $size;
+					font-weight: bold;
+					text-align: center;
+					padding: 0 0.5em;
+				}
+
+				&.connected {
+					display: block;
+				}
+
+				&.disconnected {
+					display: none;
+				}
+			}
 		}
 
 		> * {
-			margin: 0.5em 0; 
+			margin: 0.5em 0;
 		}
 
 		.email {

@@ -154,7 +154,7 @@ public class SyncServer {
 			Map<String, User> tokens = new HashMap<>();
 			for (String token : tokensMap.keySet()) {
 				String value = tokensMap.get(token).toString();
-				String bits[] = value.split(":");
+				String bits[] = value.split("\\|");
 				tokens.put(token, new User(bits[0], bits[1], bits[2]));
 			}
 

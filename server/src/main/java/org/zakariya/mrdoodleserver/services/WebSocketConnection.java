@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.auth.User;
+import org.zakariya.mrdoodleserver.sync.UserRecordAccess;
 import org.zakariya.mrdoodleserver.util.Configuration;
 
 import java.io.IOException;

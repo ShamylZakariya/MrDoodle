@@ -7,6 +7,7 @@ import redis.clients.jedis.Response;
 import redis.clients.jedis.Transaction;
 import redis.clients.jedis.params.Params;
 
+import javax.annotation.Nullable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,6 +29,10 @@ public class UserRecordAccess {
 		this.namespace = namespace;
 	}
 
+	/**
+	 * Records a timestamp for the user's visit. This is called in SyncRouter
+	 * @param user a user who has just made an API call to the service
+	 */
 	public void recordUserVisit(User user) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			jedis.sadd(getUserSetJedisKey(), user.getId());
@@ -41,22 +46,43 @@ public class UserRecordAccess {
 		}
 	}
 
+	/**
+	 * @return a set of the ids of all users who have used this service
+	 */
 	public Set<String> getUserIds() {
 		try (Jedis jedis = jedisPool.getResource()) {
 			return jedis.smembers(getUserSetJedisKey());
 		}
 	}
 
+	public boolean isUser(String userId) {
+		try (Jedis jedis = jedisPool.getResource()) {
+			return jedis.sismember(getUserSetJedisKey(), userId);
+		}
+	}
+
+	/**
+	 * @return the number of users who have used this service
+	 */
 	public long getUserCount() {
 		try (Jedis jedis = jedisPool.getResource()) {
 			return jedis.scard(getUserSetJedisKey());
 		}
 	}
 
+	/**
+	 * @return a set of all users who have used this service
+	 */
 	public Set<User> getUsers() {
 		return getUserIds().stream().map(this::getUser).collect(Collectors.toSet());
 	}
 
+	/**
+	 * Instead of a list of all users who have used this service, this will return a slice into that set.
+	 * @param page the page index
+	 * @param countPerPage the number of users per page
+	 * @return a list of users, sorted by id
+	 */
 	public List<User> getUsers(int page, int countPerPage) {
 		List<String> sortedUserIds = new ArrayList<>(getUserIds());
 		Collections.sort(sortedUserIds);
@@ -71,6 +97,12 @@ public class UserRecordAccess {
 		}
 	}
 
+	/**
+	 * Get info on a specific user by id
+	 * @param userId the id of the user
+	 * @return the User with the given id, or null
+	 */
+	@Nullable
 	public User getUser(String userId) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			String hashKey = getUserInfoHashJedisKey(userId);
@@ -81,17 +113,25 @@ public class UserRecordAccess {
 			Response<String> timestampSeconds = transaction.hget(hashKey, FIELD_USER_TIMESTAMP_SECONDS);
 			transaction.exec();
 
-			long timestamp;
-			try {
-				timestamp = Long.parseLong(timestampSeconds.get());
-			} catch(NumberFormatException e) {
-				timestamp = 0;
-			}
+			if (email.get() != null && email.get().length() > 0) {
+				long timestamp;
+				try {
+					timestamp = Long.parseLong(timestampSeconds.get());
+				} catch(NumberFormatException e) {
+					timestamp = 0;
+				}
 
-			return new User(userId, email.get(), avatarUrl.get(), timestamp);
+				return new User(userId, email.get(), avatarUrl.get(), timestamp);
+			}
 		}
+		return null;
 	}
 
+	/**
+	 * Get a timestamp in seconds for the last time a given user used this service
+	 * @param userId the id of the user
+	 * @return the timestamp in seconds, or 0 if the user doesn't exist, or hasn't connected
+	 */
 	public long getUserVisitTimestampSeconds(String userId) {
 		try (Jedis jedis = jedisPool.getResource()) {
 			String hashKey = getUserInfoHashJedisKey(userId);

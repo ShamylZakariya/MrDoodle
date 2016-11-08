@@ -37,8 +37,10 @@ body {
       width: 72px;
       height: 72px;
       border-radius: 36px;
-      background: grey;
-      margin-right: 18px; }
+      background-color: grey;
+      margin-right: 18px;
+      overflow: hidden;
+      background-size: cover; }
     .users .userListItem .info {
       float: left;
       -webkit-transform: translateY(36px) translateY(-50%);
@@ -86,9 +88,45 @@ body {
       float: left;
       width: 72px;
       height: 72px;
-      border-radius: 36px;
-      background: grey;
-      margin-right: 18px; }
+      margin-right: 18px;
+      position: relative; }
+      .userDetail .userInfo .avatar .avatarImage {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 72px;
+        height: 72px;
+        border-radius: 36px;
+        background: grey;
+        margin-right: 18px;
+        overflow: hidden;
+        background-size: cover; }
+      .userDetail .userInfo .avatar .connectedMarker {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        min-width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        background-color: forestgreen;
+        -webkit-transform: translateY(50%);
+        -moz-transform: translateY(50%);
+        -ms-transform: translateY(50%);
+        -o-transform: translateY(50%);
+        transform: translateY(50%); }
+        .userDetail .userInfo .avatar .connectedMarker .count {
+          display: inline-block;
+          color: white;
+          font-size: 17.6px;
+          line-height: 22px;
+          font-weight: bold;
+          text-align: center;
+          padding: 0 0.5em; }
+        .userDetail .userInfo .avatar .connectedMarker.connected {
+          display: block; }
+        .userDetail .userInfo .avatar .connectedMarker.disconnected {
+          display: none; }
     .userDetail .userInfo > * {
       margin: 0.5em 0; }
     .userDetail .userInfo .email {

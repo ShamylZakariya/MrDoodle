@@ -45,10 +45,6 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 
 	private static final boolean READ_WRITE_LOCK_IS_FAIR = true;
 
-	private static final String RESPONSE_TYPE_JSON = MediaType.JSON_UTF_8.toString();
-	private static final String RESPONSE_TYPE_TEXT = MediaType.PLAIN_TEXT_UTF_8.toString();
-	private static final String RESPONSE_TYPE_OCTET_STREAM = MediaType.OCTET_STREAM.toString();
-
 	// multiple SyncRouters may exist because of threading, so we need to
 	// make certain our syncManagers and locks are unique per account
 	private static Map<String, SyncManager> syncManagersByAccountId = new HashMap<>();
@@ -61,6 +57,11 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 		super(configuration, jedisPool);
 		this.authenticator = authenticator;
 		userRecordAccess = new UserRecordAccess(getJedisPool(), getStoragePrefix());
+	}
+
+	@Override
+	public Logger getLogger() {
+		return logger;
 	}
 
 	public void initializeRoutes() {
@@ -515,18 +516,6 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 		}
 
 		return syncManager;
-	}
-
-	private void sendErrorAndHalt(Response response, int code, String message, Exception e) {
-		logger.error(message, e);
-		response.type(RESPONSE_TYPE_TEXT);
-		halt(code, message);
-	}
-
-	private void sendErrorAndHalt(Response response, int code, String message) {
-		logger.error(message);
-		response.type(RESPONSE_TYPE_TEXT);
-		halt(code, message);
 	}
 
 	///////////////////////////////////////////////////////////////////

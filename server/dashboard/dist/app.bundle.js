@@ -16568,14 +16568,14 @@
 			var lastAccessDate = new Date(user.lastAccessTimestamp * 1000);
 			var formattedLastAccessDate = moment(lastAccessDate).format('MMMM Do YYYY, h:mm:ss a');
 
+			var avatarStyle = {
+				backgroundImage: user.avatarUrl && user.avatarUrl.length ? "url(" + user.avatarUrl + ")" : undefined
+			};
+
 			return React.createElement(
 				'li',
 				{ className: 'userListItem', onClick: this.handleClick },
-				React.createElement(
-					'div',
-					{ className: 'avatar' },
-					React.createElement('img', { src: user.avatarUrl })
-				),
+				React.createElement('div', { className: 'avatar', style: avatarStyle }),
 				React.createElement(
 					'div',
 					{ className: 'info' },
@@ -16612,6 +16612,7 @@
 
 	'use strict';
 
+	var $ = __webpack_require__(149);
 	var React = __webpack_require__(2);
 	var moment = __webpack_require__(155);
 
@@ -16626,17 +16627,35 @@
 		},
 
 		getInitialState: function getInitialState() {
-			return {};
+			return {
+				connectedDeviceCount: 0
+			};
 		},
 
 		componentDidMount: function componentDidMount() {
 			// perform a $.getJSON call to get the details on our user
+			this.loadUserInfo();
+			this.updateUserInfoInterval = setInterval(this.loadUserInfo, 2000);
+		},
+
+		componentWillUnmount: function componentWillUnmount() {
+			if (this.updateUserInfoInterval) {
+				clearInterval(this.updateUserInfoInterval);
+			}
 		},
 
 		render: function render() {
 			var user = this.props.user;
 			var lastAccessDate = new Date(user.lastAccessTimestamp * 1000);
 			var formattedLastAccessDate = moment(lastAccessDate).format('MMMM Do YYYY, h:mm:ss a');
+
+			var styles = {
+				avatarImageStyle: {
+					backgroundImage: user.avatarUrl && user.avatarUrl.length ? "url(" + user.avatarUrl + ")" : undefined
+				}
+			};
+
+			var connectedMarkerClassName = "connectedMarker " + (this.state.connectedDeviceCount > 0 ? "connected" : "disconnected");
 
 			return React.createElement(
 				'div',
@@ -16655,7 +16674,16 @@
 						React.createElement(
 							'div',
 							{ className: 'avatar' },
-							React.createElement('img', { src: user.avatarUrl })
+							React.createElement('div', { className: 'avatarImage', style: styles.avatarImageStyle }),
+							React.createElement(
+								'div',
+								{ className: connectedMarkerClassName },
+								React.createElement(
+									'span',
+									{ className: 'count' },
+									this.state.connectedDeviceCount
+								)
+							)
 						),
 						React.createElement(
 							'div',
@@ -16675,6 +16703,20 @@
 					)
 				)
 			);
+		},
+
+		loadUserInfo: function loadUserInfo() {
+			var _this = this;
+
+			$.getJSON("http://localhost:4567/api/v1/dashboard/users/" + this.props.user.id).done(function (data) {
+				_this.setState({
+					connectedDeviceCount: data.connectedDevices
+				});
+			}).fail(function (e) {
+				_this.setState({
+					connectedDeviceCount: 0
+				});
+			});
 		},
 
 		handleClose: function handleClose() {

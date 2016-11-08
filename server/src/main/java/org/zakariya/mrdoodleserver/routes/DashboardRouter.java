@@ -3,7 +3,9 @@ package org.zakariya.mrdoodleserver.routes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.User;
+import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.UserRecordAccess;
+import org.zakariya.mrdoodleserver.transport.UserConnectionInfo;
 import org.zakariya.mrdoodleserver.transport.UserPage;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.JedisPool;
@@ -29,11 +31,18 @@ public class DashboardRouter extends Router {
 		this.userRecordAccess = new UserRecordAccess(getJedisPool(), getStoragePrefix());
 	}
 
+	@Override
+	public Logger getLogger() {
+		return logger;
+	}
+
 	public void initializeRoutes() {
 		String basePath = getBasePath();
 
 		// get list of all users who have used this service - returns User[]
 		get(basePath + "/users", this::getUsers, getJsonResponseTransformer());
+
+		get(basePath + "/users/:userId", this::getUserConnectionInfo, getJsonResponseTransformer());
 	}
 
 	private UserPage getUsers(Request request, Response response) {
@@ -55,6 +64,27 @@ public class DashboardRouter extends Router {
 		}
 
 		return userPage;
+	}
+
+	private UserConnectionInfo getUserConnectionInfo(Request request, Response response) {
+		UserConnectionInfo info = new UserConnectionInfo();
+		WebSocketConnection connection = WebSocketConnection.getInstance();
+		if (connection != null) {
+			String userId = request.params("userId");
+			if (userId != null) {
+				if (userRecordAccess.isUser(userId)) {
+					info.connectedDevices = connection.getTotalConnectedDevicesForAccountId(userId);
+				} else {
+					sendErrorAndHalt(response, 404, "Unrecognized userId: \"" + userId + "\"");
+					return null;
+				}
+			} else {
+				sendErrorAndHalt(response, 400, "Missing \"userId\" param");
+				return null;
+			}
+		}
+
+		return info;
 	}
 
 	private int intQueryParam(Request request, String param, int fallback) {
