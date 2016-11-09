@@ -93,8 +93,8 @@ public class WebSocketConnection {
 		}
 	}
 
-	public static String getRoute(Configuration configuration) {
-		return "/api/" + configuration.get("version") + "/connect";
+	public static String getRoute(String apiVersion) {
+		return "/api/" + apiVersion + "/connect";
 	}
 
 	/**

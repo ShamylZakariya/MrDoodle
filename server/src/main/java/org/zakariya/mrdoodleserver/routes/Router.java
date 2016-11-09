@@ -20,21 +20,15 @@ public abstract class Router {
 	static final String RESPONSE_TYPE_TEXT = MediaType.PLAIN_TEXT_UTF_8.toString();
 	static final String RESPONSE_TYPE_OCTET_STREAM = MediaType.OCTET_STREAM.toString();
 
-	private Configuration configuration;
 	private JedisPool jedisPool;
 	private String storagePrefix;
 	private String apiVersion;
 	private ResponseTransformer jsonResponseTransformer;
 
-	Router(Configuration configuration, JedisPool jedisPool) {
-		this.configuration = configuration;
+	Router(JedisPool jedisPool, String storagePrefix, String apiVersion) {
 		this.jedisPool = jedisPool;
-		this.storagePrefix = configuration.get("prefix", Defaults.STORAGE_PREFIX);
-		this.apiVersion = configuration.get("version");
-	}
-
-	protected Configuration getConfiguration() {
-		return configuration;
+		this.storagePrefix = storagePrefix;
+		this.apiVersion = apiVersion;
 	}
 
 	JedisPool getJedisPool() {
@@ -56,10 +50,6 @@ public abstract class Router {
 		return jsonResponseTransformer;
 	}
 
-	ResponseTransformer createJsonResponseTransformer() {
-		return new JsonResponseTransformer();
-	}
-
 	public abstract Logger getLogger();
 
 	public abstract void initializeRoutes();
@@ -79,6 +69,11 @@ public abstract class Router {
 	}
 
 	///////////////////////////////////////////////////////////////////
+
+	@SuppressWarnings("WeakerAccess")
+	protected ResponseTransformer createJsonResponseTransformer() {
+		return new JsonResponseTransformer();
+	}
 
 	private class JsonResponseTransformer implements ResponseTransformer {
 

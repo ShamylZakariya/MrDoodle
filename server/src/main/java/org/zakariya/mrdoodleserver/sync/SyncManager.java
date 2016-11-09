@@ -24,7 +24,6 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 	private static final String WRITE_SESSION_NAMESPACE = "write-session";
 	private static final int STATUS_BROADCAST_DEBOUNCE_MILLISECONDS = 1000;
 
-	private Configuration configuration;
 	private String storagePrefix;
 	private String accountId;
 	private JedisPool jedisPool;
@@ -87,27 +86,16 @@ public class SyncManager implements WebSocketConnection.OnUserSessionStatusChang
 		}
 	}
 
-	public SyncManager(Configuration configuration, JedisPool jedisPool, String storagePrefix, String accountId) {
-		this.configuration = configuration;
+	public SyncManager(JedisPool jedisPool, DeviceIdManagerInterface deviceIdManager, String storagePrefix, String accountId) {
 		this.jedisPool = jedisPool;
-		this.accountId = accountId;
+		this.deviceIdManager = deviceIdManager;
 		this.storagePrefix = storagePrefix;
+		this.accountId = accountId;
+
 		this.timestampRecord = new TimestampRecord(jedisPool, storagePrefix, accountId);
 		this.blobStore = new BlobStore(jedisPool, storagePrefix, accountId);
-
 		this.lockManager = new LockManager();
 		this.lockManager.addListener(this);
-
-
-		// TODO: Learn how to use dependency injection to make this smarter
-		List<String> deviceIds = configuration.getArray("syncManager/deviceIdManager/mock/deviceIds");
-		if (deviceIds != null) {
-			logger.info("Creating MockDeviceIdManager with mock device ids: {}", deviceIds);
-			this.deviceIdManager = new MockDeviceIdManager(deviceIds);
-		} else {
-			this.deviceIdManager = new DeviceIdManager();
-		}
-
 	}
 
 	public void close() {

@@ -7,16 +7,22 @@ import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.auth.Whitelist;
 import org.zakariya.mrdoodleserver.auth.techniques.GoogleIdTokenAuthenticator;
 import org.zakariya.mrdoodleserver.auth.techniques.MockAuthenticator;
+import org.zakariya.mrdoodleserver.factories.SyncManagerFactory;
 import org.zakariya.mrdoodleserver.routes.DashboardRouter;
 import org.zakariya.mrdoodleserver.routes.Router;
 import org.zakariya.mrdoodleserver.routes.SyncRouter;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
+import org.zakariya.mrdoodleserver.sync.DeviceIdManager;
+import org.zakariya.mrdoodleserver.sync.DeviceIdManagerInterface;
+import org.zakariya.mrdoodleserver.sync.SyncManager;
+import org.zakariya.mrdoodleserver.sync.mock.MockDeviceIdManager;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -85,21 +91,24 @@ public class SyncServer {
 		externalStaticFileLocation(configuration.get("staticFiles"));
 
 		// build routers
-		SyncRouter syncRouter = new SyncRouter(configuration, authenticator, jedisPool);
-		DashboardRouter dashboardRouter = new DashboardRouter(configuration, jedisPool);
+		String storagePrefix = configuration.get("jedisStoragePrefix");
+		String apiVersion = configuration.get("apiVersion");
+		SyncManagerFactory syncManagerFactory = buildSyncManagerFactory(configuration);
+
+		SyncRouter syncRouter = new SyncRouter(jedisPool, storagePrefix, apiVersion, authenticator, syncManagerFactory);
+		DashboardRouter dashboardRouter = new DashboardRouter(jedisPool, storagePrefix, apiVersion);
 		Router routers[] = { syncRouter, dashboardRouter };
 
 		// set up the WebSocketConnection. Note, since Spark lazily creates it, we can't pass
 		// values to a constructor! So we need to use static values, which is hideous.
 		WebSocketConnection.authenticator = authenticator;
 		WebSocketConnection.addOnWebSocketConnectionCreatedListener(syncRouter);
-		webSocket(WebSocketConnection.getRoute(configuration), WebSocketConnection.class);
+		webSocket(WebSocketConnection.getRoute(apiVersion), WebSocketConnection.class);
 
-
+		// routers can't init their routes until the websocket connection is built
 		for (Router router : routers) {
 			router.initializeRoutes();
 		}
-
 
 		init();
 	}
@@ -166,6 +175,26 @@ public class SyncServer {
 
 			return new GoogleIdTokenAuthenticator(oauthServerId, new Whitelist(whitelistGraceperiodSeconds));
 		}
+	}
+
+	private static SyncManagerFactory buildSyncManagerFactory(Configuration configuration) {
+
+		final List<String> deviceIds = configuration.getArray("syncManager/deviceIdManager/mock/deviceIds");
+		if (deviceIds != null) {
+			logger.debug("SyncManager instances will be using MockDeviceIdManager with mock device ids: {}", deviceIds);
+		}
+
+		return (jedisPool, storagePrefix, accountId) -> {
+
+			DeviceIdManagerInterface deviceIdManager;
+			if (deviceIds != null) {
+				deviceIdManager = new MockDeviceIdManager(deviceIds);
+			} else {
+				deviceIdManager = new DeviceIdManager();
+			}
+
+			return new SyncManager(jedisPool, deviceIdManager, storagePrefix, accountId);
+		};
 	}
 
 }

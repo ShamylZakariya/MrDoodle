@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.auth.User;
+import org.zakariya.mrdoodleserver.factories.SyncManagerFactory;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.*;
 import org.zakariya.mrdoodleserver.transport.LockStatus;
@@ -49,12 +50,14 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 	private static Map<String, SyncManager> syncManagersByAccountId = new HashMap<>();
 	private static Map<String, ReentrantReadWriteLock> readWriteLocksByAccountId = new HashMap<>();
 
+	private SyncManagerFactory syncManagerFactory;
 	private Authenticator authenticator;
 	private UserRecordAccess userRecordAccess;
 
-	public SyncRouter(Configuration configuration, Authenticator authenticator, JedisPool jedisPool) {
-		super(configuration, jedisPool);
+	public SyncRouter(JedisPool jedisPool, String storagePrefix, String apiVersion, Authenticator authenticator, SyncManagerFactory syncManagerFactory) {
+		super(jedisPool, storagePrefix, apiVersion);
 		this.authenticator = authenticator;
+		this.syncManagerFactory = syncManagerFactory;
 		userRecordAccess = new UserRecordAccess(getJedisPool(), getStoragePrefix());
 	}
 
@@ -510,7 +513,7 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 		SyncManager syncManager = syncManagersByAccountId.get(accountId);
 
 		if (syncManager == null) {
-			syncManager = new SyncManager(getConfiguration(), getJedisPool(), getStoragePrefix(), accountId);
+			syncManager = syncManagerFactory.create(getJedisPool(), getStoragePrefix(), accountId);
 			syncManagersByAccountId.put(accountId, syncManager);
 		}
 
@@ -529,6 +532,7 @@ public class SyncRouter extends Router implements WebSocketConnection.WebSocketC
 				SyncManager syncManager = getSyncManagerForAccount(accountId);
 				syncManager.onUserSessionConnected(connection, session, accountId);
 
+				// record user visit
 				User user = authenticator.getUserByAccountId(accountId);
 				if (user != null) {
 					userRecordAccess.recordUserVisit(user);

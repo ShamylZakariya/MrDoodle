@@ -1,9 +1,9 @@
 {
-	"version": "v1",
+	"apiVersion": "v1",
 	"redis": {
 		"host": "localhost"
 	},
-	"prefix":"dev",
+	"jedisStoragePrefix":"dev",
 	"authenticator": {
 		"useMockAuthenticator":false,
 		"whitelist_grace_period_seconds": 3600,

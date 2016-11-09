@@ -26,8 +26,8 @@ public class DashboardRouter extends Router {
 	private UserRecordAccess userRecordAccess;
 	private static final int USER_PAGE_SIZE = 100;
 
-	public DashboardRouter(Configuration configuration, JedisPool jedisPool) {
-		super(configuration, jedisPool);
+	public DashboardRouter(JedisPool jedisPool, String storagePrefix, String apiVersion) {
+		super(jedisPool, storagePrefix, apiVersion);
 		this.userRecordAccess = new UserRecordAccess(getJedisPool(), getStoragePrefix());
 	}
 
@@ -39,9 +39,10 @@ public class DashboardRouter extends Router {
 	public void initializeRoutes() {
 		String basePath = getBasePath();
 
-		// get list of all users who have used this service - returns User[]
+		// get list of all users who have used this service - returns UserPage
 		get(basePath + "/users", this::getUsers, getJsonResponseTransformer());
 
+		// get info on specific user, returns UserConnectionInfo
 		get(basePath + "/users/:userId", this::getUserConnectionInfo, getJsonResponseTransformer());
 	}
 
@@ -82,7 +83,7 @@ public class DashboardRouter extends Router {
 
 		UserConnectionInfo info = new UserConnectionInfo();
 		info.user = user;
-		
+
 		WebSocketConnection connection = WebSocketConnection.getInstance();
 		if (connection != null) {
 			info.connectedDevices = connection.getTotalConnectedDevicesForAccountId(userId);

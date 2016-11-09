@@ -10,9 +10,11 @@ import java.util.Map;
 
 /**
  * DeviceIdManager
- * creates unique random device ids to be used by SyncManager
+ * creates device ids to be used by SyncManager. The device IDs are unique to the SyncManager instance,
+ * e.g., neither globally nor temporally unique. When a SyncManager is destroyed after all devices
+ * have disconnected, the next time a device connects, the device IDs issued may start repeating.
  */
-class DeviceIdManager implements DeviceIdManagerInterface {
+public class DeviceIdManager implements DeviceIdManagerInterface {
 
 	private static final Logger logger = LoggerFactory.getLogger(DeviceIdManager.class);
 
