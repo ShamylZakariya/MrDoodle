@@ -41,7 +41,6 @@ public class TimestampRecorder {
 
 		if (timestampData != null && timestampData.length > 0) {
 			try {
-				// TODO: Consider rewriting this with Kryo
 				ByteArrayInputStream byteStream = new ByteArrayInputStream(timestampData);
 				ObjectInputStream objectInputStream = new ObjectInputStream(byteStream);
 				timestamps = (HashMap<String, Long>) objectInputStream.readObject();
