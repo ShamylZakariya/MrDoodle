@@ -379,7 +379,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		private int count;
 		private boolean noisy;
 
-		public BackgroundWatcher(final MrDoodleApplication application, final boolean noisy) {
+		BackgroundWatcher(final MrDoodleApplication application, final boolean noisy) {
 			application.registerActivityLifecycleCallbacks(this);
 			this.noisy = noisy;
 
