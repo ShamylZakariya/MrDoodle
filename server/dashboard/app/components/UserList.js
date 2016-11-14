@@ -1,7 +1,7 @@
-var React = require('react');
-var UserListItem = require('./UserListItem');
+let React = require('react');
+let UserListItem = require('./UserListItem');
 
-var UserList = React.createClass({
+let UserList = React.createClass({
 
 	getDefaultProps: function () {
 		return {
@@ -10,7 +10,7 @@ var UserList = React.createClass({
 	},
 
 	render: function () {
-		var userItems = this.props.users.map(function(user,index){
+		let userItems = this.props.users.map(function(user,index){
 			return (
 				<UserListItem user={user} click={this.props.click} key={user.accountId}/>
 			)

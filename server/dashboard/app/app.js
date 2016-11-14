@@ -1,12 +1,11 @@
-var React = require('react');
-var ReactDOM = require('react-dom');
-var $ = require("./jquery-3.1.1");
+let React = require('react');
+let ReactDOM = require('react-dom');
 
-var ErrorView = require('./components/ErrorView');
-var UserList = require('./components/UserList');
-var UserDetail = require('./components/UserDetail');
+let ErrorView = require('./components/ErrorView');
+let UserList = require('./components/UserList');
+let UserDetail = require('./components/UserDetail');
 
-var App = React.createClass({
+let App = React.createClass({
 
 	getInitialState: function() {
 		return {
@@ -22,9 +21,9 @@ var App = React.createClass({
 
 	render: function() {
 
-		var userList = this.state.error ? null : <UserList users={this.state.users} click={this.showUserDetail} reload={this.performLoad}/>;
-		var errorView = this.state.error ? <ErrorView error={this.state.error}/> : null;
-		var userDetail = this.state.selectedUser ? <UserDetail user={this.state.selectedUser} close={this.handleCloseUserDetail}/> : null;
+		let userList = this.state.error ? null : <UserList users={this.state.users} click={this.showUserDetail} reload={this.performLoad}/>;
+		let errorView = this.state.error ? <ErrorView error={this.state.error}/> : null;
+		let userDetail = this.state.selectedUser ? <UserDetail user={this.state.selectedUser} close={this.handleCloseUserDetail}/> : null;
 
 		return (
 			<div className="container">
@@ -38,17 +37,19 @@ var App = React.createClass({
 	///////////////////////////////////////////////////////////////////
 
 	performLoad: function() {
-		console.log('App::performLoad')
+		console.log('App::performLoad');
 
-		// for now, we're loading ALL users, ignoring page parameter
-		$.getJSON("http://localhost:4567/api/v1/dashboard/users")
-			.done(data => {
+		fetch("http://localhost:4567/api/v1/dashboard/users", { credentials: 'include' })
+			.then(function(response){
+				return response.json()
+			})
+			.then(data => {
 				this.setState({
 					users: data.users,
 					error: null
 				});
 			})
-			.fail(e => {
+			.catch(e => {
 				this.setState({
 					users:[],
 					error: e.statusText

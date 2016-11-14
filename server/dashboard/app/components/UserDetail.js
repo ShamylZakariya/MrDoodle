@@ -1,8 +1,7 @@
-var React = require('react');
-var moment = require('moment');
-var $ = require('../jquery-3.1.1');
+let React = require('react');
+let moment = require('moment');
 
-var UserDetail = React.createClass({
+let UserDetail = React.createClass({
 
 	getDefaultProps: function () {
 		return {
@@ -31,23 +30,23 @@ var UserDetail = React.createClass({
 
 	render: function () {
 
-		var user = this.state.user;
+		let user = this.state.user;
 
 		if (user == null) {
 			return <div className="loading">Loading...</div>
 		}
 
 
-		var lastAccessDate = (new Date(user.lastAccessTimestampSeconds * 1000));
-		var formattedLastAccessDate = moment(lastAccessDate).format('MMMM Do YYYY, h:mm:ss a');
+		let lastAccessDate = (new Date(user.lastAccessTimestampSeconds * 1000));
+		let formattedLastAccessDate = moment(lastAccessDate).format('MMMM Do YYYY, h:mm:ss a');
 
-		var styles = {
+		let styles = {
 			avatarImageStyle: {
 				backgroundImage: (user.avatarUrl && user.avatarUrl.length) ? "url(" + user.avatarUrl + ")" : undefined
 			}
 		};
 
-		var connectedMarkerClassName = "connectedMarker " + (this.state.connectedDeviceCount > 0 ? "connected" : "disconnected");
+		let connectedMarkerClassName = "connectedMarker " + (this.state.connectedDeviceCount > 0 ? "connected" : "disconnected");
 
 		return (
 			<div className="userDetail">
@@ -72,17 +71,26 @@ var UserDetail = React.createClass({
 	},
 
 	loadUserInfo: function () {
-		$.getJSON("http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId)
-			.done(data => {
-				this.setState({
-					connectedDeviceCount: data.connectedDevices,
-					user: data.user,
-				});
+
+		let url = "http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId;
+		fetch(url, { credentials: 'include'} )
+			.then(response => {
+				return response.json()
 			})
-			.fail(e => {
-				this.setState({
-					connectedDeviceCount: 0
-				});
+			.then(data => {
+				if (this.isMounted()) {
+					this.setState({
+						connectedDeviceCount: data.connectedDevices,
+						user: data.user,
+					});
+				}
+			})
+			.catch( e => {
+				if (this.isMounted()) {
+					this.setState({
+						connectedDeviceCount: 0
+					});
+				}
 			});
 	},
 

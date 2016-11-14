@@ -1,7 +1,7 @@
-var React = require('react');
-var moment = require('moment');
+let React = require('react');
+let moment = require('moment');
 
-var UserListItem = React.createClass({
+let UserListItem = React.createClass({
 	getDefaultProps: function() {
 		return {
 			user: {
@@ -14,11 +14,11 @@ var UserListItem = React.createClass({
 	},
 
 	render: function () {
-		var user = this.props.user;
-		var lastAccessDate = (new Date(user.lastAccessTimestampSeconds * 1000));
-		var formattedLastAccessDate = moment(lastAccessDate).format('MMMM Do YYYY, h:mm:ss a');
+		let user = this.props.user;
+		let lastAccessDate = (new Date(user.lastAccessTimestampSeconds * 1000));
+		let formattedLastAccessDate = moment(lastAccessDate).format('MMMM Do YYYY, h:mm:ss a');
 
-		var avatarStyle = {
+		let avatarStyle = {
 			backgroundImage: (user.avatarUrl && user.avatarUrl.length) ? "url(" + user.avatarUrl + ")" : undefined
 		};
 

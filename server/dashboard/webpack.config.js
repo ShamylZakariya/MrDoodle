@@ -11,6 +11,8 @@ var path = require('path');
 
 module.exports = {
 	entry: [
+		'whatwg-fetch',
+		'promise-polyfill',
 		'./app/app.js'
 	],
 	output: {

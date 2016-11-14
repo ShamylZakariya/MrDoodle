@@ -1,8 +1,10 @@
 {
   "dependencies": {
     "moment": "^2.15.2",
+    "promise-polyfill": "^6.0.2",
     "react": "^15.3.2",
-    "react-dom": "^15.3.2"
+    "react-dom": "^15.3.2",
+    "whatwg-fetch": "^1.0.0"
   },
   "devDependencies": {
     "babel-core": "^6.18.2",

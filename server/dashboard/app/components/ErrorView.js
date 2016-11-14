@@ -1,6 +1,6 @@
-var React = require('react');
+let React = require('react');
 
-var ErrorView = React.createClass({
+let ErrorView = React.createClass({
 	getDefaultProps:function(){
 		return {
 			error:null
