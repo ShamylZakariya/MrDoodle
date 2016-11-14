@@ -1,10 +1,13 @@
 package org.zakariya.mrdoodle.ui;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.ColorInt;
@@ -53,6 +56,7 @@ import org.zakariya.mrdoodle.sync.events.RemoteChangeEvent;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.Debouncer;
 import org.zakariya.mrdoodle.util.DoodleShareHelper;
+import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
 import org.zakariya.mrdoodle.util.NavbarUtils;
 
 import java.util.ArrayList;
@@ -76,6 +80,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	private static final String TAG = "DoodleActivity";
 
+	public static final String EXTRA_DOODLE_THUMBNAIL_ID = "DoodleActivity.EXTRA_DOODLE_THUMBNAIL_ID";
+	public static final String EXTRA_DOODLE_THUMBNAIL_WIDTH = "DoodleActivity.EXTRA_DOODLE_THUMBNAIL_WIDTH";
+	public static final String EXTRA_DOODLE_THUMBNAIL_HEIGHT = "DoodleActivity.EXTRA_DOODLE_THUMBNAIL_HEIGHT";
 	public static final String EXTRA_DOODLE_DOCUMENT_UUID = "DoodleActivity.EXTRA_DOODLE_DOCUMENT_UUID";
 	public static final String RESULT_DOODLE_DOCUMENT_UUID = "DoodleActivity.RESULT_DOODLE_DOCUMENT_UUID";
 
@@ -127,6 +134,9 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	@Bind(R.id.lockIconImageView)
 	ImageView lockIconImageView;
+
+	@Bind(R.id.doodlePlaceholderImageView)
+	ImageView doodlePlaceholderImageView;
 
 	@State
 	int brushColor = DEFAULT_BRUSH_COLOR;
@@ -194,11 +204,10 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		BusProvider.getMainThreadBus().register(this);
 
 		// set fullscreen flags
 		goFullscreen();
-
-		BusProvider.getMainThreadBus().register(this);
 
 		setContentView(R.layout.activity_doodle);
 		ButterKnife.bind(this);
@@ -243,9 +252,25 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 			SharedPreferences prefs = getSharedPreferences();
 			toolFlyoutMenuSelectionId = prefs.getInt(PREF_KEY_TOOL_MENU_SELECTION_ID, toolFlyoutMenuSelectionId);
 			paletteFlyoutMenuSelectionId = prefs.getInt(PREF_KEY_PALETTE_MENU_SELECTION_ID, paletteFlyoutMenuSelectionId);
+
+
+			// shared element transition support
+			String thumbnailId = getIntent().getStringExtra(EXTRA_DOODLE_THUMBNAIL_ID);
+			Bitmap placeholder = DoodleThumbnailRenderer.getInstance().getThumbnailById(thumbnailId);
+
+			if (placeholder != null) {
+				// we have a shared-element-transition image, so hide doodle view,
+				// and set image for placeholder. We will swap these in onResume
+				doodleView.setVisibility(View.INVISIBLE);
+				doodlePlaceholderImageView.setImageBitmap(placeholder);
+			} else {
+				doodlePlaceholderImageView.setVisibility(View.GONE);
+			}
+
 		} else {
 			Icepick.restoreInstanceState(this, savedInstanceState);
 			document = DoodleDocument.byUuid(realm, documentUuid);
+			doodlePlaceholderImageView.setVisibility(View.GONE);
 		}
 
 		// set a touch dead zone on the edge where the navigation bar is hidden,
@@ -378,8 +403,29 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 
 	@Override
 	protected void onResume() {
-		requestDocumentWriteLock();
 		super.onResume();
+		requestDocumentWriteLock();
+
+		// shared element transition support - reveal the doodleView
+		// and fade out the placeholder
+		if (doodlePlaceholderImageView.getVisibility() != View.GONE) {
+			doodlePlaceholderImageView.animate()
+					.alpha(0)
+					.setStartDelay(500)
+					.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime))
+					.withStartAction(new Runnable() {
+						@Override
+						public void run() {
+							doodleView.setVisibility(View.VISIBLE);
+						}
+					})
+					.setListener(new AnimatorListenerAdapter() {
+						@Override
+						public void onAnimationEnd(Animator animation) {
+							doodlePlaceholderImageView.setVisibility(View.GONE);
+						}
+					});
+		}
 	}
 
 	@Override

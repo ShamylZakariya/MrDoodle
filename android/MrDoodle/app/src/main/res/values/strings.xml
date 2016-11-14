@@ -110,4 +110,10 @@
 	<string name="signed_out">Signed out</string>
 	<string name="disconnected_message_title">Disconnected</string>
 
+
+
+	<!-- transitions -->
+	<string name="transition_name_doodle_view">doodleView</string>
+
+
 </resources>

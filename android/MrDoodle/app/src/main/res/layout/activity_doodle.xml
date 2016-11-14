@@ -92,6 +92,15 @@
 			android:scaleType="center"
 			android:src="@drawable/ic_pencil_lock"/>
 
+		<ImageView
+			android:id="@+id/doodlePlaceholderImageView"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:scaleType="fitCenter"
+			tools:visibility="gone"
+			android:transitionName="@string/transition_name_doodle_view"
+			tools:targetApi="lollipop"/>
+
 		<LinearLayout
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
