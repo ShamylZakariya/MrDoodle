@@ -1,7 +1,5 @@
 package org.zakariya.mrdoodle.ui;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -16,6 +14,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.graphics.ColorUtils;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.view.ViewPropertyAnimatorCompat;
+import android.support.v4.view.ViewPropertyAnimatorListener;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.Toolbar;
@@ -406,23 +405,33 @@ public class DoodleActivity extends BaseActivity implements DoodleView.SizeListe
 		super.onResume();
 		requestDocumentWriteLock();
 
-		// shared element transition support - reveal the doodleView
-		// and fade out the placeholder
+		// shared element transition support - cross-fade the placeholder with the doodleView
 		if (doodlePlaceholderImageView.getVisibility() != View.GONE) {
-			doodlePlaceholderImageView.animate()
+
+			final int duration = getResources().getInteger(android.R.integer.config_longAnimTime);
+			int startDelay = duration / 4;
+
+			ViewCompat.animate(doodlePlaceholderImageView)
 					.alpha(0)
-					.setStartDelay(500)
-					.setDuration(getResources().getInteger(android.R.integer.config_shortAnimTime))
-					.withStartAction(new Runnable() {
+					.setStartDelay(startDelay)
+					.setDuration(duration)
+					.setListener(new ViewPropertyAnimatorListener() {
 						@Override
-						public void run() {
+						public void onAnimationStart(View view) {
 							doodleView.setVisibility(View.VISIBLE);
+							doodleView.setAlpha(0);
+							ViewCompat.animate(doodleView)
+									.alpha(1)
+									.setDuration(duration);
 						}
-					})
-					.setListener(new AnimatorListenerAdapter() {
+
 						@Override
-						public void onAnimationEnd(Animator animation) {
+						public void onAnimationEnd(View view) {
 							doodlePlaceholderImageView.setVisibility(View.GONE);
+						}
+
+						@Override
+						public void onAnimationCancel(View view) {
 						}
 					});
 		}

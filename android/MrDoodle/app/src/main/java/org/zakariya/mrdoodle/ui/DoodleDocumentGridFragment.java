@@ -396,8 +396,10 @@ public class DoodleDocumentGridFragment extends Fragment
 				&& (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
 				&& SHARED_ELEMENT_TRANSITION_TO_DOODLE_ACTIVITY_ENABLED) {
 
-			int width = tappedItem.getWidth();
-			int height = tappedItem.getHeight();
+			// We're using the size of the recyclerView for our thumbnail. This is because
+			// the destination activity has a content area of the same size (the doodleView)
+			final int width = recyclerView.getWidth();
+			final int height = recyclerView.getHeight();
 			int padding = getResources().getDimensionPixelSize(R.dimen.doodle_fit_canvas_contents_padding);
 			DoodleThumbnailRenderer.getInstance().renderThumbnail(
 					doc,
@@ -409,8 +411,8 @@ public class DoodleDocumentGridFragment extends Fragment
 						public void onThumbnailReady(Bitmap thumbnail, String thumbnailId) {
 
 							intent.putExtra(DoodleActivity.EXTRA_DOODLE_THUMBNAIL_ID, thumbnailId);
-							intent.putExtra(DoodleActivity.EXTRA_DOODLE_THUMBNAIL_WIDTH, tappedItem.getWidth());
-							intent.putExtra(DoodleActivity.EXTRA_DOODLE_THUMBNAIL_HEIGHT, tappedItem.getHeight());
+							intent.putExtra(DoodleActivity.EXTRA_DOODLE_THUMBNAIL_WIDTH, width);
+							intent.putExtra(DoodleActivity.EXTRA_DOODLE_THUMBNAIL_HEIGHT, height);
 
 							String transitionName = getString(R.string.transition_name_doodle_view);
 							ActivityOptions options = ActivityOptions.makeSceneTransitionAnimation(getActivity(), tappedItem, transitionName);
