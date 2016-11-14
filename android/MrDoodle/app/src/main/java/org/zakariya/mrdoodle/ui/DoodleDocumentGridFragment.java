@@ -1,8 +1,10 @@
 package org.zakariya.mrdoodle.ui;
 
 import android.annotation.TargetApi;
+import android.app.ActivityOptions;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.DrawableRes;
@@ -53,6 +55,7 @@ import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
 import org.zakariya.mrdoodle.ui.itemdecorators.SeparatorDecoration;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleShareHelper;
+import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
 
 import butterknife.Bind;
@@ -74,6 +77,7 @@ public class DoodleDocumentGridFragment extends Fragment
 
 	private static final String TAG = DoodleDocumentGridFragment.class.getSimpleName();
 	private static final int REQUEST_EDIT_DOODLE = 1;
+	private static final boolean SHARED_ELEMENT_TRANSITION_TO_DOODLE_ACTIVITY_ENABLED = true;
 
 	@Bind(R.id.coordinatorLayout)
 	CoordinatorLayout coordinatorLayout;
@@ -161,7 +165,7 @@ public class DoodleDocumentGridFragment extends Fragment
 		super.onViewStateRestored(savedInstanceState);
 
 		// we get the appBarLayout from our activity, so we delay the load until now
-		appBarLayout = (AppBarLayout)getActivity().findViewById(R.id.appbar);
+		appBarLayout = (AppBarLayout) getActivity().findViewById(R.id.appbar);
 
 		// if user was viewing action sheet for a document when state was destroyed, show action sheet again
 		if (!TextUtils.isEmpty(selectedDocumentUuid)) {
@@ -257,13 +261,13 @@ public class DoodleDocumentGridFragment extends Fragment
 		BusProvider.getMainThreadBus().post(new DoodleDocumentCreatedEvent(document.getUuid()));
 		recyclerView.smoothScrollToPosition(0);
 
-		editDoodleDocument(document);
+		editDoodleDocument(document, null);
 	}
 
 	@Override
 	public void onItemClick(View view, int position) {
 		DoodleDocument document = adapter.getDocumentAt(position);
-		editDoodleDocument(document);
+		editDoodleDocument(document, view);
 	}
 
 	@Override
@@ -297,7 +301,7 @@ public class DoodleDocumentGridFragment extends Fragment
 				.setItemClickListener(new BottomSheetItemClickListener() {
 					@Override
 					public void onBottomSheetItemClick(MenuItem item) {
-						switch(item.getItemId()) {
+						switch (item.getItemId()) {
 							case R.id.doodle_action_share:
 								shareDoodleDocument(document);
 								break;
@@ -385,8 +389,42 @@ public class DoodleDocumentGridFragment extends Fragment
 		snackbar.show();
 	}
 
-	void editDoodleDocument(DoodleDocument doc) {
-		startActivityForResult(DoodleActivity.getIntent(getContext(), doc.getUuid()), REQUEST_EDIT_DOODLE);
+	@TargetApi(Build.VERSION_CODES.LOLLIPOP)
+	void editDoodleDocument(DoodleDocument doc, @Nullable final View tappedItem) {
+		final Intent intent = DoodleActivity.getIntent(getContext(), doc.getUuid());
+		if (tappedItem != null
+				&& (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+				&& SHARED_ELEMENT_TRANSITION_TO_DOODLE_ACTIVITY_ENABLED) {
+
+			// We're using the size of the recyclerView for our thumbnail. This is because
+			// the destination activity has a content area of the same size (the doodleView)
+			final int width = recyclerView.getWidth();
+			final int height = recyclerView.getHeight();
+			int padding = getResources().getDimensionPixelSize(R.dimen.doodle_fit_canvas_contents_padding);
+			DoodleThumbnailRenderer.getInstance().renderThumbnail(
+					doc,
+					width,
+					height,
+					padding,
+					new DoodleThumbnailRenderer.Callbacks() {
+						@Override
+						public void onThumbnailReady(Bitmap thumbnail, String thumbnailId) {
+
+							intent.putExtra(DoodleActivity.EXTRA_DOODLE_THUMBNAIL_ID, thumbnailId);
+							intent.putExtra(DoodleActivity.EXTRA_DOODLE_THUMBNAIL_WIDTH, width);
+							intent.putExtra(DoodleActivity.EXTRA_DOODLE_THUMBNAIL_HEIGHT, height);
+
+							String transitionName = getString(R.string.transition_name_doodle_view);
+							ActivityOptions options = ActivityOptions.makeSceneTransitionAnimation(getActivity(), tappedItem, transitionName);
+
+							startActivityForResult(intent, REQUEST_EDIT_DOODLE, options.toBundle());
+						}
+					});
+
+		} else {
+			startActivityForResult(intent, REQUEST_EDIT_DOODLE);
+		}
+
 	}
 
 	void showAbout() {

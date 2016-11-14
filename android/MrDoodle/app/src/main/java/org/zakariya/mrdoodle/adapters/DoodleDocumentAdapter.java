@@ -331,8 +331,7 @@ public class DoodleDocumentAdapter extends RecyclerView.Adapter<DoodleDocumentAd
 					item.document, thumbnailWidth, thumbnailHeight, thumbnailPadding,
 					new DoodleThumbnailRenderer.Callbacks() {
 						@Override
-						public void onThumbnailReady(Bitmap thumbnail) {
-
+						public void onThumbnailReady(Bitmap thumbnail, String thumbnailId) {
 							holder.setThumbnailImage(thumbnail);
 							holder.loadingImageView.animate()
 									.alpha(0)

@@ -36,7 +36,7 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 	private static final String TAG = DoodleThumbnailRenderer.class.getSimpleName();
 
 	public interface Callbacks {
-		void onThumbnailReady(Bitmap thumbnail);
+		void onThumbnailReady(Bitmap thumbnail, String thumbnailId);
 	}
 
 	public class RenderTask {
@@ -204,20 +204,20 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 	public RenderTask renderThumbnail(final DoodleDocument document, final int width, final int height, final float padding, final Callbacks callbacks) {
 
 		final String documentUuid = document.getUuid();
-		final String taskId = getThumbnailId(document, width, height);
+		final String thumbnailId = getThumbnailId(document, width, height);
 
-		Bitmap thumbnail = cache.get(taskId);
+		Bitmap thumbnail = cache.get(thumbnailId);
 		if (thumbnail != null) {
-			callbacks.onThumbnailReady(thumbnail);
+			callbacks.onThumbnailReady(thumbnail, thumbnailId);
 			return null;
 		} else {
 			RenderTask task = new RenderTask();
-			addRenderTask(taskId, task);
+			addRenderTask(thumbnailId, task);
 
 			task.setFuture(executor.submit(new Runnable() {
 				@Override
 				public void run() {
-					performRenderThumbnail(documentUuid, taskId, width, height, padding, handler, callbacks);
+					performRenderThumbnail(documentUuid, thumbnailId, width, height, padding, handler, callbacks);
 				}
 			}));
 			return task;
@@ -241,7 +241,7 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 		tasks.remove(taskId);
 	}
 
-	private void performRenderThumbnail(String documentUuid, final String taskId, int width, int height, float padding, Handler handler, final Callbacks callbacks) {
+	private void performRenderThumbnail(String documentUuid, final String thumbnailId, int width, int height, float padding, Handler handler, final Callbacks callbacks) {
 
 		try {
 			final Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
@@ -260,19 +260,19 @@ public class DoodleThumbnailRenderer implements ComponentCallbacks2 {
 			realm.close();
 
 			// cache it
-			cache.put(taskId, bitmap);
+			cache.put(thumbnailId, bitmap);
 
 			// notify on main thread
 			handler.post(new Runnable() {
 				@Override
 				public void run() {
-					RenderTask task = getRenderTask(taskId);
+					RenderTask task = getRenderTask(thumbnailId);
 					if (task != null) {
 						if (!task.isCanceled()) {
 							//Log.i(TAG, "performRenderThumbnail: run: sending bitmap to callback");
-							callbacks.onThumbnailReady(bitmap);
+							callbacks.onThumbnailReady(bitmap, thumbnailId);
 						}
-						clearRenderTask(taskId);
+						clearRenderTask(thumbnailId);
 					}
 				}
 			});
