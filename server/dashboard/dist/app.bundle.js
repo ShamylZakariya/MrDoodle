@@ -1008,6 +1008,7 @@
 	var ErrorView = __webpack_require__(176);
 	var UserList = __webpack_require__(177);
 	var UserDetail = __webpack_require__(286);
+	var debounce = __webpack_require__(287);
 
 	var App = React.createClass({
 		displayName: 'App',
@@ -1134,9 +1135,11 @@
 	  * @param googleUser
 	  */
 		onUserSignedIn: function onUserSignedIn(googleUser) {
-
 			var profile = googleUser.getBasicProfile();
 			console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
+
+			// change body signin/out state
+			this._setSignedInState(true);
 
 			this.setState({
 				googleUser: googleUser,
@@ -1151,6 +1154,9 @@
 	  */
 		onUserSignedOut: function onUserSignedOut() {
 			console.log('onUserSignedOut');
+
+			this._setSignedInState(false);
+
 			this.setState({
 				users: [],
 				googleUser: null,
@@ -1158,6 +1164,25 @@
 			});
 
 			this.performLoad();
+		},
+
+		_setSignedInState: function _setSignedInState(signedIn) {
+
+			// we're using a debouncer because the gapi.auth2 callbacks can trigger rapidly
+			if (this._setSignedInStateDebouncer == null) {
+				this._setSignedInStateDebouncer = debounce(500, function (signedIn) {
+					console.log('_setSignedInStateDebouncer signedIn: ', signedIn);
+					if (signedIn) {
+						document.body.classList.remove("signedOut");
+						document.body.classList.add("signedIn");
+					} else {
+						document.body.classList.add("signedOut");
+						document.body.classList.remove("signedIn");
+					}
+				});
+			}
+
+			this._setSignedInStateDebouncer(signedIn);
 		},
 
 		performLoad: function performLoad() {
@@ -37097,6 +37122,36 @@
 	});
 
 	module.exports = UserDetail;
+
+/***/ },
+/* 287 */
+/***/ function(module, exports) {
+
+	"use strict";
+
+	/**
+	 * Debounce a function call. Returns a function which when called handles debouncing internally,
+	 * and forwards its arguments to the debounced function you provide
+	 * @param {Number} millis the debounce delay
+	 * @param {Function} f the function to debounce
+	 * @returns {Function}
+	 */
+	var debounce = function debounce(millis, f) {
+
+		var timeout = null;
+		return function () {
+			if (timeout) {
+				clearTimeout(timeout);
+			}
+
+			var args = arguments;
+			timeout = setTimeout(function () {
+				f.apply(null, args);
+			}, millis);
+		};
+	};
+
+	module.exports = debounce;
 
 /***/ }
 /******/ ]);

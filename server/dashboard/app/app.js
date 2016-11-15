@@ -4,6 +4,7 @@ let ReactDOM = require('react-dom');
 let ErrorView = require('./components/ErrorView');
 let UserList = require('./components/UserList');
 let UserDetail = require('./components/UserDetail');
+let debounce = require('./util/debounce');
 
 let App = React.createClass({
 
@@ -118,9 +119,11 @@ let App = React.createClass({
 	 * @param googleUser
 	 */
 	onUserSignedIn: function (googleUser) {
-
 		let profile = googleUser.getBasicProfile();
 		console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
+
+		// change body signin/out state
+		this._setSignedInState(true);
 
 		this.setState({
 			googleUser: googleUser,
@@ -135,6 +138,9 @@ let App = React.createClass({
 	 */
 	onUserSignedOut: function () {
 		console.log('onUserSignedOut');
+
+		this._setSignedInState(false);
+
 		this.setState({
 			users: [],
 			googleUser: null,
@@ -142,6 +148,25 @@ let App = React.createClass({
 		});
 
 		this.performLoad();
+	},
+
+	_setSignedInState: function(signedIn) {
+
+		// we're using a debouncer because the gapi.auth2 callbacks can trigger rapidly
+		if (this._setSignedInStateDebouncer == null) {
+			this._setSignedInStateDebouncer = debounce(500, function(signedIn){
+				console.log('_setSignedInStateDebouncer signedIn: ', signedIn);
+				if (signedIn) {
+					document.body.classList.remove("signedOut");
+					document.body.classList.add("signedIn");
+				} else {
+					document.body.classList.add("signedOut");
+					document.body.classList.remove("signedIn");
+				}
+			});
+		}
+
+		this._setSignedInStateDebouncer(signedIn);
 	},
 
 	performLoad: function () {
