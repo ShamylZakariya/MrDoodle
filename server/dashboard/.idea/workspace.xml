@@ -1,20 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="1ece5194-506c-43d0-b549-2421e6b74408" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/app/jquery-3.1.1.js" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/NOTES.md" afterPath="$PROJECT_DIR$/NOTES.md" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/app.js" afterPath="$PROJECT_DIR$/app/app.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/components/ErrorView.js" afterPath="$PROJECT_DIR$/app/components/ErrorView.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/components/UserDetail.js" afterPath="$PROJECT_DIR$/app/components/UserDetail.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/components/UserList.js" afterPath="$PROJECT_DIR$/app/components/UserList.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/components/UserListItem.js" afterPath="$PROJECT_DIR$/app/components/UserListItem.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/dist/app.bundle.js" afterPath="$PROJECT_DIR$/dist/app.bundle.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/package.json" afterPath="$PROJECT_DIR$/package.json" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/webpack.config.js" afterPath="$PROJECT_DIR$/webpack.config.js" />
-    </list>
+    <list default="true" id="1ece5194-506c-43d0-b549-2421e6b74408" name="Default" comment="" />
     <ignored path="dashboard.iws" />
     <ignored path=".idea/workspace.xml" />
     <ignored path="$PROJECT_DIR$/.tmp/" />
@@ -329,12 +316,12 @@
       <updated>1478269838078</updated>
       <workItem from="1478269839567" duration="8557000" />
       <workItem from="1478465170531" duration="16015000" />
-      <workItem from="1479142427732" duration="1851000" />
+      <workItem from="1479142427732" duration="1885000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="26423000" />
+    <option name="totallyTimeSpent" value="26457000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="22" width="1637" height="1028" extended-state="6" />
