@@ -9,3 +9,7 @@ Thumbs.db
 
 # Private/Secret Stuff
 server/config/configuration_secret.json
+server/dashboard/app/config/google_client_id.js
+server/dashboard/dist/app.bundle.js
+
+server/dashboard/app/config/google_client_id.js

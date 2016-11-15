@@ -8,6 +8,7 @@ let UserToolbarItem = require('./components/UserToolbarItem');
 let SignOutDialog = require('./components/SignOutScreen');
 
 let debounce = require('./util/debounce');
+let googleClientId = require('./config/google_client_id');
 
 let App = React.createClass({
 
@@ -92,7 +93,7 @@ let App = React.createClass({
 			 * client.
 			 */
 			this.auth2 = gapi.auth2.init({
-				client_id: '246785936717-tfn5b0s186fuig7eo0dc826urohj1hh1.apps.googleusercontent.com',
+				client_id: googleClientId,
 				scope: "profile email"
 			});
 
