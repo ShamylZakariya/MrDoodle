@@ -2,12 +2,35 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>Dashboard</title>
+
 	<link href="https://fonts.googleapis.com/css?family=Roboto:400,400i,700,700i" rel="stylesheet">
 	<link rel="stylesheet" href="css/reset.css"/>
 	<link rel="stylesheet" href="css/styles.css"/>
+
+	<!-- Google Sign In -->
+	<script src="https://apis.google.com/js/platform.js"></script>
+
+	<title>MrDoodle Sync API Dashboard</title>
+
 </head>
 <body>
-<div id="app" class="appContainer"></div>
+
+<!-- contains the react app -->
+<div id="app" class="appContainer screen"></div>
+
+<!-- sign in screen, only visible when body class is .signedIn, which is set by app on sign in -->
+<div class="signInScreen screen">
+	<div class="message">
+		<p>Please sign in to access the MrDoodle Sync API Dashboard</p>
+		<div id="signInButton" class="button g-signin2"></div>
+	</div>
+</div>
+
+<div class="loading screen">
+	<div class="message">
+		<p>Loading...</p>
+	</div>
+</div>
+
 <script type="text/javascript" src="app.bundle.js"></script></body>
 </html>

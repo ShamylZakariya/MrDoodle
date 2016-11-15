@@ -3,13 +3,47 @@ body {
   font-family: 'Roboto', sans-serif;
   color: #222;
   font-size: 14px; }
+  body .appContainer, body .signInScreen {
+    display: none; }
+  body .loading {
+    display: block; }
+  body.signedIn .appContainer {
+    display: block; }
+  body.signedIn .signInScreen {
+    display: none; }
+  body.signedIn .loading {
+    display: none; }
+  body.signedOut .appContainer {
+    display: none; }
+  body.signedOut .signInScreen {
+    display: block; }
+  body.signedOut .loading {
+    display: none; }
 
-.appContainer {
+.screen {
+  background: white;
   position: absolute;
-  left: 0;
   top: 0;
+  left: 0;
   width: 100%;
   height: 100%; }
+  .screen .message {
+    width: 30%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    text-align: center;
+    -webkit-transform: translateX(-50%) translateY(-50%);
+    -moz-transform: translateX(-50%) translateY(-50%);
+    -ms-transform: translateX(-50%) translateY(-50%);
+    -o-transform: translateX(-50%) translateY(-50%);
+    transform: translateX(-50%) translateY(-50%); }
+    .screen .message p {
+      color: grey;
+      margin: 1em; }
+
+.signInScreen .message .button > * {
+  margin: 0 auto; }
 
 .errorView {
   margin: 1em;
@@ -19,23 +53,57 @@ body {
   text-align: center;
   border-radius: 2pt; }
 
-.toolbar::after {
-  clear: both;
-  content: "";
-  display: table; }
-.toolbar h2 {
-  float: left; }
-.toolbar .item {
-  float: right;
-  width: 24px;
-  height: 24px; }
-  .toolbar .item.reload {
-    background: url(../images/reload.png);
-    background-size: contain;
-    overflow: hidden;
-    text-indent: 101%;
-    white-space: nowrap;
-    cursor: pointer; }
+.toolbar {
+  padding: 36px; }
+  .toolbar::after {
+    clear: both;
+    content: "";
+    display: table; }
+  .toolbar h2 {
+    float: left;
+    line-height: 48px;
+    font-weight: bold;
+    text-transform: uppercase; }
+  .toolbar .item {
+    float: right;
+    height: 48px;
+    margin-left: 24px; }
+    .toolbar .item:hover {
+      background-color: rgba(0, 0, 0, 0.1);
+      border-radius: 2px; }
+    .toolbar .item.reload {
+      width: 48px;
+      background-image: url(../images/reload.png);
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-size: 24px;
+      overflow: hidden;
+      text-indent: 101%;
+      white-space: nowrap;
+      cursor: pointer; }
+    .toolbar .item.user {
+      cursor: pointer;
+      padding-left: 12px;
+      padding-right: 12px;
+      position: relative; }
+      .toolbar .item.user::after {
+        clear: both;
+        content: "";
+        display: table; }
+      .toolbar .item.user .avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 24px;
+        background-size: contain;
+        float: left;
+        margin-top: 12px;
+        margin-right: 6px; }
+      .toolbar .item.user .name {
+        float: left;
+        height: 24px;
+        line-height: 24px;
+        margin-top: 12px;
+        color: grey; }
 
 .users {
   padding: 36px; }
@@ -73,85 +141,126 @@ body {
       color: darkgrey;
       text-transform: uppercase; }
 
-.userDetail {
+.modal {
   position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
   left: 0;
   background: rgba(220, 220, 220, 0.9); }
-  .userDetail .window {
+  .modal .window {
     position: absolute;
-    top: 40px;
-    right: 40px;
-    left: 40px;
     background: white;
     box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
     border-radius: 4px;
-    padding: 40px 20px; }
-  .userDetail .close {
+    width: 50%;
+    top: 50%;
+    left: 50%;
+    -webkit-transform: translateX(-50%) translateY(-50%);
+    -moz-transform: translateX(-50%) translateY(-50%);
+    -ms-transform: translateX(-50%) translateY(-50%);
+    -o-transform: translateX(-50%) translateY(-50%);
+    transform: translateX(-50%) translateY(-50%); }
+  .modal .content {
+    padding: 40px; }
+  .modal .close {
+    cursor: pointer;
     display: block;
     position: absolute;
-    top: 1em;
-    left: 20px;
-    color: darkred;
-    text-transform: uppercase;
-    cursor: pointer; }
-  .userDetail .userInfo {
-    padding: 1em 0; }
-    .userDetail .userInfo::after {
+    top: 0;
+    left: 0;
+    width: 48px;
+    height: 48px;
+    overflow: hidden;
+    text-indent: 101%;
+    white-space: nowrap;
+    background: url(../images/close.png) center center no-repeat;
+    background-size: 24px; }
+  .modal h2 {
+    font-size: 36px;
+    margin: 0.5em 0; }
+  .modal .buttonRow {
+    text-align: right;
+    margin-bottom: -20px; }
+    .modal .buttonRow::after {
       clear: both;
       content: "";
       display: table; }
-    .userDetail .userInfo .avatar {
-      float: left;
-      width: 72px;
-      height: 72px;
-      margin-right: 18px;
-      position: relative; }
-      .userDetail .userInfo .avatar .avatarImage {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 72px;
-        height: 72px;
-        border-radius: 36px;
-        background: grey;
-        margin-right: 18px;
-        overflow: hidden;
-        background-size: cover; }
-      .userDetail .userInfo .avatar .connectedMarker {
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        min-width: 22px;
-        height: 22px;
-        border-radius: 11px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        background-color: forestgreen;
-        -webkit-transform: translateY(50%);
-        -moz-transform: translateY(50%);
-        -ms-transform: translateY(50%);
-        -o-transform: translateY(50%);
-        transform: translateY(50%); }
-        .userDetail .userInfo .avatar .connectedMarker .count {
-          display: inline-block;
-          color: white;
-          font-size: 17.6px;
-          line-height: 22px;
-          font-weight: bold;
-          text-align: center;
-          padding: 0 0.5em; }
-        .userDetail .userInfo .avatar .connectedMarker.connected {
-          display: block; }
-        .userDetail .userInfo .avatar .connectedMarker.disconnected {
-          display: none; }
-    .userDetail .userInfo > * {
-      margin: 0.5em 0; }
-    .userDetail .userInfo .email {
-      margin-top: 29px; }
-    .userDetail .userInfo .id, .userDetail .userInfo .lastAccessDate {
+    .modal .buttonRow .button {
+      cursor: pointer;
+      display: inline-block;
+      border-radius: 2px;
+      line-height: 48px;
+      height: 48px;
+      padding-left: 12px;
+      padding-right: 12px;
       text-transform: uppercase;
-      color: darkgray; }
+      margin-left: 12px; }
+      .modal .buttonRow .button.negative {
+        background-color: lightgrey;
+        color: #222; }
+      .modal .buttonRow .button.positive {
+        background-color: darkgreen;
+        color: white;
+        font-weight: bold; }
+      .modal .buttonRow .button.destructive {
+        background-color: mediumvioletred;
+        color: white;
+        font-weight: bold; }
+
+.userDetail .userInfo::after {
+  clear: both;
+  content: "";
+  display: table; }
+.userDetail .userInfo .avatar {
+  float: left;
+  width: 72px;
+  height: 72px;
+  margin-right: 18px;
+  position: relative; }
+  .userDetail .userInfo .avatar .avatarImage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 72px;
+    height: 72px;
+    border-radius: 36px;
+    background: grey;
+    margin-right: 18px;
+    overflow: hidden;
+    background-size: cover; }
+  .userDetail .userInfo .avatar .connectedMarker {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    background-color: forestgreen;
+    -webkit-transform: translateY(50%);
+    -moz-transform: translateY(50%);
+    -ms-transform: translateY(50%);
+    -o-transform: translateY(50%);
+    transform: translateY(50%); }
+    .userDetail .userInfo .avatar .connectedMarker .count {
+      display: inline-block;
+      color: white;
+      font-size: 17.6px;
+      line-height: 22px;
+      font-weight: bold;
+      text-align: center;
+      padding: 0 0.5em; }
+    .userDetail .userInfo .avatar .connectedMarker.connected {
+      display: block; }
+    .userDetail .userInfo .avatar .connectedMarker.disconnected {
+      display: none; }
+.userDetail .userInfo > * {
+  margin: 0.5em 0; }
+.userDetail .userInfo .email {
+  margin-top: 29px; }
+.userDetail .userInfo .id, .userDetail .userInfo .lastAccessDate {
+  text-transform: uppercase;
+  color: darkgray; }
 
 /*# sourceMappingURL=styles.css.map */

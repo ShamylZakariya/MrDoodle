@@ -43,12 +43,12 @@ public class GoogleIdTokenAuthenticator implements Authenticator {
 	private Map<String, User> usersByToken = new HashMap<>();
 	private Map<String, User> usersByAccountId = new HashMap<>();
 
-	public GoogleIdTokenAuthenticator(String oathClientId, @Nullable Whitelist whitelist) {
+	public GoogleIdTokenAuthenticator(String oathClientId, String issuer, @Nullable Whitelist whitelist) {
 		checkArgument(oathClientId != null && oathClientId.length() > 0, "oath client id must be non-null & non-empty");
 
 		googleIdTokenVerifier = new GoogleIdTokenVerifier.Builder(transport, jsonFactory)
 				.setAudience(Collections.singletonList(oathClientId))
-				.setIssuer("https://accounts.google.com")
+				.setIssuer(issuer)
 				.build();
 
 		this.whitelist = whitelist;

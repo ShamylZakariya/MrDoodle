@@ -18,10 +18,6 @@ let UserList = React.createClass({
 
 		return (
 			<div className="users">
-				<div className="toolbar">
-					<h2>Users</h2>
-					<div className="item reload" onClick={this.props.reload}>Reload</div>
-				</div>
 				<ul className="userList">
 					{userItems}
 				</ul>

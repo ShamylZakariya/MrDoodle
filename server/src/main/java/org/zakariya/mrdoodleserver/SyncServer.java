@@ -26,9 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static spark.Spark.externalStaticFileLocation;
-import static spark.Spark.init;
-import static spark.Spark.webSocket;
+import static spark.Spark.*;
 
 /**
  * Top level SyncServer application.
@@ -79,7 +77,8 @@ public class SyncServer {
 	public static void start(Configuration configuration, boolean flushStorage) {
 		logger.info("Starting SyncServer");
 
-		Authenticator authenticator = buildAuthenticator(configuration);
+		Authenticator syncAuthenticator = buildSyncAuthenticator(configuration);
+		Authenticator dashboardAuthenticator = buildDashboardAuthenticator(configuration);
 		JedisPool jedisPool = buildJedisPool(configuration);
 
 		if (flushStorage) {
@@ -94,14 +93,15 @@ public class SyncServer {
 		String storagePrefix = configuration.get("jedisStoragePrefix");
 		String apiVersion = configuration.get("apiVersion");
 		SyncManagerFactory syncManagerFactory = buildSyncManagerFactory(configuration);
+		List<String> dashboardUserWhitelist = configuration.getArray("dashboard/whitelist");
 
-		SyncRouter syncRouter = new SyncRouter(jedisPool, storagePrefix, apiVersion, authenticator, syncManagerFactory);
-		DashboardRouter dashboardRouter = new DashboardRouter(jedisPool, storagePrefix, apiVersion);
-		Router routers[] = { syncRouter, dashboardRouter };
+		SyncRouter syncRouter = new SyncRouter(jedisPool, storagePrefix, apiVersion, syncAuthenticator, syncManagerFactory);
+		DashboardRouter dashboardRouter = new DashboardRouter(jedisPool, storagePrefix, apiVersion, dashboardAuthenticator, dashboardUserWhitelist);
+		Router routers[] = {syncRouter, dashboardRouter};
 
 		// set up the WebSocketConnection. Note, since Spark lazily creates it, we can't pass
 		// values to a constructor! So we need to use static values, which is hideous.
-		WebSocketConnection.authenticator = authenticator;
+		WebSocketConnection.authenticator = syncAuthenticator;
 		WebSocketConnection.addOnWebSocketConnectionCreatedListener(syncRouter);
 		webSocket(WebSocketConnection.getRoute(apiVersion), WebSocketConnection.class);
 
@@ -152,10 +152,10 @@ public class SyncServer {
 		}
 	}
 
-	private static Authenticator buildAuthenticator(Configuration configuration) {
-		if (configuration.getBoolean("authenticator/useMockAuthenticator", false)) {
+	private static Authenticator buildSyncAuthenticator(Configuration configuration) {
+		if (configuration.getBoolean("sync/authenticator/useMockAuthenticator", false)) {
 
-			Map<String, Object> tokensMap = configuration.getMap("authenticator/mock/tokens");
+			Map<String, Object> tokensMap = configuration.getMap("sync/authenticator/mock/tokens");
 			if (tokensMap == null) {
 				return new MockAuthenticator();
 			}
@@ -169,12 +169,18 @@ public class SyncServer {
 
 			return new MockAuthenticator(tokens);
 		} else {
-
-			String oauthServerId = configuration.get("authenticator/google/oauth_server_id");
-			int whitelistGraceperiodSeconds = configuration.getInt("authenticator/whitelist_grace_period_seconds", 60);
-
-			return new GoogleIdTokenAuthenticator(oauthServerId, new Whitelist(whitelistGraceperiodSeconds));
+			String oauthServerId = configuration.get("sync/authenticator/google/oauth_client_id");
+			String issuer = configuration.get("sync/authenticator/google/issuer");
+			int whitelistGraceperiodSeconds = configuration.getInt("sync/authenticator/whitelist_grace_period_seconds", 60);
+			return new GoogleIdTokenAuthenticator(oauthServerId, issuer, new Whitelist(whitelistGraceperiodSeconds));
 		}
+	}
+
+	private static Authenticator buildDashboardAuthenticator(Configuration configuration) {
+		String oauthServerId = configuration.get("dashboard/authenticator/google/oauth_client_id");
+		String issuer = configuration.get("dashboard/authenticator/google/issuer");
+		int whitelistGraceperiodSeconds = configuration.getInt("dashboard/authenticator/whitelist_grace_period_seconds", 60);
+		return new GoogleIdTokenAuthenticator(oauthServerId, issuer, new Whitelist(whitelistGraceperiodSeconds));
 	}
 
 	private static SyncManagerFactory buildSyncManagerFactory(Configuration configuration) {

@@ -1008,6 +1008,10 @@
 	var ErrorView = __webpack_require__(176);
 	var UserList = __webpack_require__(177);
 	var UserDetail = __webpack_require__(286);
+	var UserToolbarItem = __webpack_require__(288);
+	var SignOutDialog = __webpack_require__(289);
+
+	var debounce = __webpack_require__(287);
 
 	var App = React.createClass({
 		displayName: 'App',
@@ -1017,52 +1021,213 @@
 			return {
 				users: [],
 				error: null,
-				selectedUser: null
+				selectedUser: null,
+				googleUser: null,
+				googleUserAuthToken: null,
+				showSignOutDialog: false
 			};
 		},
 
 		componentDidMount: function componentDidMount() {
-			this.performLoad();
+			this.initGoogleAuthorizationClient();
 		},
 
 		render: function render() {
 
-			var userList = this.state.error ? null : React.createElement(UserList, { users: this.state.users, click: this.showUserDetail, reload: this.performLoad });
+			var signedIn = !!this.state.googleUser;
+			var toolbar = React.createElement(
+				'div',
+				{ className: 'toolbar' },
+				React.createElement(
+					'h2',
+					null,
+					'Users'
+				),
+				signedIn && React.createElement(UserToolbarItem, { googleUser: this.state.googleUser, click: this.showUserSignOutDialog }),
+				signedIn && React.createElement(
+					'div',
+					{ className: 'item reload', onClick: this.performLoad },
+					'Reload'
+				)
+			);
+
+			var userList = this.state.error ? null : React.createElement(UserList, { users: this.state.users, click: this.showUserDetail });
+
 			var errorView = this.state.error ? React.createElement(ErrorView, { error: this.state.error }) : null;
-			var userDetail = this.state.selectedUser ? React.createElement(UserDetail, { user: this.state.selectedUser, close: this.handleCloseUserDetail }) : null;
+
+			var userDetail = this.state.selectedUser ? React.createElement(UserDetail, { user: this.state.selectedUser, googleUserAuthToken: this.state.googleUserAuthToken, close: this.closeUserDetail }) : null;
+
+			var signOutDialog = this.state.showSignOutDialog ? React.createElement(SignOutDialog, { close: this.closeUserSignOutDialog, signOut: this.performSignOut }) : null;
 
 			return React.createElement(
 				'div',
 				{ className: 'container' },
+				toolbar,
 				userList,
 				errorView,
-				userDetail
+				userDetail,
+				signOutDialog
 			);
 		},
 
 		///////////////////////////////////////////////////////////////////
 
-		performLoad: function performLoad() {
+		initGoogleAuthorizationClient: function initGoogleAuthorizationClient() {
 			var _this = this;
 
-			console.log('App::performLoad');
+			console.log('initGoogleAuthorizationClient');
+			var self = this;
 
-			fetch("http://localhost:4567/api/v1/dashboard/users", { credentials: 'include' }).then(function (response) {
-				return response.json();
-			}).then(function (data) {
-				_this.setState({
-					users: data.users,
-					error: null
+			function signinChanged(signedIn) {
+				if (!signedIn) {
+					self.onUserSignedOut();
+				}
+			}
+
+			function userChanged(user) {
+				if (user.isSignedIn()) {
+					self.onUserSignedIn(user);
+				} else {
+					self.onUserSignedOut();
+				}
+			}
+
+			function signInButtonSuccess(user) {
+				console.log('signInButtonSuccess user: ' + user.getBasicProfile().getName());
+			}
+
+			function signInButtonFailure(e) {
+				console.error("signInButtonFailure: ", e);
+			}
+
+			gapi.load('auth2', function () {
+				/**
+	    * Retrieve the singleton for the GoogleAuth library and set up the
+	    * client.
+	    */
+				_this.auth2 = gapi.auth2.init({
+					client_id: '246785936717-tfn5b0s186fuig7eo0dc826urohj1hh1.apps.googleusercontent.com',
+					scope: "profile email"
 				});
-			}).catch(function (e) {
-				_this.setState({
-					users: [],
-					error: e.statusText
-				});
+
+				// Attach the click handler to the sign-in button
+				_this.auth2.attachClickHandler('signInButton', {}, signInButtonSuccess, signInButtonFailure);
+
+				// Listen for sign-in state changes.
+				_this.auth2.isSignedIn.listen(signinChanged);
+
+				// Listen for changes to current user.
+				_this.auth2.currentUser.listen(userChanged);
+
+				// Sign in the user if they are currently signed in.
+				if (_this.auth2.isSignedIn.get() == true) {
+					_this.auth2.signIn();
+				}
+
+				userChanged(_this.auth2.currentUser.get());
 			});
 		},
 
-		handleCloseUserDetail: function handleCloseUserDetail() {
+		performSignOut: function performSignOut() {
+			var _this2 = this;
+
+			gapi.auth2.getAuthInstance().signOut().then(function () {
+				_this2.onUserSignedOut();
+			});
+		},
+
+		/**
+	  * Called from index.html when google sign in button triggers successful sign in
+	  * @param googleUser
+	  */
+		onUserSignedIn: function onUserSignedIn(googleUser) {
+			var profile = googleUser.getBasicProfile();
+			if (!this.state.googleUser || profile.getId() == this.state.googleUser.getBasicProfile().getId()) {
+				console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
+
+				// change body signin/out state
+				this._setSignedInState(true);
+
+				this.setState({
+					googleUser: googleUser,
+					googleUserAuthToken: googleUser.getAuthResponse().id_token
+				});
+
+				this.performLoad();
+			}
+		},
+
+		/**
+	  * Called from index.html on signing out from google id service
+	  */
+		onUserSignedOut: function onUserSignedOut() {
+			this._setSignedInState(false);
+
+			if (!!this.state.googleUser) {
+				console.log('onUserSignedOut');
+
+				this.setState({
+					users: [],
+					googleUser: null,
+					googleUserAuthToken: null
+				});
+
+				this.performLoad();
+			}
+		},
+
+		_setSignedInState: function _setSignedInState(signedIn) {
+
+			// we're using a debouncer because the gapi.auth2 callbacks can trigger rapidly
+			if (this._setSignedInStateDebouncer == null) {
+				this._setSignedInStateDebouncer = debounce(500, function (signedIn) {
+					if (signedIn) {
+						document.body.classList.remove("signedOut");
+						document.body.classList.add("signedIn");
+					} else {
+						document.body.classList.add("signedOut");
+						document.body.classList.remove("signedIn");
+					}
+				});
+			}
+
+			this._setSignedInStateDebouncer(signedIn);
+		},
+
+		performLoad: function performLoad() {
+			var _this3 = this;
+
+			var authToken = this.state.googleUserAuthToken;
+			if (!!authToken) {
+
+				var headers = new Headers();
+				headers.set("Authorization", this.state.googleUserAuthToken);
+
+				fetch("http://localhost:4567/api/v1/dashboard/users", {
+					credentials: 'include',
+					headers: headers
+				}).then(function (response) {
+					return response.json();
+				}).then(function (data) {
+					_this3.setState({
+						users: data.users,
+						error: null
+					});
+				}).catch(function (e) {
+					_this3.setState({
+						users: [],
+						error: e.statusText
+					});
+				});
+			} else {
+				this.setState({
+					users: [],
+					error: "Unauthorized"
+				});
+			}
+		},
+
+		closeUserDetail: function closeUserDetail() {
 			this.setState({
 				selectedUser: null
 			});
@@ -1071,6 +1236,18 @@
 		showUserDetail: function showUserDetail(user) {
 			this.setState({
 				selectedUser: user
+			});
+		},
+
+		showUserSignOutDialog: function showUserSignOutDialog() {
+			this.setState({
+				showSignOutDialog: true
+			});
+		},
+
+		closeUserSignOutDialog: function closeUserSignOutDialog() {
+			this.setState({
+				showSignOutDialog: false
 			});
 		}
 
@@ -22322,20 +22499,6 @@
 				'div',
 				{ className: 'users' },
 				React.createElement(
-					'div',
-					{ className: 'toolbar' },
-					React.createElement(
-						'h2',
-						null,
-						'Users'
-					),
-					React.createElement(
-						'div',
-						{ className: 'item reload', onClick: this.props.reload },
-						'Reload'
-					)
-				),
-				React.createElement(
 					'ul',
 					{ className: 'userList' },
 					userItems
@@ -36847,7 +37010,8 @@
 		getInitialState: function getInitialState() {
 			return {
 				connectedDeviceCount: 0,
-				user: null
+				user: null,
+				error: null
 			};
 		},
 
@@ -36888,7 +37052,7 @@
 
 			return React.createElement(
 				'div',
-				{ className: 'userDetail' },
+				{ className: 'userDetail modal' },
 				React.createElement(
 					'div',
 					{ className: 'window' },
@@ -36899,7 +37063,7 @@
 					),
 					React.createElement(
 						'div',
-						{ className: 'userInfo' },
+						{ className: 'content userInfo' },
 						React.createElement(
 							'div',
 							{ className: 'avatar' },
@@ -36937,23 +37101,39 @@
 		loadUserInfo: function loadUserInfo() {
 			var _this = this;
 
-			var url = "http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId;
-			fetch(url, { credentials: 'include' }).then(function (response) {
-				return response.json();
-			}).then(function (data) {
-				if (_this.isMounted()) {
-					_this.setState({
-						connectedDeviceCount: data.connectedDevices,
-						user: data.user
-					});
-				}
-			}).catch(function (e) {
-				if (_this.isMounted()) {
-					_this.setState({
-						connectedDeviceCount: 0
-					});
-				}
-			});
+			var googleUserAuthToken = this.props.googleUserAuthToken;
+			if (!!googleUserAuthToken) {
+
+				var headers = new Headers();
+				headers.set("Authorization", this.props.googleUserAuthToken);
+
+				var url = "http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId;
+				fetch(url, {
+					credentials: 'include',
+					headers: headers
+				}).then(function (response) {
+					return response.json();
+				}).then(function (data) {
+					if (_this.isMounted()) {
+						_this.setState({
+							connectedDeviceCount: data.connectedDevices,
+							user: data.user
+						});
+					}
+				}).catch(function (e) {
+					if (_this.isMounted()) {
+						_this.setState({
+							connectedDeviceCount: 0,
+							error: e.statusText
+						});
+					}
+				});
+			} else {
+				this.setState({
+					connectedDeviceCount: 0,
+					error: "Unauthorized"
+				});
+			}
 		},
 
 		handleClose: function handleClose() {
@@ -36963,6 +37143,147 @@
 	});
 
 	module.exports = UserDetail;
+
+/***/ },
+/* 287 */
+/***/ function(module, exports) {
+
+	"use strict";
+
+	/**
+	 * Debounce a function call. Returns a function which when called handles debouncing internally,
+	 * and forwards its arguments to the debounced function you provide
+	 * @param {Number} millis the debounce delay
+	 * @param {Function} f the function to debounce
+	 * @returns {Function}
+	 */
+	var debounce = function debounce(millis, f) {
+
+		var timeout = null;
+		return function () {
+			if (timeout) {
+				clearTimeout(timeout);
+			}
+
+			var args = arguments;
+			timeout = setTimeout(function () {
+				f.apply(null, args);
+			}, millis);
+		};
+	};
+
+	module.exports = debounce;
+
+/***/ },
+/* 288 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+
+	var React = __webpack_require__(6);
+
+	var UserToolbarItem = React.createClass({
+		displayName: "UserToolbarItem",
+
+
+		render: function render() {
+			if (!!this.props.googleUser) {
+				var profile = this.props.googleUser.getBasicProfile();
+				var email = profile.getEmail();
+				var avatarUrl = profile.getImageUrl();
+
+				var avatarStyle = {
+					backgroundImage: avatarUrl && avatarUrl.length ? "url(" + avatarUrl + ")" : undefined
+				};
+
+				return React.createElement(
+					"div",
+					{ className: "item user", onClick: this.props.click },
+					React.createElement("div", { className: "avatar", style: avatarStyle }),
+					React.createElement(
+						"div",
+						{ className: "name" },
+						email
+					)
+				);
+			}
+		}
+
+	});
+
+	module.exports = UserToolbarItem;
+
+/***/ },
+/* 289 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+
+	var React = __webpack_require__(6);
+
+	var SignOutScreen = React.createClass({
+		displayName: "SignOutScreen",
+
+
+		getDefaultProps: function getDefaultProps() {
+			return {
+				close: function close() {},
+				signOut: function signOut() {}
+			};
+		},
+
+		render: function render() {
+
+			return React.createElement(
+				"div",
+				{ className: "signOutDialog modal" },
+				React.createElement(
+					"div",
+					{ className: "window" },
+					React.createElement(
+						"a",
+						{ className: "close", onClick: this.handleCancel },
+						"Close"
+					),
+					React.createElement(
+						"div",
+						{ className: "content" },
+						React.createElement(
+							"h2",
+							null,
+							"Sign out?"
+						),
+						React.createElement(
+							"div",
+							{ className: "buttonRow" },
+							React.createElement(
+								"div",
+								{ className: "button negative", onClick: this.handleCancel },
+								"Cancel"
+							),
+							React.createElement(
+								"div",
+								{ className: "button destructive", onClick: this.handleSignOut },
+								"Sign Out"
+							)
+						)
+					)
+				)
+			);
+		},
+
+		handleCancel: function handleCancel() {
+			this.props.close();
+		},
+
+		handleSignOut: function handleSignOut() {
+			this.props.close();
+			this.props.signOut();
+		}
+
+	});
+
+	module.exports = SignOutScreen;
 
 /***/ }
 /******/ ]);

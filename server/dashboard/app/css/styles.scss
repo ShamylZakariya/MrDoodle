@@ -3,20 +3,78 @@
 $font-size: 14px;
 $avatar-size: 72px;
 
-
 body {
 	margin: 0;
 	font-family: 'Roboto', sans-serif;
 	color: #222;
 	font-size: $font-size;
+
+	.appContainer, .signInScreen {
+		display: none;
+	}
+
+	.loading {
+		display: block;
+	}
+
+	&.signedIn {
+		.appContainer {
+			display: block;
+		}
+		.signInScreen {
+			display: none;
+		}
+		.loading {
+			display: none;
+		}
+	}
+
+	&.signedOut {
+		.appContainer {
+			display: none;
+		}
+		.signInScreen {
+			display: block;
+		}
+		.loading {
+			display: none;
+		}
+	}
+}
+
+.screen {
+	background: white;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+
+	.message {
+		width: 30%;
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		text-align: center;
+		@include transform(translateX(-50%) translateY(-50%));
+
+		p {
+			color: grey;
+			margin: 1em;
+		}
+	}
 }
 
 .appContainer {
-	position: absolute;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
+}
+
+.signInScreen {
+	.message {
+		.button > * {
+			margin: 0 auto;
+		}
+	}
+
 }
 
 .errorView {
@@ -31,21 +89,64 @@ body {
 .toolbar {
 	@include clearfix;
 
+	$itemSize: 48px;
+
+	padding: 36px;
+
 	h2 {
 		float: left;
+		line-height: $itemSize;
+		font-weight: bold;
+		text-transform: uppercase;
 	}
 
 	.item {
 		float: right;
-		width: 24px;
-		height: 24px;
+		height: $itemSize;
+		margin-left: $itemSize/2;
+
+		&:hover {
+			background-color: rgba(0,0,0,0.1);
+			border-radius: 2px;
+		}
 
 		&.reload {
-			background: url(../images/reload.png);
-			background-size: contain;
+			width: $itemSize;
+			background-image: url(../images/reload.png);
+			background-position: center center;
+			background-repeat: no-repeat;
+			background-size: $itemSize/2;
 			@include hide-text();
 			cursor: pointer;
 		}
+
+		&.user {
+
+			@include clearfix;
+			cursor: pointer;
+			padding-left: $itemSize/4;
+			padding-right: $itemSize/4;
+			position: relative;
+
+			.avatar {
+				width: $itemSize/2;
+				height: $itemSize/2;
+				border-radius: $itemSize/2;
+				background-size: contain;
+				float: left;
+				margin-top: $itemSize/4;
+				margin-right: $itemSize/8;
+			}
+			.name {
+				float: left;
+				height: $itemSize/2;
+				line-height: $itemSize/2;
+				margin-top: $itemSize/4;
+				color: grey;
+			}
+
+		}
+
 	}
 }
 
@@ -97,43 +198,95 @@ body {
 	}
 }
 
-.userDetail {
+.modal {
 
 	$inset: 40px;
+
 
 	position: fixed;
 	top: 0;
 	right: 0;
 	bottom: 0;
 	left: 0;
-	background: rgba(220,220,220,0.9);
+	background: rgba(220, 220, 220, 0.9);
 
 	.window {
 		position: absolute;
-		top: $inset;
-		right: $inset;
-		left: $inset;
 		background: white;
-		box-shadow: 0 4px 4px rgba(0,0,0,0.1);
+		box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
 		border-radius: 4px;
-		padding: $inset $inset/2;
+		width: 50%;
+		top: 50%;
+		left: 50%;
+		@include transform(translateX(-50%) translateY(-50%));
+	}
+
+	.content {
+		padding: $inset;
 	}
 
 	.close {
+		cursor: pointer;
 		display: block;
 		position: absolute;
-		top: 1em;
-		left: $inset/2;
-		color: darkred;
-		text-transform: uppercase;
-		cursor: pointer;
+		top: 0;
+		left: 0;
+		width: 48px;
+		height: 48px;
+		@include hide-text;
+		background: url(../images/close.png) center center no-repeat;
+		background-size: 24px;
 	}
+
+	h2 {
+		font-size: 36px;
+		margin: 0.5em 0;
+	}
+
+
+	.buttonRow {
+		@include clearfix;
+		text-align: right;
+
+		$buttonHeight: 48px;
+		margin-bottom: -$inset/2;
+
+		.button {
+			cursor: pointer;
+			display: inline-block;
+			border-radius: 2px;
+			line-height: $buttonHeight;
+			height: $buttonHeight;
+			padding-left: $buttonHeight/4;
+			padding-right: $buttonHeight/4;
+			text-transform: uppercase;
+			margin-left: $buttonHeight/4;
+
+			&.negative {
+				background-color: lightgrey;
+				color: #222;
+			}
+
+			&.positive {
+				background-color: darkgreen;
+				color: white;
+				font-weight: bold;
+			}
+
+			&.destructive {
+				background-color: mediumvioletred;
+				color: white;
+				font-weight: bold;
+			}
+		}
+	}
+}
+
+.userDetail {
 
 	.userInfo {
 
-
 		@include clearfix;
-		padding: 1em 0;
 
 		.avatar {
 			float: left;
@@ -163,7 +316,7 @@ body {
 				min-width: $size;
 				height: $size;
 				border-radius: $size/2;
-				box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+				box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 				background-color: forestgreen;
 				@include transform(translateY(50%));
 

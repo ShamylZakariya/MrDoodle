@@ -13,6 +13,7 @@ let UserDetail = React.createClass({
 		return {
 			connectedDeviceCount: 0,
 			user: null,
+			error: null
 		}
 	},
 
@@ -49,11 +50,11 @@ let UserDetail = React.createClass({
 		let connectedMarkerClassName = "connectedMarker " + (this.state.connectedDeviceCount > 0 ? "connected" : "disconnected");
 
 		return (
-			<div className="userDetail">
+			<div className="userDetail modal">
 				<div className="window">
 					<a className="close" onClick={this.handleClose}>Close</a>
 
-					<div className="userInfo">
+					<div className="content userInfo">
 
 						<div className="avatar">
 							<div className="avatarImage" style={styles.avatarImageStyle}></div>
@@ -72,26 +73,42 @@ let UserDetail = React.createClass({
 
 	loadUserInfo: function () {
 
-		let url = "http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId;
-		fetch(url, { credentials: 'include'} )
-			.then(response => {
-				return response.json()
+		let googleUserAuthToken = this.props.googleUserAuthToken;
+		if (!!googleUserAuthToken) {
+
+			let headers = new Headers();
+			headers.set("Authorization", this.props.googleUserAuthToken);
+
+			let url = "http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId;
+			fetch(url, {
+				credentials: 'include',
+				headers: headers
 			})
-			.then(data => {
-				if (this.isMounted()) {
-					this.setState({
-						connectedDeviceCount: data.connectedDevices,
-						user: data.user,
-					});
-				}
-			})
-			.catch( e => {
-				if (this.isMounted()) {
-					this.setState({
-						connectedDeviceCount: 0
-					});
-				}
+				.then(response => {
+					return response.json()
+				})
+				.then(data => {
+					if (this.isMounted()) {
+						this.setState({
+							connectedDeviceCount: data.connectedDevices,
+							user: data.user,
+						});
+					}
+				})
+				.catch(e => {
+					if (this.isMounted()) {
+						this.setState({
+							connectedDeviceCount: 0,
+							error: e.statusText
+						});
+					}
+				});
+		} else {
+			this.setState({
+				connectedDeviceCount: 0,
+				error: "Unauthorized"
 			});
+		}
 	},
 
 	handleClose: function () {
