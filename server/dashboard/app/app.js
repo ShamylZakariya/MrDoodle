@@ -60,7 +60,7 @@ let App = React.createClass({
 
 	///////////////////////////////////////////////////////////////////
 
-	initGoogleAuthorizationClient: function() {
+	initGoogleAuthorizationClient: function () {
 		console.log('initGoogleAuthorizationClient');
 		let self = this;
 
@@ -115,7 +115,7 @@ let App = React.createClass({
 
 	},
 
-	performSignOut: function() {
+	performSignOut: function () {
 		gapi.auth2.getAuthInstance().signOut().then(() => {
 			this.onUserSignedOut();
 		});
@@ -127,41 +127,45 @@ let App = React.createClass({
 	 */
 	onUserSignedIn: function (googleUser) {
 		let profile = googleUser.getBasicProfile();
-		console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
+		if (!this.state.googleUser || (profile.getId() == this.state.googleUser.getBasicProfile().getId())) {
+			console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
 
-		// change body signin/out state
-		this._setSignedInState(true);
+			// change body signin/out state
+			this._setSignedInState(true);
 
-		this.setState({
-			googleUser: googleUser,
-			googleUserAuthToken: googleUser.getAuthResponse().id_token
-		});
+			this.setState({
+				googleUser: googleUser,
+				googleUserAuthToken: googleUser.getAuthResponse().id_token
+			});
 
-		this.performLoad();
+			this.performLoad();
+		}
 	},
 
 	/**
 	 * Called from index.html on signing out from google id service
 	 */
 	onUserSignedOut: function () {
-		console.log('onUserSignedOut');
-
 		this._setSignedInState(false);
 
-		this.setState({
-			users: [],
-			googleUser: null,
-			googleUserAuthToken: null
-		});
+		if (!!this.state.googleUser) {
+			console.log('onUserSignedOut');
 
-		this.performLoad();
+			this.setState({
+				users: [],
+				googleUser: null,
+				googleUserAuthToken: null
+			});
+
+			this.performLoad();
+		}
 	},
 
-	_setSignedInState: function(signedIn) {
+	_setSignedInState: function (signedIn) {
 
 		// we're using a debouncer because the gapi.auth2 callbacks can trigger rapidly
 		if (this._setSignedInStateDebouncer == null) {
-			this._setSignedInStateDebouncer = debounce(500, function(signedIn){
+			this._setSignedInStateDebouncer = debounce(500, function (signedIn) {
 				if (signedIn) {
 					document.body.classList.remove("signedOut");
 					document.body.classList.add("signedIn");
@@ -183,9 +187,9 @@ let App = React.createClass({
 			headers.set("Authorization", this.state.googleUserAuthToken);
 
 			fetch("http://localhost:4567/api/v1/dashboard/users", {
-					credentials: 'include',
-					headers: headers
-				})
+				credentials: 'include',
+				headers: headers
+			})
 				.then(function (response) {
 					return response.json()
 				})
@@ -221,13 +225,13 @@ let App = React.createClass({
 		});
 	},
 
-	showUserSignOutDialog: function() {
+	showUserSignOutDialog: function () {
 		this.setState({
 			showSignOutDialog: true
 		});
 	},
 
-	closeUserSignOutDialog: function() {
+	closeUserSignOutDialog: function () {
 		this.setState({
 			showSignOutDialog: false
 		});

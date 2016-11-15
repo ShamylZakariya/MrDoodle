@@ -1142,34 +1142,38 @@
 	  */
 		onUserSignedIn: function onUserSignedIn(googleUser) {
 			var profile = googleUser.getBasicProfile();
-			console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
+			if (!this.state.googleUser || profile.getId() == this.state.googleUser.getBasicProfile().getId()) {
+				console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
 
-			// change body signin/out state
-			this._setSignedInState(true);
+				// change body signin/out state
+				this._setSignedInState(true);
 
-			this.setState({
-				googleUser: googleUser,
-				googleUserAuthToken: googleUser.getAuthResponse().id_token
-			});
+				this.setState({
+					googleUser: googleUser,
+					googleUserAuthToken: googleUser.getAuthResponse().id_token
+				});
 
-			this.performLoad();
+				this.performLoad();
+			}
 		},
 
 		/**
 	  * Called from index.html on signing out from google id service
 	  */
 		onUserSignedOut: function onUserSignedOut() {
-			console.log('onUserSignedOut');
-
 			this._setSignedInState(false);
 
-			this.setState({
-				users: [],
-				googleUser: null,
-				googleUserAuthToken: null
-			});
+			if (!!this.state.googleUser) {
+				console.log('onUserSignedOut');
 
-			this.performLoad();
+				this.setState({
+					users: [],
+					googleUser: null,
+					googleUserAuthToken: null
+				});
+
+				this.performLoad();
+			}
 		},
 
 		_setSignedInState: function _setSignedInState(signedIn) {
