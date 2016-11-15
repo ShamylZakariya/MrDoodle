@@ -126,6 +126,8 @@ body {
 			cursor: pointer;
 			padding-left: $itemSize/4;
 			padding-right: $itemSize/4;
+			position: relative;
+
 			.avatar {
 				width: $itemSize/2;
 				height: $itemSize/2;
@@ -196,9 +198,10 @@ body {
 	}
 }
 
-.userDetail {
+.modal {
 
 	$inset: 40px;
+
 
 	position: fixed;
 	top: 0;
@@ -209,29 +212,81 @@ body {
 
 	.window {
 		position: absolute;
-		top: $inset;
-		right: $inset;
-		left: $inset;
 		background: white;
 		box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
 		border-radius: 4px;
-		padding: $inset $inset/2;
+		width: 50%;
+		top: 50%;
+		left: 50%;
+		@include transform(translateX(-50%) translateY(-50%));
+	}
+
+	.content {
+		padding: $inset;
 	}
 
 	.close {
+		cursor: pointer;
 		display: block;
 		position: absolute;
-		top: 1em;
-		left: $inset/2;
-		color: darkred;
-		text-transform: uppercase;
-		cursor: pointer;
+		top: 0;
+		left: 0;
+		width: 48px;
+		height: 48px;
+		@include hide-text;
+		background: url(../images/close.png) center center no-repeat;
+		background-size: 24px;
 	}
+
+	h2 {
+		font-size: 36px;
+		margin: 0.5em 0; 
+	}
+
+
+	.buttonRow {
+		@include clearfix;
+		text-align: right;
+
+		$buttonHeight: 48px;
+		margin-bottom: -$inset/2;
+
+		.button {
+			cursor: pointer;
+			display: inline-block;
+			border-radius: 2px;
+			line-height: $buttonHeight;
+			height: $buttonHeight;
+			padding-left: $buttonHeight/4;
+			padding-right: $buttonHeight/4;
+			text-transform: uppercase;
+			margin-left: $buttonHeight/4;
+
+			&.negative {
+				background-color: lightgrey;
+				color: #222;
+			}
+
+			&.positive {
+				background-color: darkgreen;
+				color: white;
+				font-weight: bold;
+			}
+
+			&.destructive {
+				background-color: mediumvioletred;
+				color: white;
+				font-weight: bold;
+			}
+		}
+	}
+}
+
+.userDetail {
 
 	.userInfo {
 
 		@include clearfix;
-		padding: 1em 0;
 
 		.avatar {
 			float: left;

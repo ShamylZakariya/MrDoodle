@@ -50,11 +50,11 @@ let UserDetail = React.createClass({
 		let connectedMarkerClassName = "connectedMarker " + (this.state.connectedDeviceCount > 0 ? "connected" : "disconnected");
 
 		return (
-			<div className="userDetail">
+			<div className="userDetail modal">
 				<div className="window">
 					<a className="close" onClick={this.handleClose}>Close</a>
 
-					<div className="userInfo">
+					<div className="content userInfo">
 
 						<div className="avatar">
 							<div className="avatarImage" style={styles.avatarImageStyle}></div>

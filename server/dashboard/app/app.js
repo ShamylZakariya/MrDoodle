@@ -5,6 +5,7 @@ let ErrorView = require('./components/ErrorView');
 let UserList = require('./components/UserList');
 let UserDetail = require('./components/UserDetail');
 let UserToolbarItem = require('./components/UserToolbarItem');
+let SignOutDialog = require('./components/SignOutScreen');
 
 let debounce = require('./util/debounce');
 
@@ -16,7 +17,8 @@ let App = React.createClass({
 			error: null,
 			selectedUser: null,
 			googleUser: null,
-			googleUserAuthToken: null
+			googleUserAuthToken: null,
+			showSignOutDialog: true
 		}
 	},
 
@@ -32,15 +34,20 @@ let App = React.createClass({
 		let toolbar = (
 			<div className="toolbar">
 				<h2>Users</h2>
-				{signedIn && <UserToolbarItem googleUser={this.state.googleUser}/>}
+				{signedIn && <UserToolbarItem googleUser={this.state.googleUser} click={this.showUserSignOutDialog}/>}
 				{signedIn && <div className="item reload" onClick={this.performLoad}>Reload</div>}
 			</div>
 		);
 
 		let userList = this.state.error ? null : <UserList users={this.state.users} click={this.showUserDetail}/>;
+
 		let errorView = this.state.error ? <ErrorView error={this.state.error}/> : null;
+
 		let userDetail = this.state.selectedUser ?
-			<UserDetail user={this.state.selectedUser} googleUserAuthToken={this.state.googleUserAuthToken} close={this.handleCloseUserDetail}/> : null;
+			<UserDetail user={this.state.selectedUser} googleUserAuthToken={this.state.googleUserAuthToken} close={this.closeUserDetail}/> : null;
+
+		let signOutDialog = this.state.showSignOutDialog ?
+			<SignOutDialog close={this.closeUserSignOutDialog} signOut={this.performSignOut}/> : null;
 
 		return (
 			<div className="container">
@@ -48,6 +55,7 @@ let App = React.createClass({
 				{userList}
 				{errorView}
 				{userDetail}
+				{signOutDialog}
 			</div>
 		)
 	},
@@ -206,7 +214,7 @@ let App = React.createClass({
 		}
 	},
 
-	handleCloseUserDetail: function () {
+	closeUserDetail: function () {
 		this.setState({
 			selectedUser: null
 		})
@@ -215,6 +223,18 @@ let App = React.createClass({
 	showUserDetail: function (user) {
 		this.setState({
 			selectedUser: user
+		});
+	},
+
+	showUserSignOutDialog: function() {
+		this.setState({
+			showSignOutDialog: true
+		});
+	},
+
+	closeUserSignOutDialog: function() {
+		this.setState({
+			showSignOutDialog: false
 		});
 	}
 

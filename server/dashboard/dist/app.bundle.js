@@ -1009,6 +1009,7 @@
 	var UserList = __webpack_require__(177);
 	var UserDetail = __webpack_require__(286);
 	var UserToolbarItem = __webpack_require__(288);
+	var SignOutDialog = __webpack_require__(289);
 
 	var debounce = __webpack_require__(287);
 
@@ -1022,7 +1023,8 @@
 				error: null,
 				selectedUser: null,
 				googleUser: null,
-				googleUserAuthToken: null
+				googleUserAuthToken: null,
+				showSignOutDialog: true
 			};
 		},
 
@@ -1043,7 +1045,7 @@
 					null,
 					'Users'
 				),
-				signedIn && React.createElement(UserToolbarItem, { googleUser: this.state.googleUser }),
+				signedIn && React.createElement(UserToolbarItem, { googleUser: this.state.googleUser, click: this.showUserSignOutDialog }),
 				signedIn && React.createElement(
 					'div',
 					{ className: 'item reload', onClick: this.performLoad },
@@ -1052,8 +1054,12 @@
 			);
 
 			var userList = this.state.error ? null : React.createElement(UserList, { users: this.state.users, click: this.showUserDetail });
+
 			var errorView = this.state.error ? React.createElement(ErrorView, { error: this.state.error }) : null;
-			var userDetail = this.state.selectedUser ? React.createElement(UserDetail, { user: this.state.selectedUser, googleUserAuthToken: this.state.googleUserAuthToken, close: this.handleCloseUserDetail }) : null;
+
+			var userDetail = this.state.selectedUser ? React.createElement(UserDetail, { user: this.state.selectedUser, googleUserAuthToken: this.state.googleUserAuthToken, close: this.closeUserDetail }) : null;
+
+			var signOutDialog = this.state.showSignOutDialog ? React.createElement(SignOutDialog, { close: this.closeUserSignOutDialog, signOut: this.performSignOut }) : null;
 
 			return React.createElement(
 				'div',
@@ -1061,7 +1067,8 @@
 				toolbar,
 				userList,
 				errorView,
-				userDetail
+				userDetail,
+				signOutDialog
 			);
 		},
 
@@ -1221,7 +1228,7 @@
 			}
 		},
 
-		handleCloseUserDetail: function handleCloseUserDetail() {
+		closeUserDetail: function closeUserDetail() {
 			this.setState({
 				selectedUser: null
 			});
@@ -1230,6 +1237,18 @@
 		showUserDetail: function showUserDetail(user) {
 			this.setState({
 				selectedUser: user
+			});
+		},
+
+		showUserSignOutDialog: function showUserSignOutDialog() {
+			this.setState({
+				showSignOutDialog: true
+			});
+		},
+
+		closeUserSignOutDialog: function closeUserSignOutDialog() {
+			this.setState({
+				showSignOutDialog: false
 			});
 		}
 
@@ -37034,7 +37053,7 @@
 
 			return React.createElement(
 				'div',
-				{ className: 'userDetail' },
+				{ className: 'userDetail modal' },
 				React.createElement(
 					'div',
 					{ className: 'window' },
@@ -37045,7 +37064,7 @@
 					),
 					React.createElement(
 						'div',
-						{ className: 'userInfo' },
+						{ className: 'content userInfo' },
 						React.createElement(
 							'div',
 							{ className: 'avatar' },
@@ -37180,7 +37199,7 @@
 
 				return React.createElement(
 					"div",
-					{ className: "item user", onClick: this.onClick },
+					{ className: "item user", onClick: this.props.click },
 					React.createElement("div", { className: "avatar", style: avatarStyle }),
 					React.createElement(
 						"div",
@@ -37189,15 +37208,83 @@
 					)
 				);
 			}
-		},
-
-		onClick: function onClick() {
-			console.log('onClick');
 		}
 
 	});
 
 	module.exports = UserToolbarItem;
+
+/***/ },
+/* 289 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+
+	var React = __webpack_require__(6);
+
+	var SignOutScreen = React.createClass({
+		displayName: "SignOutScreen",
+
+
+		getDefaultProps: function getDefaultProps() {
+			return {
+				close: function close() {},
+				signOut: function signOut() {}
+			};
+		},
+
+		render: function render() {
+
+			return React.createElement(
+				"div",
+				{ className: "signOutDialog modal" },
+				React.createElement(
+					"div",
+					{ className: "window" },
+					React.createElement(
+						"a",
+						{ className: "close", onClick: this.handleCancel },
+						"Close"
+					),
+					React.createElement(
+						"div",
+						{ className: "content" },
+						React.createElement(
+							"h2",
+							null,
+							"Sign out?"
+						),
+						React.createElement(
+							"div",
+							{ className: "buttonRow" },
+							React.createElement(
+								"div",
+								{ className: "button negative", onClick: this.handleCancel },
+								"Cancel"
+							),
+							React.createElement(
+								"div",
+								{ className: "button destructive", onClick: this.handleSignOut },
+								"Sign Out"
+							)
+						)
+					)
+				)
+			);
+		},
+
+		handleCancel: function handleCancel() {
+			this.props.close();
+		},
+
+		handleSignOut: function handleSignOut() {
+			this.props.close();
+			this.props.signOut();
+		}
+
+	});
+
+	module.exports = SignOutScreen;
 
 /***/ }
 /******/ ]);

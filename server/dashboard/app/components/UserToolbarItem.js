@@ -13,16 +13,12 @@ let UserToolbarItem = React.createClass({
 			};
 
 			return (
-				<div className="item user" onClick={this.onClick}>
+				<div className="item user" onClick={this.props.click}>
 					<div className="avatar" style={avatarStyle}></div>
 					<div className="name">{email}</div>
 				</div>
 			)
 		}
-	},
-
-	onClick: function() {
-		console.log('onClick');
 	}
 
 });
