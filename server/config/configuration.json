@@ -1,13 +1,25 @@
 {
 	"apiVersion": "v1",
+
 	"redis": {
 		"host": "localhost"
 	},
+
 	"jedisStoragePrefix":"dev",
-	"sync":{
+
+	"staticFiles": "dashboard/dist",
+
+	"sync": {
 		"authenticator": {
+			"google": {
+				"oauth_client_id": "YOUR_OAUTH_ANDROID_CLIENT_ID_HERE",
+				"issuer":"https://accounts.google.com"
+			},
+
 			"useMockAuthenticator":false,
+
 			"whitelist_grace_period_seconds": 3600,
+
 			"mock": {
 				"tokens": {
 					"VALID-MOCK-TOKEN-I-GUESS": "12345|shamyl@gmail.com|https://avatars0.githubusercontent.com/u/1743604"
@@ -15,8 +27,13 @@
 			}
 		}
 	},
-	"staticFiles": "dashboard/dist",
 	"dashboard": {
-		"whitelist":["shamyl@gmail.com"]
+		"whitelist":["shamyl@gmail.com"],
+		"authenticator": {
+			"google": {
+				"oauth_client_id": "YOUR_OAUTH_WEB_CLIENT_ID_HERE",
+				"issuer":"accounts.google.com"
+			}
+		}
 	}
 }
