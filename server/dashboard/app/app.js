@@ -18,13 +18,11 @@ let App = React.createClass({
 			selectedUser: null,
 			googleUser: null,
 			googleUserAuthToken: null,
-			showSignOutDialog: true
+			showSignOutDialog: false
 		}
 	},
 
 	componentDidMount: function () {
-		// need global reference for google sign in to call onUserSignedIn/onUserSignedOut
-		window.app = this;
 		this.initGoogleAuthorizationClient();
 	},
 
@@ -67,14 +65,12 @@ let App = React.createClass({
 		let self = this;
 
 		function signinChanged(signedIn) {
-			console.log('signinChanged signedIn: ', signedIn);
 			if (!signedIn) {
 				self.onUserSignedOut();
 			}
 		}
 
 		function userChanged(user) {
-			console.log('userChanged: User: ', user, ' signedIn: ', user.isSignedIn());
 			if (user.isSignedIn()) {
 				self.onUserSignedIn(user);
 			} else {
@@ -166,7 +162,6 @@ let App = React.createClass({
 		// we're using a debouncer because the gapi.auth2 callbacks can trigger rapidly
 		if (this._setSignedInStateDebouncer == null) {
 			this._setSignedInStateDebouncer = debounce(500, function(signedIn){
-				console.log('_setSignedInStateDebouncer signedIn: ', signedIn);
 				if (signedIn) {
 					document.body.classList.remove("signedOut");
 					document.body.classList.add("signedIn");
