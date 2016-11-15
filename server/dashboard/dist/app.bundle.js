@@ -1008,6 +1008,8 @@
 	var ErrorView = __webpack_require__(176);
 	var UserList = __webpack_require__(177);
 	var UserDetail = __webpack_require__(286);
+	var UserToolbarItem = __webpack_require__(288);
+
 	var debounce = __webpack_require__(287);
 
 	var App = React.createClass({
@@ -1041,6 +1043,7 @@
 					null,
 					'Users'
 				),
+				signedIn && React.createElement(UserToolbarItem, { googleUser: this.state.googleUser }),
 				signedIn && React.createElement(
 					'div',
 					{ className: 'item reload', onClick: this.performLoad },
@@ -37152,6 +37155,49 @@
 	};
 
 	module.exports = debounce;
+
+/***/ },
+/* 288 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+
+	var React = __webpack_require__(6);
+
+	var UserToolbarItem = React.createClass({
+		displayName: "UserToolbarItem",
+
+
+		render: function render() {
+			if (!!this.props.googleUser) {
+				var profile = this.props.googleUser.getBasicProfile();
+				var email = profile.getEmail();
+				var avatarUrl = profile.getImageUrl();
+
+				var avatarStyle = {
+					backgroundImage: avatarUrl && avatarUrl.length ? "url(" + avatarUrl + ")" : undefined
+				};
+
+				return React.createElement(
+					"div",
+					{ className: "item user", onClick: this.onClick },
+					React.createElement("div", { className: "avatar", style: avatarStyle }),
+					React.createElement(
+						"div",
+						{ className: "name" },
+						email
+					)
+				);
+			}
+		},
+
+		onClick: function onClick() {
+			console.log('onClick');
+		}
+
+	});
+
+	module.exports = UserToolbarItem;
 
 /***/ }
 /******/ ]);

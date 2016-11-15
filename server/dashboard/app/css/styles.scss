@@ -89,23 +89,62 @@ body {
 .toolbar {
 	@include clearfix;
 
+	$itemSize: 48px;
+
 	padding: 36px;
 
 	h2 {
 		float: left;
+		line-height: $itemSize;
+		font-weight: bold;
+		text-transform: uppercase;
 	}
 
 	.item {
 		float: right;
-		width: 24px;
-		height: 24px;
+		height: $itemSize;
+		margin-left: $itemSize/2;
+
+		&:hover {
+			background-color: rgba(0,0,0,0.1);
+			border-radius: 2px;
+		}
 
 		&.reload {
-			background: url(../images/reload.png);
-			background-size: contain;
+			width: $itemSize;
+			background-image: url(../images/reload.png);
+			background-position: center center;
+			background-repeat: no-repeat;
+			background-size: $itemSize/2;
 			@include hide-text();
 			cursor: pointer;
 		}
+
+		&.user {
+
+			@include clearfix;
+			cursor: pointer;
+			padding-left: $itemSize/4;
+			padding-right: $itemSize/4;
+			.avatar {
+				width: $itemSize/2;
+				height: $itemSize/2;
+				border-radius: $itemSize/2;
+				background-size: contain;
+				float: left;
+				margin-top: $itemSize/4;
+				margin-right: $itemSize/8;
+			}
+			.name {
+				float: left;
+				height: $itemSize/2;
+				line-height: $itemSize/2;
+				margin-top: $itemSize/4;
+				color: grey;
+			}
+
+		}
+
 	}
 }
 

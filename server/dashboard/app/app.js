@@ -4,6 +4,8 @@ let ReactDOM = require('react-dom');
 let ErrorView = require('./components/ErrorView');
 let UserList = require('./components/UserList');
 let UserDetail = require('./components/UserDetail');
+let UserToolbarItem = require('./components/UserToolbarItem');
+
 let debounce = require('./util/debounce');
 
 let App = React.createClass({
@@ -30,6 +32,7 @@ let App = React.createClass({
 		let toolbar = (
 			<div className="toolbar">
 				<h2>Users</h2>
+				{signedIn && <UserToolbarItem googleUser={this.state.googleUser}/>}
 				{signedIn && <div className="item reload" onClick={this.performLoad}>Reload</div>}
 			</div>
 		);
