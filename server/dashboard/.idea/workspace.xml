@@ -2,22 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="1ece5194-506c-43d0-b549-2421e6b74408" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../config/configuration.json" afterPath="$PROJECT_DIR$/../config/configuration.json" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/jsLibraryMappings.xml" afterPath="$PROJECT_DIR$/.idea/jsLibraryMappings.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/app.js" afterPath="$PROJECT_DIR$/app/app.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/components/UserDetail.js" afterPath="$PROJECT_DIR$/app/components/UserDetail.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/components/UserList.js" afterPath="$PROJECT_DIR$/app/components/UserList.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/css/styles.css" afterPath="$PROJECT_DIR$/app/css/styles.css" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/css/styles.css.map" afterPath="$PROJECT_DIR$/app/css/styles.css.map" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/css/styles.scss" afterPath="$PROJECT_DIR$/app/css/styles.scss" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app/index.html" afterPath="$PROJECT_DIR$/app/index.html" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/dist/app.bundle.js" afterPath="$PROJECT_DIR$/dist/app.bundle.js" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/dist/css/styles.css" afterPath="$PROJECT_DIR$/dist/css/styles.css" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/dist/index.html" afterPath="$PROJECT_DIR$/dist/index.html" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../src/main/java/org/zakariya/mrdoodleserver/SyncServer.java" afterPath="$PROJECT_DIR$/../src/main/java/org/zakariya/mrdoodleserver/SyncServer.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../src/main/java/org/zakariya/mrdoodleserver/auth/techniques/GoogleIdTokenAuthenticator.java" afterPath="$PROJECT_DIR$/../src/main/java/org/zakariya/mrdoodleserver/auth/techniques/GoogleIdTokenAuthenticator.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/../src/main/java/org/zakariya/mrdoodleserver/routes/DashboardRouter.java" afterPath="$PROJECT_DIR$/../src/main/java/org/zakariya/mrdoodleserver/routes/DashboardRouter.java" />
     </list>
     <ignored path="dashboard.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -40,11 +28,21 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="app.js" pinned="false" current-in-tab="true">
+      <file leaf-file-name="app.js" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/app/app.js">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="189">
-              <caret line="86" column="0" lean-forward="false" selection-start-line="86" selection-start-column="0" selection-end-line="86" selection-end-column="0" />
+            <state relative-caret-position="237">
+              <caret line="56" column="0" lean-forward="false" selection-start-line="56" selection-start-column="0" selection-end-line="56" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="index.html" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/app/index.html">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="160">
+              <caret line="10" column="0" lean-forward="false" selection-start-line="10" selection-start-column="0" selection-end-line="10" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -97,9 +95,9 @@
         <option value="$PROJECT_DIR$/app/components/ErrorView.js" />
         <option value="$PROJECT_DIR$/app/components/UserList.js" />
         <option value="$PROJECT_DIR$/app/css/styles.scss" />
-        <option value="$PROJECT_DIR$/app/index.html" />
         <option value="$PROJECT_DIR$/app/components/UserDetail.js" />
         <option value="$PROJECT_DIR$/app/app.js" />
+        <option value="$PROJECT_DIR$/app/index.html" />
       </list>
     </option>
   </component>
@@ -334,12 +332,12 @@
       <workItem from="1478269839567" duration="8557000" />
       <workItem from="1478465170531" duration="16015000" />
       <workItem from="1479142427732" duration="1885000" />
-      <workItem from="1479171224885" duration="4500000" />
+      <workItem from="1479171224885" duration="7459000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="30957000" />
+    <option name="totallyTimeSpent" value="33916000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="22" width="1637" height="1028" extended-state="0" />
@@ -572,14 +570,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/app/index.html">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="592">
-          <caret line="37" column="51" lean-forward="false" selection-start-line="37" selection-start-column="51" selection-end-line="37" selection-end-column="51" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/app/components/UserDetail.js">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="512">
@@ -590,8 +580,16 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/app/app.js">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="189">
-          <caret line="86" column="0" lean-forward="false" selection-start-line="86" selection-start-column="0" selection-end-line="86" selection-end-column="0" />
+        <state relative-caret-position="237">
+          <caret line="56" column="0" lean-forward="false" selection-start-line="56" selection-start-column="0" selection-end-line="56" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/app/index.html">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="160">
+          <caret line="10" column="0" lean-forward="false" selection-start-line="10" selection-start-column="0" selection-end-line="10" selection-end-column="0" />
           <folding />
         </state>
       </provider>

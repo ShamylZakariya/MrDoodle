@@ -8,36 +8,19 @@
 	<link rel="stylesheet" href="css/styles.css"/>
 
 	<!-- Google Sign In -->
-	<meta name="google-signin-scope" content="profile email">
-	<meta name="google-signin-client_id" content="246785936717-tfn5b0s186fuig7eo0dc826urohj1hh1.apps.googleusercontent.com">
-	<script src="https://apis.google.com/js/platform.js" async defer></script>
+	<script src="https://apis.google.com/js/platform.js"></script>
 
 	<title>Dashboard</title>
 
-	<script>
-
-		function onSignIn(googleUser) {
-			window.app.onUserSignedIn(googleUser);
-			document.getElementById("signInButton").classList.add('hidden');
-			document.getElementById("signOutButton").classList.remove('hidden');
-		}
-
-		function signOut() {
-			gapi.auth2.getAuthInstance().signOut().then(function () {
-				window.app.onUserSignedOut();
-				document.getElementById("signInButton").classList.remove('hidden');
-				document.getElementById("signOutButton").classList.add('hidden');
-			});
-		}
-	</script>
 </head>
 <body>
 <div class="appContainer">
 	<div class="auth-toolbar">
-		<div id="signInButton" class="button g-signin2" data-onsuccess="onSignIn"></div>
-		<a id="signOutButton" class="button hidden" href="#" onclick="signOut();">Sign out</a>
+		<div id="signInButton" class="button g-signin2"></div>
+		<a id="signOutButton" class="button" href="#" onclick="window.app.performSignOut();">Sign out</a>
 	</div>
 	<div id="app"></div>
 </div>
+
 <script type="text/javascript" src="app.bundle.js"></script></body>
 </html>

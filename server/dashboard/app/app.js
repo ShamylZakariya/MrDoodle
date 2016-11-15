@@ -20,6 +20,7 @@ let App = React.createClass({
 	componentDidMount: function () {
 		// need global reference for google sign in to call onUserSignedIn/onUserSignedOut
 		window.app = this;
+		this.initGoogleAuthorizationClient();
 	},
 
 	render: function () {
@@ -48,6 +49,69 @@ let App = React.createClass({
 	},
 
 	///////////////////////////////////////////////////////////////////
+
+	initGoogleAuthorizationClient: function() {
+		console.log('initGoogleAuthorizationClient');
+		let self = this;
+
+		function signinChanged(signedIn) {
+			console.log('signinChanged signedIn: ', signedIn);
+			if (!signedIn) {
+				self.onUserSignedOut();
+			}
+		}
+
+		function userChanged(user) {
+			console.log('userChanged: User: ', user, ' signedIn: ', user.isSignedIn());
+			if (user.isSignedIn()) {
+				self.onUserSignedIn(user);
+			} else {
+				self.onUserSignedOut();
+			}
+		}
+
+		function signInButtonSuccess(user) {
+			console.log('signInButtonSuccess user: ' + user.getBasicProfile().getName());
+		}
+
+		function signInButtonFailure(e) {
+			console.error("signInButtonFailure: ", e);
+		}
+
+		gapi.load('auth2', () => {
+			/**
+			 * Retrieve the singleton for the GoogleAuth library and set up the
+			 * client.
+			 */
+			this.auth2 = gapi.auth2.init({
+				client_id: '246785936717-tfn5b0s186fuig7eo0dc826urohj1hh1.apps.googleusercontent.com',
+				scope: "profile email"
+			});
+
+			// Attach the click handler to the sign-in button
+			this.auth2.attachClickHandler('signInButton', {}, signInButtonSuccess, signInButtonFailure);
+
+			// Listen for sign-in state changes.
+			this.auth2.isSignedIn.listen(signinChanged);
+
+			// Listen for changes to current user.
+			this.auth2.currentUser.listen(userChanged);
+
+			// Sign in the user if they are currently signed in.
+			if (this.auth2.isSignedIn.get() == true) {
+				this.auth2.signIn();
+			}
+
+			userChanged(this.auth2.currentUser.get());
+		});
+
+	},
+
+	performSignOut: function() {
+		gapi.auth2.getAuthInstance().signOut().then(() => {
+			this.onUserSignedOut();
+		});
+	},
 
 	/**
 	 * Called from index.html when google sign in button triggers successful sign in

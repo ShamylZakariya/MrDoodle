@@ -1026,6 +1026,7 @@
 		componentDidMount: function componentDidMount() {
 			// need global reference for google sign in to call onUserSignedIn/onUserSignedOut
 			window.app = this;
+			this.initGoogleAuthorizationClient();
 		},
 
 		render: function render() {
@@ -1062,6 +1063,72 @@
 
 		///////////////////////////////////////////////////////////////////
 
+		initGoogleAuthorizationClient: function initGoogleAuthorizationClient() {
+			var _this = this;
+
+			console.log('initGoogleAuthorizationClient');
+			var self = this;
+
+			function signinChanged(signedIn) {
+				console.log('signinChanged signedIn: ', signedIn);
+				if (!signedIn) {
+					self.onUserSignedOut();
+				}
+			}
+
+			function userChanged(user) {
+				console.log('userChanged: User: ', user, ' signedIn: ', user.isSignedIn());
+				if (user.isSignedIn()) {
+					self.onUserSignedIn(user);
+				} else {
+					self.onUserSignedOut();
+				}
+			}
+
+			function signInButtonSuccess(user) {
+				console.log('signInButtonSuccess user: ' + user.getBasicProfile().getName());
+			}
+
+			function signInButtonFailure(e) {
+				console.error("signInButtonFailure: ", e);
+			}
+
+			gapi.load('auth2', function () {
+				/**
+	    * Retrieve the singleton for the GoogleAuth library and set up the
+	    * client.
+	    */
+				_this.auth2 = gapi.auth2.init({
+					client_id: '246785936717-tfn5b0s186fuig7eo0dc826urohj1hh1.apps.googleusercontent.com',
+					scope: "profile email"
+				});
+
+				// Attach the click handler to the sign-in button
+				_this.auth2.attachClickHandler('signInButton', {}, signInButtonSuccess, signInButtonFailure);
+
+				// Listen for sign-in state changes.
+				_this.auth2.isSignedIn.listen(signinChanged);
+
+				// Listen for changes to current user.
+				_this.auth2.currentUser.listen(userChanged);
+
+				// Sign in the user if they are currently signed in.
+				if (_this.auth2.isSignedIn.get() == true) {
+					_this.auth2.signIn();
+				}
+
+				userChanged(_this.auth2.currentUser.get());
+			});
+		},
+
+		performSignOut: function performSignOut() {
+			var _this2 = this;
+
+			gapi.auth2.getAuthInstance().signOut().then(function () {
+				_this2.onUserSignedOut();
+			});
+		},
+
 		/**
 	  * Called from index.html when google sign in button triggers successful sign in
 	  * @param googleUser
@@ -1094,7 +1161,7 @@
 		},
 
 		performLoad: function performLoad() {
-			var _this = this;
+			var _this3 = this;
 
 			var authToken = this.state.googleUserAuthToken;
 			if (!!authToken) {
@@ -1108,12 +1175,12 @@
 				}).then(function (response) {
 					return response.json();
 				}).then(function (data) {
-					_this.setState({
+					_this3.setState({
 						users: data.users,
 						error: null
 					});
 				}).catch(function (e) {
-					_this.setState({
+					_this3.setState({
 						users: [],
 						error: e.statusText
 					});
