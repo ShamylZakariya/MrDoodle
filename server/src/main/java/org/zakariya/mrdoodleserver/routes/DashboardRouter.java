@@ -2,6 +2,7 @@ package org.zakariya.mrdoodleserver.routes;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zakariya.mrdoodleserver.auth.Authenticator;
 import org.zakariya.mrdoodleserver.auth.User;
 import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.UserRecordAccess;
@@ -14,6 +15,7 @@ import spark.Response;
 
 import java.util.*;
 
+import static spark.Spark.before;
 import static spark.Spark.get;
 
 /**
@@ -22,13 +24,19 @@ import static spark.Spark.get;
  * TODO: Add some kind of authentication, presumably we'll use Google API OAuth on client side
  */
 public class DashboardRouter extends Router {
+	private static final String REQUEST_HEADER_AUTH = "Authorization";
+
 	private static final Logger logger = LoggerFactory.getLogger(DashboardRouter.class);
+	private Authenticator authenticator;
 	private UserRecordAccess userRecordAccess;
+	private Set<String> userEmailWhitelist;
 	private static final int USER_PAGE_SIZE = 100;
 
-	public DashboardRouter(JedisPool jedisPool, String storagePrefix, String apiVersion) {
+	public DashboardRouter(JedisPool jedisPool, String storagePrefix, String apiVersion, Authenticator authenticator, List<String> userEmailWhitelist) {
 		super(jedisPool, storagePrefix, apiVersion);
+		this.authenticator = authenticator;
 		this.userRecordAccess = new UserRecordAccess(getJedisPool(), getStoragePrefix());
+		this.userEmailWhitelist = userEmailWhitelist != null ? new HashSet<>(userEmailWhitelist) : Collections.emptySet();
 	}
 
 	@Override
@@ -39,11 +47,43 @@ public class DashboardRouter extends Router {
 	public void initializeRoutes() {
 		String basePath = getBasePath();
 
+		before(basePath + "/*", this::authenticate);
+
 		// get list of all users who have used this service - returns UserPage
 		get(basePath + "/users", this::getUsers, getJsonResponseTransformer());
 
 		// get info on specific user, returns UserConnectionInfo
 		get(basePath + "/users/:userId", this::getUserConnectionInfo, getJsonResponseTransformer());
+	}
+
+	private void authenticate(Request request, Response response) {
+		String authToken = request.headers(REQUEST_HEADER_AUTH);
+		if (authToken == null || authToken.isEmpty()) {
+			sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Missing authorization token");
+		} else {
+			User user;
+
+			try {
+				user = authenticator.verify(authToken);
+				if (user == null) {
+					sendErrorAndHalt(response, 500, "SyncRouter::authenticate - Unable to parse authorization token");
+					return;
+				}
+
+				String email = user.getEmail();
+				if (email == null) {
+					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - No user email available from auth token, can't verify if user is in whitelist");
+					return;
+				}
+
+				if (!userEmailWhitelist.contains(email)) {
+					sendErrorAndHalt(response, 401, "SyncRouter::authenticate - Unauthorized dashboard user: \"" + email + "\"");
+				}
+
+			} catch (Exception e) {
+				sendErrorAndHalt(response, 500, "SyncRouter::authenticate - Unable to verify authorization token, error: " + e.getLocalizedMessage(), e);
+			}
+		}
 	}
 
 	private UserPage getUsers(Request request, Response response) {

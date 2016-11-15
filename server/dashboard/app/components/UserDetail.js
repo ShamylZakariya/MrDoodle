@@ -13,6 +13,7 @@ let UserDetail = React.createClass({
 		return {
 			connectedDeviceCount: 0,
 			user: null,
+			error: null
 		}
 	},
 
@@ -72,26 +73,42 @@ let UserDetail = React.createClass({
 
 	loadUserInfo: function () {
 
-		let url = "http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId;
-		fetch(url, { credentials: 'include'} )
-			.then(response => {
-				return response.json()
+		let googleUserAuthToken = this.props.googleUserAuthToken;
+		if (!!googleUserAuthToken) {
+
+			let headers = new Headers();
+			headers.set("Authorization", this.props.googleUserAuthToken);
+
+			let url = "http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId;
+			fetch(url, {
+				credentials: 'include',
+				headers: headers
 			})
-			.then(data => {
-				if (this.isMounted()) {
-					this.setState({
-						connectedDeviceCount: data.connectedDevices,
-						user: data.user,
-					});
-				}
-			})
-			.catch( e => {
-				if (this.isMounted()) {
-					this.setState({
-						connectedDeviceCount: 0
-					});
-				}
+				.then(response => {
+					return response.json()
+				})
+				.then(data => {
+					if (this.isMounted()) {
+						this.setState({
+							connectedDeviceCount: data.connectedDevices,
+							user: data.user,
+						});
+					}
+				})
+				.catch(e => {
+					if (this.isMounted()) {
+						this.setState({
+							connectedDeviceCount: 0,
+							error: e.statusText
+						});
+					}
+				});
+		} else {
+			this.setState({
+				connectedDeviceCount: 0,
+				error: "Unauthorized"
 			});
+		}
 	},
 
 	handleClose: function () {

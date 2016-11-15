@@ -1017,23 +1017,43 @@
 			return {
 				users: [],
 				error: null,
-				selectedUser: null
+				selectedUser: null,
+				googleUser: null,
+				googleUserAuthToken: null
 			};
 		},
 
 		componentDidMount: function componentDidMount() {
-			this.performLoad();
+			// need global reference for google sign in to call onUserSignedIn/onUserSignedOut
+			window.app = this;
 		},
 
 		render: function render() {
 
-			var userList = this.state.error ? null : React.createElement(UserList, { users: this.state.users, click: this.showUserDetail, reload: this.performLoad });
+			var signedIn = !!this.state.googleUser;
+			var toolbar = React.createElement(
+				'div',
+				{ className: 'toolbar' },
+				React.createElement(
+					'h2',
+					null,
+					'Users'
+				),
+				signedIn && React.createElement(
+					'div',
+					{ className: 'item reload', onClick: this.performLoad },
+					'Reload'
+				)
+			);
+
+			var userList = this.state.error ? null : React.createElement(UserList, { users: this.state.users, click: this.showUserDetail });
 			var errorView = this.state.error ? React.createElement(ErrorView, { error: this.state.error }) : null;
-			var userDetail = this.state.selectedUser ? React.createElement(UserDetail, { user: this.state.selectedUser, close: this.handleCloseUserDetail }) : null;
+			var userDetail = this.state.selectedUser ? React.createElement(UserDetail, { user: this.state.selectedUser, googleUserAuthToken: this.state.googleUserAuthToken, close: this.handleCloseUserDetail }) : null;
 
 			return React.createElement(
 				'div',
 				{ className: 'container' },
+				toolbar,
 				userList,
 				errorView,
 				userDetail
@@ -1042,24 +1062,68 @@
 
 		///////////////////////////////////////////////////////////////////
 
+		/**
+	  * Called from index.html when google sign in button triggers successful sign in
+	  * @param googleUser
+	  */
+		onUserSignedIn: function onUserSignedIn(googleUser) {
+
+			var profile = googleUser.getBasicProfile();
+			console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
+
+			this.setState({
+				googleUser: googleUser,
+				googleUserAuthToken: googleUser.getAuthResponse().id_token
+			});
+
+			this.performLoad();
+		},
+
+		/**
+	  * Called from index.html on signing out from google id service
+	  */
+		onUserSignedOut: function onUserSignedOut() {
+			console.log('onUserSignedOut');
+			this.setState({
+				users: [],
+				googleUser: null,
+				googleUserAuthToken: null
+			});
+
+			this.performLoad();
+		},
+
 		performLoad: function performLoad() {
 			var _this = this;
 
-			console.log('App::performLoad');
+			var authToken = this.state.googleUserAuthToken;
+			if (!!authToken) {
 
-			fetch("http://localhost:4567/api/v1/dashboard/users", { credentials: 'include' }).then(function (response) {
-				return response.json();
-			}).then(function (data) {
-				_this.setState({
-					users: data.users,
-					error: null
+				var headers = new Headers();
+				headers.set("Authorization", this.state.googleUserAuthToken);
+
+				fetch("http://localhost:4567/api/v1/dashboard/users", {
+					credentials: 'include',
+					headers: headers
+				}).then(function (response) {
+					return response.json();
+				}).then(function (data) {
+					_this.setState({
+						users: data.users,
+						error: null
+					});
+				}).catch(function (e) {
+					_this.setState({
+						users: [],
+						error: e.statusText
+					});
 				});
-			}).catch(function (e) {
-				_this.setState({
+			} else {
+				this.setState({
 					users: [],
-					error: e.statusText
+					error: "Unauthorized"
 				});
-			});
+			}
 		},
 
 		handleCloseUserDetail: function handleCloseUserDetail() {
@@ -22322,20 +22386,6 @@
 				'div',
 				{ className: 'users' },
 				React.createElement(
-					'div',
-					{ className: 'toolbar' },
-					React.createElement(
-						'h2',
-						null,
-						'Users'
-					),
-					React.createElement(
-						'div',
-						{ className: 'item reload', onClick: this.props.reload },
-						'Reload'
-					)
-				),
-				React.createElement(
 					'ul',
 					{ className: 'userList' },
 					userItems
@@ -36847,7 +36897,8 @@
 		getInitialState: function getInitialState() {
 			return {
 				connectedDeviceCount: 0,
-				user: null
+				user: null,
+				error: null
 			};
 		},
 
@@ -36937,23 +36988,39 @@
 		loadUserInfo: function loadUserInfo() {
 			var _this = this;
 
-			var url = "http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId;
-			fetch(url, { credentials: 'include' }).then(function (response) {
-				return response.json();
-			}).then(function (data) {
-				if (_this.isMounted()) {
-					_this.setState({
-						connectedDeviceCount: data.connectedDevices,
-						user: data.user
-					});
-				}
-			}).catch(function (e) {
-				if (_this.isMounted()) {
-					_this.setState({
-						connectedDeviceCount: 0
-					});
-				}
-			});
+			var googleUserAuthToken = this.props.googleUserAuthToken;
+			if (!!googleUserAuthToken) {
+
+				var headers = new Headers();
+				headers.set("Authorization", this.props.googleUserAuthToken);
+
+				var url = "http://localhost:4567/api/v1/dashboard/users/" + this.props.user.accountId;
+				fetch(url, {
+					credentials: 'include',
+					headers: headers
+				}).then(function (response) {
+					return response.json();
+				}).then(function (data) {
+					if (_this.isMounted()) {
+						_this.setState({
+							connectedDeviceCount: data.connectedDevices,
+							user: data.user
+						});
+					}
+				}).catch(function (e) {
+					if (_this.isMounted()) {
+						_this.setState({
+							connectedDeviceCount: 0,
+							error: e.statusText
+						});
+					}
+				});
+			} else {
+				this.setState({
+					connectedDeviceCount: 0,
+					error: "Unauthorized"
+				});
+			}
 		},
 
 		handleClose: function handleClose() {
