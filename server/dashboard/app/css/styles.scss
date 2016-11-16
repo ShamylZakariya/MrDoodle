@@ -7,6 +7,9 @@ $toolbarItemSize: 48px;
 $statusBarLineHeight: 36px;
 $padding: 36px;
 
+$narrow-width: 480px;
+
+
 body {
 	margin: 0;
 	font-family: 'Roboto', sans-serif;
@@ -410,6 +413,22 @@ body {
 			text-transform: uppercase;
 			color: darkgray;
 		}
+	}
+}
+
+@media screen and (max-width: $narrow-width) {
+
+	.modal {
+
+		.window {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			@include transform(none);
+		}
+
 	}
 
 }

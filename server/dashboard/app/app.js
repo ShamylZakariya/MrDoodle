@@ -174,7 +174,7 @@ let App = React.createClass({
 
 		// we're using a debouncer because the gapi.auth2 callbacks can trigger rapidly
 		if (this._setSignedInStateDebouncer == null) {
-			this._setSignedInStateDebouncer = debounce(500, function (signedIn) {
+			this._setSignedInStateDebouncer = debounce(125, function (signedIn) {
 				if (signedIn) {
 					document.body.classList.remove("signedOut");
 					document.body.classList.add("signedIn");

@@ -297,4 +297,17 @@ body {
   text-transform: uppercase;
   color: darkgray; }
 
+@media screen and (max-width: 480px) {
+  .modal .window {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    -webkit-transform: none;
+    -moz-transform: none;
+    -ms-transform: none;
+    -o-transform: none;
+    transform: none; } }
+
 /*# sourceMappingURL=styles.css.map */
