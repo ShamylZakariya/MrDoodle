@@ -179,7 +179,7 @@ body {
   right: 0;
   bottom: 0;
   left: 0;
-  background: rgba(220, 220, 220, 0.9); }
+  background: rgba(20, 24, 33, 0.9); }
   .modal .window {
     position: absolute;
     background: white;
@@ -308,6 +308,7 @@ body {
     -moz-transform: none;
     -ms-transform: none;
     -o-transform: none;
-    transform: none; } }
+    transform: none;
+    border-radius: 0; } }
 
 /*# sourceMappingURL=styles.css.map */

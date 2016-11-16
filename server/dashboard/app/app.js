@@ -11,6 +11,8 @@ let UserStatusBar = require('./components/UserStatusBar');
 let debounce = require('./util/debounce');
 let googleClientId = require('./config/google_client_id');
 
+let MONITOR_UPDATE_INTERVAL_MILLIS = 5000;
+
 let App = React.createClass({
 
 	getInitialState: function () {
@@ -46,7 +48,6 @@ let App = React.createClass({
 					<h2>Users</h2>
 					{signedIn &&
 					<UserToolbarItem googleUser={this.state.googleUser} click={this.showUserSignOutDialog}/>}
-					{signedIn && <div className="item reload" onClick={this.performLoad}>Reload</div>}
 				</div>
 			</div>
 		);
@@ -161,7 +162,7 @@ let App = React.createClass({
 			googleUserAuthToken: googleUser.getAuthResponse().id_token
 		});
 
-		this.performLoad();
+		this.startMonitoringUserData();
 	},
 
 	/**
@@ -171,13 +172,17 @@ let App = React.createClass({
 		console.log('onUserSignedOut');
 
 		this._setSignedInState(false);
+		this.stopMonitoringUserData();
+
+		// clear state
 		this.setState({
 			users: [],
+			totalUsers: 0,
+			totalConnectedUsers: 0,
+			totalConnectedDevices: 0,
 			googleUser: null,
 			googleUserAuthToken: null
 		});
-
-		this.performLoad();
 	},
 
 	_setSignedInState: function (signedIn) {
@@ -198,7 +203,20 @@ let App = React.createClass({
 		this._setSignedInStateDebouncer(signedIn);
 	},
 
-	performLoad: function () {
+	startMonitoringUserData: function() {
+		this.stopMonitoringUserData();
+		this.monitorTimeout = setInterval(this._performLoad, MONITOR_UPDATE_INTERVAL_MILLIS);
+		this._performLoad();
+	},
+
+	stopMonitoringUserData: function() {
+		if (!!this.monitorTimeout) {
+			clearInterval(this.monitorTimeout);
+			this.monitorTimeout = null;
+		}
+	},
+
+	_performLoad: function () {
 		let authToken = this.state.googleUserAuthToken;
 		if (!!authToken) {
 
@@ -211,7 +229,6 @@ let App = React.createClass({
 
 		} else {
 			this.setState({
-				users: [],
 				error: "Unauthorized - Please sign in."
 			})
 		}
@@ -261,7 +278,6 @@ let App = React.createClass({
 				}
 			})
 			.then(data => {
-				console.log('data: ', data);
 				this.setState({
 					totalUsers: data.totalUsers,
 					totalConnectedUsers: data.totalConnectedUsers,
@@ -272,6 +288,7 @@ let App = React.createClass({
 				this.setState({
 					totalUsers: 'N/A',
 					totalConnectedUsers: 'N/A',
+					totalConnectedDevices: 'N/A',
 					error: e.message
 				});
 			});
