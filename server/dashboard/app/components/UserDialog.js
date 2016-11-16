@@ -1,7 +1,7 @@
 let React = require('react');
 let moment = require('moment');
 
-let UserDetail = React.createClass({
+let UserDialog = React.createClass({
 
 	getDefaultProps: function () {
 		return {
@@ -117,4 +117,4 @@ let UserDetail = React.createClass({
 
 });
 
-module.exports = UserDetail;
+module.exports = UserDialog;

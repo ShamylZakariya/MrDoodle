@@ -195,6 +195,10 @@ public class WebSocketConnection {
 			UserGroup userGroup = authenticatedUserGroupsByAccountId.get(accountId);
 			if (userGroup != null) {
 				userGroup.userSessions.remove(userSession);
+
+				if (userGroup.userSessions.isEmpty()) {
+					authenticatedUserGroupsByAccountId.remove(accountId);
+				}
 			}
 
 			logger.info("onClose accountId: {} status: {} reason: {} - after cleanup we have {} connected devices remaining for account, {} devices total",

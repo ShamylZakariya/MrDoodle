@@ -8,6 +8,7 @@ import org.zakariya.mrdoodleserver.services.WebSocketConnection;
 import org.zakariya.mrdoodleserver.sync.UserRecordAccess;
 import org.zakariya.mrdoodleserver.transport.UserConnectionInfo;
 import org.zakariya.mrdoodleserver.transport.UserPage;
+import org.zakariya.mrdoodleserver.transport.UserStatus;
 import org.zakariya.mrdoodleserver.util.Configuration;
 import redis.clients.jedis.JedisPool;
 import spark.Request;
@@ -54,6 +55,9 @@ public class DashboardRouter extends Router {
 
 		// get info on specific user, returns UserConnectionInfo
 		get(basePath + "/users/:userId", this::getUserConnectionInfo, getJsonResponseTransformer());
+
+		// get general info on user count, connected count, etc
+		get(basePath + "/userStatus", this::getUserStatus, getJsonResponseTransformer());
 	}
 
 	private void authenticate(Request request, Response response) {
@@ -105,6 +109,14 @@ public class DashboardRouter extends Router {
 		}
 
 		return userPage;
+	}
+
+	private UserStatus getUserStatus(Request request, Response response) {
+		UserStatus status = new UserStatus();
+		status.totalUsers = userRecordAccess.getUserCount();
+		status.totalConnectedUsers = WebSocketConnection.getInstance().getConnectedAccountIds().size();
+
+		return status;
 	}
 
 	private UserConnectionInfo getUserConnectionInfo(Request request, Response response) {

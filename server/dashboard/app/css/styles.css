@@ -45,68 +45,100 @@ body {
 .signInScreen .message .button > * {
   margin: 0 auto; }
 
-.errorView {
-  margin: 1em;
-  padding: 1em 2em;
-  background: mediumvioletred;
-  color: white;
-  text-align: center;
-  border-radius: 2pt; }
+.toolbar::after {
+  clear: both;
+  content: "";
+  display: table; }
+.toolbar .content {
+  padding: 0 36px; }
+.toolbar h2 {
+  float: left;
+  line-height: 48px;
+  font-weight: bold;
+  text-transform: uppercase; }
+.toolbar .item {
+  float: right;
+  height: 48px;
+  margin-left: 24px; }
+  .toolbar .item:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 2px; }
+  .toolbar .item.reload {
+    width: 48px;
+    background-image: url(../images/reload.png);
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: 24px;
+    overflow: hidden;
+    text-indent: 101%;
+    white-space: nowrap;
+    cursor: pointer; }
+  .toolbar .item.user {
+    cursor: pointer;
+    padding-left: 12px;
+    padding-right: 12px;
+    position: relative; }
+    .toolbar .item.user::after {
+      clear: both;
+      content: "";
+      display: table; }
+    .toolbar .item.user .avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 24px;
+      background-size: contain;
+      float: left;
+      margin-top: 12px;
+      margin-right: 6px; }
+    .toolbar .item.user .name {
+      float: left;
+      height: 24px;
+      line-height: 24px;
+      margin-top: 12px;
+      color: grey; }
 
-.toolbar {
-  padding: 36px; }
-  .toolbar::after {
-    clear: both;
-    content: "";
-    display: table; }
-  .toolbar h2 {
-    float: left;
-    line-height: 48px;
-    font-weight: bold;
-    text-transform: uppercase; }
-  .toolbar .item {
-    float: right;
-    height: 48px;
-    margin-left: 24px; }
-    .toolbar .item:hover {
-      background-color: rgba(0, 0, 0, 0.1);
-      border-radius: 2px; }
-    .toolbar .item.reload {
-      width: 48px;
-      background-image: url(../images/reload.png);
-      background-position: center center;
-      background-repeat: no-repeat;
-      background-size: 24px;
-      overflow: hidden;
-      text-indent: 101%;
-      white-space: nowrap;
-      cursor: pointer; }
-    .toolbar .item.user {
-      cursor: pointer;
-      padding-left: 12px;
-      padding-right: 12px;
-      position: relative; }
-      .toolbar .item.user::after {
-        clear: both;
-        content: "";
-        display: table; }
-      .toolbar .item.user .avatar {
-        width: 24px;
-        height: 24px;
-        border-radius: 24px;
-        background-size: contain;
-        float: left;
-        margin-top: 12px;
-        margin-right: 6px; }
-      .toolbar .item.user .name {
-        float: left;
-        height: 24px;
-        line-height: 24px;
-        margin-top: 12px;
-        color: grey; }
+.statusbar {
+  text-align: left;
+  height: 36px; }
+  .statusbar .content {
+    padding: 0 36px; }
+    .statusbar .content > .item {
+      display: inline-block;
+      height: 36px;
+      line-height: 36px;
+      margin-right: 1em;
+      text-transform: uppercase;
+      font-size: 0.8em;
+      color: grey; }
+      .statusbar .content > .item .value {
+        font-weight: bold; }
+
+.appContainer .container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%; }
+  .appContainer .container > .toolbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%; }
+  .appContainer .container > .statusbar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%; }
+  .appContainer .container > .scrollview {
+    position: absolute;
+    top: 48px;
+    bottom: 36px;
+    left: 0;
+    width: 100%;
+    overflow-y: scroll; }
 
 .users {
-  padding: 36px; }
+  padding: 18px 36px; }
   .users h2 {
     font-size: 16px;
     font-weight: normal;
@@ -179,6 +211,8 @@ body {
   .modal h2 {
     font-size: 36px;
     margin: 0.5em 0; }
+  .modal p {
+    margin: 1em 0; }
   .modal .buttonRow {
     text-align: right;
     margin-bottom: -20px; }

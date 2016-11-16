@@ -3,6 +3,10 @@
 $font-size: 14px;
 $avatar-size: 72px;
 
+$toolbarItemSize: 48px;
+$statusBarLineHeight: 36px;
+$padding: 36px;
+
 body {
 	margin: 0;
 	font-family: 'Roboto', sans-serif;
@@ -77,33 +81,24 @@ body {
 
 }
 
-.errorView {
-	margin: 1em;
-	padding: 1em 2em;
-	background: mediumvioletred;
-	color: white;
-	text-align: center;
-	border-radius: 2pt;
-}
-
 .toolbar {
 	@include clearfix;
 
-	$itemSize: 48px;
-
-	padding: 36px;
+	.content {
+		padding: 0 $padding;
+	}
 
 	h2 {
 		float: left;
-		line-height: $itemSize;
+		line-height: $toolbarItemSize;
 		font-weight: bold;
 		text-transform: uppercase;
 	}
 
 	.item {
 		float: right;
-		height: $itemSize;
-		margin-left: $itemSize/2;
+		height: $toolbarItemSize;
+		margin-left: $toolbarItemSize/2;
 
 		&:hover {
 			background-color: rgba(0,0,0,0.1);
@@ -111,11 +106,11 @@ body {
 		}
 
 		&.reload {
-			width: $itemSize;
+			width: $toolbarItemSize;
 			background-image: url(../images/reload.png);
 			background-position: center center;
 			background-repeat: no-repeat;
-			background-size: $itemSize/2;
+			background-size: $toolbarItemSize/2;
 			@include hide-text();
 			cursor: pointer;
 		}
@@ -124,24 +119,24 @@ body {
 
 			@include clearfix;
 			cursor: pointer;
-			padding-left: $itemSize/4;
-			padding-right: $itemSize/4;
+			padding-left: $toolbarItemSize/4;
+			padding-right: $toolbarItemSize/4;
 			position: relative;
 
 			.avatar {
-				width: $itemSize/2;
-				height: $itemSize/2;
-				border-radius: $itemSize/2;
+				width: $toolbarItemSize/2;
+				height: $toolbarItemSize/2;
+				border-radius: $toolbarItemSize/2;
 				background-size: contain;
 				float: left;
-				margin-top: $itemSize/4;
-				margin-right: $itemSize/8;
+				margin-top: $toolbarItemSize/4;
+				margin-right: $toolbarItemSize/8;
 			}
 			.name {
 				float: left;
-				height: $itemSize/2;
-				line-height: $itemSize/2;
-				margin-top: $itemSize/4;
+				height: $toolbarItemSize/2;
+				line-height: $toolbarItemSize/2;
+				margin-top: $toolbarItemSize/4;
 				color: grey;
 			}
 
@@ -150,9 +145,68 @@ body {
 	}
 }
 
+.statusbar {
+
+	text-align: left;
+	height: $statusBarLineHeight;
+
+	.content {
+		padding: 0 $padding;
+
+		> .item {
+			display: inline-block;
+			height: $statusBarLineHeight;
+			line-height: $statusBarLineHeight;
+			margin-right: 1em;
+			text-transform: uppercase;
+			font-size: 0.8em;
+			color: grey;
+
+			.value {
+				font-weight: bold;
+			}
+		}
+	}
+
+}
+
+.appContainer .container {
+
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+
+	> .toolbar {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+	}
+
+	> .statusbar {
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		width: 100%;
+	}
+
+	> .scrollview {
+		position: absolute;
+		top: $toolbarItemSize;
+		bottom: $statusBarLineHeight;
+		left: 0;
+		width: 100%;
+		overflow-y: scroll;
+	}
+
+}
+
+
 .users {
 
-	padding: 36px;
+	padding: $padding/2 $padding;
 
 	h2 {
 		font-size: 16px;
@@ -241,6 +295,10 @@ body {
 	h2 {
 		font-size: 36px;
 		margin: 0.5em 0;
+	}
+
+	p {
+		margin: 1em 0;
 	}
 
 

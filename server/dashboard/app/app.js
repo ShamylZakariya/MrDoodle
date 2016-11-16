@@ -1,11 +1,12 @@
 let React = require('react');
 let ReactDOM = require('react-dom');
 
-let ErrorView = require('./components/ErrorView');
+let ErrorDialog = require('./components/ErrorDialog');
 let UserList = require('./components/UserList');
-let UserDetail = require('./components/UserDetail');
+let UserDialog = require('./components/UserDialog');
 let UserToolbarItem = require('./components/UserToolbarItem');
 let SignOutDialog = require('./components/SignOutScreen');
+let UserStatusBar = require('./components/UserStatusBar');
 
 let debounce = require('./util/debounce');
 let googleClientId = require('./config/google_client_id');
@@ -15,6 +16,8 @@ let App = React.createClass({
 	getInitialState: function () {
 		return {
 			users: [],
+			totalUsers: 0,
+			totalConnectedUsers: 0,
 			error: null,
 			selectedUser: null,
 			googleUser: null,
@@ -32,18 +35,25 @@ let App = React.createClass({
 		let signedIn = !!this.state.googleUser;
 		let toolbar = (
 			<div className="toolbar">
-				<h2>Users</h2>
-				{signedIn && <UserToolbarItem googleUser={this.state.googleUser} click={this.showUserSignOutDialog}/>}
-				{signedIn && <div className="item reload" onClick={this.performLoad}>Reload</div>}
+				<div className="content">
+					<h2>Users</h2>
+					{signedIn &&
+					<UserToolbarItem googleUser={this.state.googleUser} click={this.showUserSignOutDialog}/>}
+					{signedIn && <div className="item reload" onClick={this.performLoad}>Reload</div>}
+				</div>
 			</div>
 		);
 
-		let userList = this.state.error ? null : <UserList users={this.state.users} click={this.showUserDetail}/>;
+		let userList = <UserList users={this.state.users} click={this.showUserDialog}/>;
 
-		let errorView = this.state.error ? <ErrorView error={this.state.error}/> : null;
+		let statusBar =
+			<UserStatusBar totalUsers={this.state.totalUsers} totalConnectedUsers={this.state.totalConnectedUsers}/>
 
-		let userDetail = this.state.selectedUser ?
-			<UserDetail user={this.state.selectedUser} googleUserAuthToken={this.state.googleUserAuthToken} close={this.closeUserDetail}/> : null;
+		let errorDialog = this.state.error ?
+			<ErrorDialog error={this.state.error} close={this.closeErrorDialog}/> : null;
+
+		let userDialog = this.state.selectedUser ?
+			<UserDialog user={this.state.selectedUser} googleUserAuthToken={this.state.googleUserAuthToken} close={this.closeUserDialog}/> : null;
 
 		let signOutDialog = this.state.showSignOutDialog ?
 			<SignOutDialog close={this.closeUserSignOutDialog} signOut={this.performSignOut}/> : null;
@@ -51,9 +61,12 @@ let App = React.createClass({
 		return (
 			<div className="container">
 				{toolbar}
-				{userList}
-				{errorView}
-				{userDetail}
+				<div className="scrollview">
+					{userList}
+				</div>
+				{statusBar}
+				{errorDialog}
+				{userDialog}
 				{signOutDialog}
 			</div>
 		)
@@ -128,38 +141,33 @@ let App = React.createClass({
 	 */
 	onUserSignedIn: function (googleUser) {
 		let profile = googleUser.getBasicProfile();
-		if (!this.state.googleUser || (profile.getId() == this.state.googleUser.getBasicProfile().getId())) {
-			console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
+		console.log('onUserSignedIn id: ' + profile.getId() + ' name: ' + profile.getName() + ' email: ' + profile.getEmail());
 
-			// change body signin/out state
-			this._setSignedInState(true);
+		// change body signin/out state
+		this._setSignedInState(true);
 
-			this.setState({
-				googleUser: googleUser,
-				googleUserAuthToken: googleUser.getAuthResponse().id_token
-			});
+		this.setState({
+			googleUser: googleUser,
+			googleUserAuthToken: googleUser.getAuthResponse().id_token
+		});
 
-			this.performLoad();
-		}
+		this.performLoad();
 	},
 
 	/**
 	 * Called from index.html on signing out from google id service
 	 */
 	onUserSignedOut: function () {
+		console.log('onUserSignedOut');
+
 		this._setSignedInState(false);
+		this.setState({
+			users: [],
+			googleUser: null,
+			googleUserAuthToken: null
+		});
 
-		if (!!this.state.googleUser) {
-			console.log('onUserSignedOut');
-
-			this.setState({
-				users: [],
-				googleUser: null,
-				googleUserAuthToken: null
-			});
-
-			this.performLoad();
-		}
+		this.performLoad();
 	},
 
 	_setSignedInState: function (signedIn) {
@@ -184,43 +192,88 @@ let App = React.createClass({
 		let authToken = this.state.googleUserAuthToken;
 		if (!!authToken) {
 
-			let headers = new Headers();
-			headers.set("Authorization", this.state.googleUserAuthToken);
+			this.setState({
+				error: null
+			});
 
-			fetch("http://localhost:4567/api/v1/dashboard/users", {
-				credentials: 'include',
-				headers: headers
-			})
-				.then(function (response) {
-					return response.json()
-				})
-				.then(data => {
-					this.setState({
-						users: data.users,
-						error: null
-					});
-				})
-				.catch(e => {
-					this.setState({
-						users: [],
-						error: e.statusText
-					});
-				});
+			this._loadUserList();
+			this._loadUserStatus();
+
 		} else {
 			this.setState({
 				users: [],
-				error: "Unauthorized"
+				error: "Unauthorized - Please sign in."
 			})
 		}
 	},
 
-	closeUserDetail: function () {
+	_loadUserList: function () {
+		let headers = new Headers();
+		headers.set("Authorization", this.state.googleUserAuthToken);
+
+		fetch("http://localhost:4567/api/v1/dashboard/users", {
+			credentials: 'include',
+			headers: headers
+		})
+			.then(function (response) {
+				if (response.ok) {
+					return response.json()
+				} else {
+					throw new Error(response.status + " : " + response.statusText);
+				}
+			})
+			.then(data => {
+				this.setState({
+					users: data.users
+				});
+			})
+			.catch(e => {
+				this.setState({
+					users: [],
+					error: e.message
+				});
+			});
+	},
+
+	_loadUserStatus: function () {
+		let headers = new Headers();
+		headers.set("Authorization", this.state.googleUserAuthToken);
+
+		fetch("http://localhost:4567/api/v1/dashboard/userStatus", {
+			credentials: 'include',
+			headers: headers
+		})
+			.then(function (response) {
+				if (response.ok) {
+					return response.json()
+				} else {
+					throw new Error(response.status + " : " + response.statusText);
+				}
+			})
+			.then(data => {
+				console.log('_loadUserStatus: data: ', data);
+				this.setState({
+					totalUsers: data.totalUsers,
+					totalConnectedUsers: data.totalConnectedUsers
+				});
+			})
+			.catch(e => {
+				this.setState({
+					totalUsers: 'N/A',
+					totalConnectedUsers: 'N/A',
+					error: e.message
+				});
+			});
+	},
+
+
+	closeUserDialog: function () {
 		this.setState({
 			selectedUser: null
 		})
 	},
 
-	showUserDetail: function (user) {
+	showUserDialog: function (user) {
 		this.setState({
 			selectedUser: user
 		});
@@ -236,6 +289,12 @@ let App = React.createClass({
 		this.setState({
 			showSignOutDialog: false
 		});
+	},
+
+	closeErrorDialog: function () {
+		this.setState({
+			error: null
+		})
 	}
 
 });
