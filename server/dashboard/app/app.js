@@ -251,7 +251,6 @@ let App = React.createClass({
 				}
 			})
 			.then(data => {
-				console.log('_loadUserStatus: data: ', data);
 				this.setState({
 					totalUsers: data.totalUsers,
 					totalConnectedUsers: data.totalConnectedUsers
