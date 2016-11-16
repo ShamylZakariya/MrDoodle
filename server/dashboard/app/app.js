@@ -5,7 +5,7 @@ let ErrorDialog = require('./components/ErrorDialog');
 let UserList = require('./components/UserList');
 let UserDialog = require('./components/UserDialog');
 let UserToolbarItem = require('./components/UserToolbarItem');
-let SignOutDialog = require('./components/SignOutScreen');
+let SignOutDialog = require('./components/SignOutDialog');
 let UserStatusBar = require('./components/UserStatusBar');
 
 let debounce = require('./util/debounce');

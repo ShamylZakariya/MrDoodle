@@ -1,6 +1,6 @@
 let React = require('react');
 
-let SignOutScreen = React.createClass({
+let SignOutDialog = React.createClass({
 
 	getDefaultProps: function() {
 		return {
@@ -40,4 +40,4 @@ let SignOutScreen = React.createClass({
 
 });
 
-module.exports = SignOutScreen;
+module.exports = SignOutDialog;
