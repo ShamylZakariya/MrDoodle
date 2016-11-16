@@ -7,9 +7,12 @@ package org.zakariya.mrdoodleserver.transport;
 public class UserStatus {
 
 	// total number of users who have used service
-	public long totalUsers;
+	public int totalUsers;
 
 	// total number of users currently using service
-	public long totalConnectedUsers;
+	public int totalConnectedUsers;
+
+	// total number of devices currently connected to service
+	public int totalConnectedDevices;
 
 }

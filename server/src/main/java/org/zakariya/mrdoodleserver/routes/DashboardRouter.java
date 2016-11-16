@@ -113,9 +113,9 @@ public class DashboardRouter extends Router {
 
 	private UserStatus getUserStatus(Request request, Response response) {
 		UserStatus status = new UserStatus();
-		status.totalUsers = userRecordAccess.getUserCount();
+		status.totalUsers = (int)userRecordAccess.getUserCount();
 		status.totalConnectedUsers = WebSocketConnection.getInstance().getConnectedAccountIds().size();
-
+		status.totalConnectedDevices = WebSocketConnection.getInstance().getTotalConnectedDeviceCount();
 		return status;
 	}
 

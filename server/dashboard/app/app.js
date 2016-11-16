@@ -15,10 +15,17 @@ let App = React.createClass({
 
 	getInitialState: function () {
 		return {
+
+			// state from fetch() calls
 			users: [],
 			totalUsers: 0,
 			totalConnectedUsers: 0,
+			totalConnectedDevices: 0,
+
+			// error reporting, string
 			error: null,
+
+			// user interface state
 			selectedUser: null,
 			googleUser: null,
 			googleUserAuthToken: null,
@@ -47,7 +54,10 @@ let App = React.createClass({
 		let userList = <UserList users={this.state.users} click={this.showUserDialog}/>;
 
 		let statusBar =
-			<UserStatusBar totalUsers={this.state.totalUsers} totalConnectedUsers={this.state.totalConnectedUsers}/>
+			<UserStatusBar totalUsers={this.state.totalUsers}
+				totalConnectedUsers={this.state.totalConnectedUsers}
+				totalConnectedDevices={this.state.totalConnectedDevices}
+			/>;
 
 		let errorDialog = this.state.error ?
 			<ErrorDialog error={this.state.error} close={this.closeErrorDialog}/> : null;
@@ -251,9 +261,11 @@ let App = React.createClass({
 				}
 			})
 			.then(data => {
+				console.log('data: ', data);
 				this.setState({
 					totalUsers: data.totalUsers,
-					totalConnectedUsers: data.totalConnectedUsers
+					totalConnectedUsers: data.totalConnectedUsers,
+					totalConnectedDevices: data.totalConnectedDevices
 				});
 			})
 			.catch(e => {
