@@ -4,14 +4,15 @@ Test inability to connect more thoroughly. Try assigning an invalid IP address.
 
 #CURRENTLY
 
+- serviceStatus
+	- we need some kind of local persistent store for service status, which defaults to assuming service is running and not discontinued
+	- sync settings screen should show the discontinued or offline message if needed
+
+
 - design better icon
 - design better empty graphic
 
-- Add a killswitch file on another server, say, shamylzakariya.github.io. it would be a JSON file with contents like:
-	{
-		"discontinued": null || "MrDoodle sync services have been discontinued, sorry"
-	}
-	- this would only have to be checked once per session, on app startup
+
 
 #TODO
 

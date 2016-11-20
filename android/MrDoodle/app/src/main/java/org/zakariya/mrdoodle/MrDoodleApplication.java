@@ -2,14 +2,18 @@ package org.zakariya.mrdoodle;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.Nullable;
+import android.text.TextUtils;
 import android.util.Log;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.squareup.leakcanary.LeakCanary;
 import com.squareup.leakcanary.RefWatcher;
 import com.squareup.otto.Bus;
@@ -59,6 +63,8 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 	private static final String TAG = "MrDoodleApplication";
 
+	private static final String PREF_KEY_SERVICE_STATUS = "ServiceStatus";
+
 	private static MrDoodleApplication instance;
 
 	private BackgroundWatcher backgroundWatcher;
@@ -95,7 +101,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		Realm.setDefaultConfiguration(realmConfiguration);
 
 		initSingletons();
-		checkServiceStatus();
+		loadServiceStatus();
 
 		Log.i(TAG, "onCreate: Started MrDoodleApplication version: " + getVersionString());
 	}
@@ -171,8 +177,30 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		SyncManager.getInstance().addSyncStateListener(this);
 	}
 
-	private void checkServiceStatus() {
+	private void loadServiceStatus() {
 		if (serviceStatus == null) {
+
+			// first load persisted serviceStatus
+			SharedPreferences sharedPreferences = getSharedPreferences();
+			String statusJson = sharedPreferences.getString(PREF_KEY_SERVICE_STATUS, null);
+			if (!TextUtils.isEmpty(statusJson)) {
+				Gson gson = new Gson();
+				try {
+					serviceStatus = gson.fromJson(statusJson, ServiceStatus.class);
+				} catch (JsonSyntaxException e) {
+					Log.e(TAG, "loadServiceStatus: unable to parse persisted ServiceStatus JSON string", e);
+				}
+			}
+
+			// go default if needed - this should only happen on first run.
+			// assume that service is alive and running.
+			if (serviceStatus == null) {
+				serviceStatus = new ServiceStatus();
+				serviceStatus.isDiscontinued = false;
+				serviceStatus.isScheduledDowntime = false;
+			}
+
+			// now update serviceStatus from net (if possible)
 			StatusApiConfiguration config = new StatusApiConfiguration();
 			StatusApi statusApi = new StatusApi(config);
 			statusApi.getServiceStatus()
@@ -185,16 +213,43 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 						@Override
 						public void onError(Throwable e) {
-							Log.e(TAG, "checkServiceStatus - onError: ", e);
+							Log.e(TAG, "loadServiceStatus - onError: ", e);
 						}
 
 						@Override
 						public void onNext(ServiceStatus serviceStatus) {
-							MrDoodleApplication.this.serviceStatus = serviceStatus;
-							Log.i(TAG, "onNext: serviceStatus: " + serviceStatus);
+							setServiceStatus(serviceStatus);
 						}
 					});
 		}
+	}
+
+	public ServiceStatus getServiceStatus() {
+		return serviceStatus;
+	}
+
+	private void setServiceStatus(ServiceStatus status) {
+
+		boolean didChange = status.isDiscontinued != this.serviceStatus.isDiscontinued || status.isScheduledDowntime != this.serviceStatus.isScheduledDowntime;
+
+		this.serviceStatus = status;
+
+		// persist
+		Gson gson = new Gson();
+		String serviceStatusJson = gson.toJson(serviceStatus);
+		SharedPreferences sharedPreferences = getSharedPreferences();
+		sharedPreferences.edit().putString(PREF_KEY_SERVICE_STATUS, serviceStatusJson).apply();
+
+		// now act
+		if (didChange) {
+			// TODO: What do we do? Enable/disable sync??? Post events for UI to act on???
+			// if we do want to show a dialog, this returns us to the situation where we need to know the
+			// active activity to use as a host
+		}
+	}
+
+	private SharedPreferences getSharedPreferences() {
+		return getSharedPreferences(MrDoodleApplication.class.getSimpleName(), Context.MODE_PRIVATE);
 	}
 
 	///////////////////////////////////////////////////////////////////
