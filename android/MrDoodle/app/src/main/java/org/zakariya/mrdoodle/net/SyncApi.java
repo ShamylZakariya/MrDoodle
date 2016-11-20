@@ -1,6 +1,5 @@
 package org.zakariya.mrdoodle.net;
 
-import android.content.Context;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
@@ -15,7 +14,6 @@ import org.zakariya.mrdoodle.net.transport.RemoteStatus;
 import org.zakariya.mrdoodle.net.transport.TimestampRecordEntry;
 import org.zakariya.mrdoodle.signin.model.SignInAccount;
 import org.zakariya.mrdoodle.sync.ChangeJournal;
-import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.TimestampRecorder;
 import org.zakariya.mrdoodle.sync.events.RemoteChangeEvent;
 import org.zakariya.mrdoodle.sync.model.ChangeJournalItem;
@@ -62,20 +60,14 @@ public class SyncApi {
 
 	private static final String TAG = SyncApi.class.getSimpleName();
 
-	private Context context;
-	private SyncConfiguration syncConfiguration;
-	private OkHttpClient httpClient;
-	private Retrofit retrofit;
 	private String authorizationToken;
 	private String deviceId;
 	private SyncApiService syncApiService;
 	private boolean syncing;
 	private String userAgentString;
 
-	public SyncApi(Context context, SyncConfiguration syncConfiguration) {
-		this.context = context;
-		this.syncConfiguration = syncConfiguration;
-		this.userAgentString = syncConfiguration.getUserAgent();
+	public SyncApi(SyncApiConfiguration syncApiConfiguration) {
+		this.userAgentString = syncApiConfiguration.getUserAgent();
 
 		// set up an interceptor to add Authorization headers
 		OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder();
@@ -101,31 +93,15 @@ public class SyncApi {
 			}
 		});
 
-		httpClient = httpClientBuilder.build();
-		retrofit = new Retrofit.Builder()
-				.baseUrl(syncConfiguration.getSyncServiceUrl())
+		OkHttpClient httpClient = httpClientBuilder.build();
+		Retrofit retrofit = new Retrofit.Builder()
+				.baseUrl(syncApiConfiguration.getSyncServiceUrl())
 				.addConverterFactory(ScalarsConverterFactory.create())
 				.addConverterFactory(GsonConverterFactory.create())
 				.client(httpClient)
 				.build();
 
 		syncApiService = retrofit.create(SyncApiService.class);
-	}
-
-	public Context getContext() {
-		return context;
-	}
-
-	public SyncConfiguration getSyncConfiguration() {
-		return syncConfiguration;
-	}
-
-	public OkHttpClient getHttpClient() {
-		return httpClient;
-	}
-
-	public Retrofit getRetrofit() {
-		return retrofit;
 	}
 
 	public SyncApiService getSyncApiService() {

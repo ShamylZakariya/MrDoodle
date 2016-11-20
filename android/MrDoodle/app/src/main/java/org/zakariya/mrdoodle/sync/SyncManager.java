@@ -8,6 +8,7 @@ import android.util.Log;
 import com.squareup.otto.Subscribe;
 
 import org.zakariya.mrdoodle.net.SyncApi;
+import org.zakariya.mrdoodle.net.SyncApiConfiguration;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.exceptions.SyncException;
 import org.zakariya.mrdoodle.net.model.SyncReport;
@@ -63,7 +64,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private boolean connected;
 	private SignInAccount userAccount;
 	private boolean applicationIsActive, running;
-	private SyncConfiguration syncConfiguration;
+	private SyncApiConfiguration syncApiConfiguration;
 	private SyncServerConnection syncServerConnection;
 	private ChangeJournal changeJournal;
 	private TimestampRecorder timestampRecorder;
@@ -75,9 +76,9 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private Debouncer<RemoteStatus> remoteStatusSyncTriggerDebouncer;
 	private Debouncer<Void> localChangeSyncTriggerDebouncer;
 
-	public static void init(Context context, SyncConfiguration syncConfiguration, ModelDataAdapter modelDataAdapter) {
+	public static void init(Context context, SyncApiConfiguration syncApiConfiguration, ModelDataAdapter modelDataAdapter) {
 		if (instance == null) {
-			instance = new SyncManager(context, syncConfiguration, modelDataAdapter);
+			instance = new SyncManager(context, syncApiConfiguration, modelDataAdapter);
 		}
 	}
 
@@ -85,22 +86,22 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		return instance;
 	}
 
-	private SyncManager(Context context, SyncConfiguration syncConfiguration, ModelDataAdapter modelDataAdapter) {
+	private SyncManager(Context context, SyncApiConfiguration syncApiConfiguration, ModelDataAdapter modelDataAdapter) {
 		BusProvider.getMainThreadBus().register(this);
 
-		this.syncConfiguration = syncConfiguration;
+		this.syncApiConfiguration = syncApiConfiguration;
 		this.modelDataAdapter = modelDataAdapter;
 
 
 		applicationIsActive = true;
 		userAccount = SignInManager.getInstance().getAccount();
 
-		syncServerConnection = new SyncServerConnection(syncConfiguration.getSyncServerConnectionUrl());
+		syncServerConnection = new SyncServerConnection(syncApiConfiguration.getSyncServerConnectionUrl());
 		syncServerConnection.addNotificationListener(this);
 
 		changeJournal = new ChangeJournal(CHANGE_JOURNAL_PERSIST_PREFIX, true);
 		timestampRecorder = new TimestampRecorder();
-		syncApi = new SyncApi(context, syncConfiguration);
+		syncApi = new SyncApi(syncApiConfiguration);
 
 		lockState = new LockState();
 
@@ -129,8 +130,8 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		return connected;
 	}
 
-	public SyncConfiguration getSyncConfiguration() {
-		return syncConfiguration;
+	public SyncApiConfiguration getSyncApiConfiguration() {
+		return syncApiConfiguration;
 	}
 
 	public SyncServerConnection getSyncServerConnection() {

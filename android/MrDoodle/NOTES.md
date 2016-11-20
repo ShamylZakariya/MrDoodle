@@ -7,22 +7,18 @@ Test inability to connect more thoroughly. Try assigning an invalid IP address.
 - design better icon
 - design better empty graphic
 
-- Add a killswitch file on another server, say, shamylzakariya.github.io. it would be a JSON file with contents like: {
-	"discontinued": null || "MrDoodle sync services have been discontinued, sorry"
-}
+- Add a killswitch file on another server, say, shamylzakariya.github.io. it would be a JSON file with contents like:
+	{
+		"discontinued": null || "MrDoodle sync services have been discontinued, sorry"
+	}
+	- this would only have to be checked once per session, on app startup
 
 #TODO
-
-- First sync after signing in should mark all local documents as "new" and push them upstream.
-	- can make an alternate to "resetAndSync" -> "touchAndSync" which marks all local docs new and then initiates a sync
-	- this should be automatically run after first time sign in. Need to think about how this is triggered. Right now what triggers first time sync? I think the websocket receives a timestamp and that will automatically be > 0.
-
 
 - Figure out how to show the about/syncsettings/modeloverview as dialogs not fullscreen activities when on tablet
 	- it looks like the supported way to do this is with a fragment dialog
 	- this means those items would have to be fragments, not activities
 	- need to maintain state on rotation, since the dialogs would just disappear
-	-
 
 - Alpha Blending
 	Will require 3 new full-screen bitmaps.
