@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.ColorRes;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.MenuRes;
 import android.support.annotation.Nullable;
@@ -42,9 +43,11 @@ import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentStoreWasClearedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentStoreWillBeClearedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
+import org.zakariya.mrdoodle.events.ServiceStatusAvailableEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.transport.ServiceStatus;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.events.SignInEvent;
 import org.zakariya.mrdoodle.signin.events.SignOutEvent;
@@ -91,6 +94,12 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Bind(R.id.emptyView)
 	View emptyView;
 
+	@Bind(R.id.alertBanner)
+	View alertBanner;
+
+	@Bind(R.id.alertBannerTitle)
+	TextView alertBannerTitle;
+
 	private AppBarLayout appBarLayout;
 
 	private Realm realm;
@@ -104,6 +113,9 @@ public class DoodleDocumentGridFragment extends Fragment
 
 	@State
 	String selectedDocumentUuid;
+
+	@State
+	boolean alertBannerDismissed = false;
 
 	public DoodleDocumentGridFragment() {
 		setHasOptionsMenu(true);
@@ -175,6 +187,9 @@ public class DoodleDocumentGridFragment extends Fragment
 				queryDoodleDocumentAction(document);
 			}
 		}
+
+		// load the current service status, but we'll listen for changes too
+		setServiceStatus(MrDoodleApplication.getInstance().getServiceStatus());
 	}
 
 	@Override
@@ -451,6 +466,41 @@ public class DoodleDocumentGridFragment extends Fragment
 		return account != null;
 	}
 
+	private void setServiceStatus(ServiceStatus status) {
+		Log.d(TAG, "setServiceStatus() called with: status = [" + status + "]");
+
+		// show alert banner iff status has discontinued or alert state, and iff
+		// user has not dismissed the alert in this app session (we don't care about
+		// persistence, but duration of app lifetime is good enough
+
+		if (!alertBannerDismissed && (status.isDiscontinued || status.isAlert)) {
+			alertBanner.setVisibility(View.VISIBLE);
+
+			@ColorRes int colorRes;
+			String message;
+
+			if (status.isDiscontinued) {
+				colorRes = R.color.alertBannerBackgroundDiscontinued;
+				message = status.discontinuedMessage;
+			} else {
+				colorRes = R.color.alertBannerBackgroundGeneral;
+				message = status.alertMessage;
+			}
+
+			alertBanner.setBackgroundColor(ContextCompat.getColor(getContext(), colorRes));
+			alertBannerTitle.setText(message);
+
+		} else {
+			alertBanner.setVisibility(View.GONE);
+		}
+	}
+
+	@OnClick(R.id.alertBannerCloseButton)
+	public void onAlertBannerCloseButtonTap() {
+		alertBannerDismissed = true;
+		alertBanner.setVisibility(View.GONE);
+	}
+
 	///////////////////////////////////////////////////////////////////
 
 	@Subscribe
@@ -523,6 +573,11 @@ public class DoodleDocumentGridFragment extends Fragment
 		// update the right items
 
 		adapter.setForeignLockState(event.getForeignLocks());
+	}
+
+	@Subscribe
+	public void onServiceStatusAvailable(ServiceStatusAvailableEvent event) {
+		setServiceStatus(event.getServiceStatus());
 	}
 
 	///////////////////////////////////////////////////////////////////

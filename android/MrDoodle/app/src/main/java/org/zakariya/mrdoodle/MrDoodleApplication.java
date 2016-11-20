@@ -25,6 +25,7 @@ import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentStoreWasClearedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
+import org.zakariya.mrdoodle.events.ServiceStatusAvailableEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.model.DoodleDocumentNotFoundException;
 import org.zakariya.mrdoodle.net.StatusApi;
@@ -62,7 +63,6 @@ import rx.schedulers.Schedulers;
 public class MrDoodleApplication extends android.app.Application implements SyncManager.SyncStateListener {
 
 	private static final String TAG = "MrDoodleApplication";
-
 	private static final String PREF_KEY_SERVICE_STATUS = "ServiceStatus";
 
 	private static MrDoodleApplication instance;
@@ -197,7 +197,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 			if (serviceStatus == null) {
 				serviceStatus = new ServiceStatus();
 				serviceStatus.isDiscontinued = false;
-				serviceStatus.isScheduledDowntime = false;
+				serviceStatus.isAlert = false;
 			}
 
 			// now update serviceStatus from net (if possible)
@@ -229,9 +229,6 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	}
 
 	private void setServiceStatus(ServiceStatus status) {
-
-		boolean didChange = status.isDiscontinued != this.serviceStatus.isDiscontinued || status.isScheduledDowntime != this.serviceStatus.isScheduledDowntime;
-
 		this.serviceStatus = status;
 
 		// persist
@@ -240,12 +237,8 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		SharedPreferences sharedPreferences = getSharedPreferences();
 		sharedPreferences.edit().putString(PREF_KEY_SERVICE_STATUS, serviceStatusJson).apply();
 
-		// now act
-		if (didChange) {
-			// TODO: What do we do? Enable/disable sync??? Post events for UI to act on???
-			// if we do want to show a dialog, this returns us to the situation where we need to know the
-			// active activity to use as a host
-		}
+		// now broadcast
+		BusProvider.getMainThreadBus().post(new ServiceStatusAvailableEvent(serviceStatus));
 	}
 
 	private SharedPreferences getSharedPreferences() {
