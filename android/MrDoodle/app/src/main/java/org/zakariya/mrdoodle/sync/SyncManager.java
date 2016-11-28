@@ -7,6 +7,7 @@ import android.util.Log;
 
 import com.squareup.otto.Subscribe;
 
+import org.zakariya.mrdoodle.net.ServiceStatusMonitor;
 import org.zakariya.mrdoodle.net.SyncApi;
 import org.zakariya.mrdoodle.net.SyncApiConfiguration;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
@@ -14,6 +15,7 @@ import org.zakariya.mrdoodle.net.exceptions.SyncException;
 import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.net.transport.RemoteLockStatus;
 import org.zakariya.mrdoodle.net.transport.RemoteStatus;
+import org.zakariya.mrdoodle.net.transport.ServiceStatus;
 import org.zakariya.mrdoodle.signin.AuthenticationTokenReceiver;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.events.SignInEvent;
@@ -41,7 +43,7 @@ import rx.schedulers.Schedulers;
  * Top level access point for sync services
  */
 @SuppressWarnings("TryFinallyCanBeTryWithResources")
-public class SyncManager implements SyncServerConnection.NotificationListener {
+public class SyncManager implements SyncServerConnection.NotificationListener, ServiceStatusMonitor.ServiceStatusListener {
 
 	private static final int REMOTE_STATUS_CHANGE_SYNC_TRIGGER_DEBOUNCE_MILLIS = 500;
 	private static final int LOCAL_UPDATE_SYNC_TRIGGER_DEBOUNCE_MILLIS = 1000;
@@ -62,6 +64,7 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 
 	private static SyncManager instance;
 	private boolean connected;
+	private ServiceStatus serviceStatus;
 	private SignInAccount userAccount;
 	private boolean applicationIsActive, running;
 	private SyncApiConfiguration syncApiConfiguration;
@@ -76,9 +79,10 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	private Debouncer<RemoteStatus> remoteStatusSyncTriggerDebouncer;
 	private Debouncer<Void> localChangeSyncTriggerDebouncer;
 
-	public static void init(Context context, SyncApiConfiguration syncApiConfiguration, ModelDataAdapter modelDataAdapter) {
+	public static void init(Context context, SyncApiConfiguration syncApiConfiguration, ModelDataAdapter modelDataAdapter, ServiceStatusMonitor serviceStatusMonitor) {
 		if (instance == null) {
 			instance = new SyncManager(context, syncApiConfiguration, modelDataAdapter);
+			serviceStatusMonitor.addServiceStatusListener(instance);
 		}
 	}
 
@@ -483,7 +487,9 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 	}
 
 	private void startOrStopSyncServices() {
-		if (applicationIsActive && userAccount != null) {
+
+		boolean serviceShouldBeRunning = serviceStatus != null && serviceStatus.serviceShouldBeRunning();
+		if (applicationIsActive && userAccount != null && serviceShouldBeRunning) {
 			connect();
 		} else {
 			disconnect();
@@ -610,6 +616,13 @@ public class SyncManager implements SyncServerConnection.NotificationListener {
 		Log.i(TAG, "onDisconnectedFromSyncServer: disconnected from sync server, error: " + e);
 		connected = false;
 		syncApi.setDeviceId(null);
+	}
+
+	@Override
+	public void onServiceStatusDidChange(ServiceStatus status) {
+		Log.i(TAG, "onServiceStatusDidChange: status: " + status);
+		serviceStatus = status;
+		startOrStopSyncServices();
 	}
 
 	///////////////////////////////////////////////////////////////////

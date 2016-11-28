@@ -2,18 +2,14 @@ package org.zakariya.mrdoodle;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.support.annotation.Nullable;
-import android.text.TextUtils;
 import android.util.Log;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
 import com.squareup.leakcanary.LeakCanary;
 import com.squareup.leakcanary.RefWatcher;
 import com.squareup.otto.Bus;
@@ -25,15 +21,12 @@ import org.zakariya.mrdoodle.events.DoodleDocumentCreatedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentStoreWasClearedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
-import org.zakariya.mrdoodle.events.ServiceStatusAvailableEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.model.DoodleDocumentNotFoundException;
-import org.zakariya.mrdoodle.net.StatusApi;
-import org.zakariya.mrdoodle.net.StatusApiConfiguration;
+import org.zakariya.mrdoodle.net.ServiceStatusMonitor;
 import org.zakariya.mrdoodle.net.SyncApiConfiguration;
 import org.zakariya.mrdoodle.net.model.RemoteChangeReport;
 import org.zakariya.mrdoodle.net.model.SyncReport;
-import org.zakariya.mrdoodle.net.transport.ServiceStatus;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.techniques.GoogleSignInTechnique;
 import org.zakariya.mrdoodle.sync.SyncManager;
@@ -47,9 +40,6 @@ import java.util.List;
 
 import io.realm.Realm;
 import io.realm.RealmConfiguration;
-import rx.Subscriber;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.schedulers.Schedulers;
 
 /**
  * MrDoodleApplication
@@ -63,7 +53,6 @@ import rx.schedulers.Schedulers;
 public class MrDoodleApplication extends android.app.Application implements SyncManager.SyncStateListener {
 
 	private static final String TAG = "MrDoodleApplication";
-	private static final String PREF_KEY_SERVICE_STATUS = "ServiceStatus";
 
 	private static MrDoodleApplication instance;
 
@@ -72,8 +61,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	private LocalChangeListener localChangeListener;
 	private Handler handler;
 	private RefWatcher refWatcher;
-
-	private ServiceStatus serviceStatus = null;
+	private ServiceStatusMonitor serviceStatusMonitor;
 
 	public static RefWatcher getRefWatcher(Context context) {
 		MrDoodleApplication application = (MrDoodleApplication) context.getApplicationContext();
@@ -101,7 +89,6 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 		Realm.setDefaultConfiguration(realmConfiguration);
 
 		initSingletons();
-		loadServiceStatus();
 
 		Log.i(TAG, "onCreate: Started MrDoodleApplication version: " + getVersionString());
 	}
@@ -116,6 +103,10 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 	public BackgroundWatcher getBackgroundWatcher() {
 		return backgroundWatcher;
+	}
+
+	public ServiceStatusMonitor getServiceStatusMonitor() {
+		return serviceStatusMonitor;
 	}
 
 	public String getVersionString() {
@@ -161,13 +152,16 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	private void initSingletons() {
 		DoodleThumbnailRenderer.init(this);
 
+		serviceStatusMonitor = new ServiceStatusMonitor(this);
+
 		SignInManager.init(new GoogleSignInTechnique(this));
 		//SignInManager.init(new MockSignInTechnique(this));
 
 		// build the sync manager, providing mechanism for serializing/de-serializing our model type
 		SyncApiConfiguration configuration = new SyncApiConfiguration();
 		configuration.setUserAgent("MrDoodle-" + getVersionString());
-		SyncManager.init(this, configuration, new SyncModelAdapter());
+		SyncManager.init(this, configuration, new SyncModelAdapter(), serviceStatusMonitor);
+
 
 		// set up notifier to let change journal capture model events
 		localChangeListener = new LocalChangeListener(SyncManager.getInstance());
@@ -175,74 +169,6 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 		// we need to listen to sync start/stop events to turn on or off the change journal notifier
 		SyncManager.getInstance().addSyncStateListener(this);
-	}
-
-	private void loadServiceStatus() {
-		if (serviceStatus == null) {
-
-			// first load persisted serviceStatus
-			SharedPreferences sharedPreferences = getSharedPreferences();
-			String statusJson = sharedPreferences.getString(PREF_KEY_SERVICE_STATUS, null);
-			if (!TextUtils.isEmpty(statusJson)) {
-				Gson gson = new Gson();
-				try {
-					serviceStatus = gson.fromJson(statusJson, ServiceStatus.class);
-				} catch (JsonSyntaxException e) {
-					Log.e(TAG, "loadServiceStatus: unable to parse persisted ServiceStatus JSON string", e);
-				}
-			}
-
-			// go default if needed - this should only happen on first run.
-			// assume that service is alive and running.
-			if (serviceStatus == null) {
-				serviceStatus = new ServiceStatus();
-				serviceStatus.isDiscontinued = false;
-				serviceStatus.isAlert = false;
-			}
-
-			// now update serviceStatus from net (if possible)
-			StatusApiConfiguration config = new StatusApiConfiguration();
-			StatusApi statusApi = new StatusApi(config);
-			statusApi.getServiceStatus()
-					.subscribeOn(Schedulers.io())
-					.observeOn(AndroidSchedulers.mainThread())
-					.subscribe(new Subscriber<ServiceStatus>() {
-						@Override
-						public void onCompleted() {
-						}
-
-						@Override
-						public void onError(Throwable e) {
-							Log.e(TAG, "loadServiceStatus - onError: ", e);
-						}
-
-						@Override
-						public void onNext(ServiceStatus serviceStatus) {
-							setServiceStatus(serviceStatus);
-						}
-					});
-		}
-	}
-
-	public ServiceStatus getServiceStatus() {
-		return serviceStatus;
-	}
-
-	private void setServiceStatus(ServiceStatus status) {
-		this.serviceStatus = status;
-
-		// persist
-		Gson gson = new Gson();
-		String serviceStatusJson = gson.toJson(serviceStatus);
-		SharedPreferences sharedPreferences = getSharedPreferences();
-		sharedPreferences.edit().putString(PREF_KEY_SERVICE_STATUS, serviceStatusJson).apply();
-
-		// now broadcast
-		BusProvider.getMainThreadBus().post(new ServiceStatusAvailableEvent(serviceStatus));
-	}
-
-	private SharedPreferences getSharedPreferences() {
-		return getSharedPreferences(MrDoodleApplication.class.getSimpleName(), Context.MODE_PRIVATE);
 	}
 
 	///////////////////////////////////////////////////////////////////
