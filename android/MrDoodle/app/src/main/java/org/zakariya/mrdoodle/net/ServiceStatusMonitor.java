@@ -36,6 +36,7 @@ public class ServiceStatusMonitor {
 	private static final String TAG = "ServiceStatusMonitor";
 	private static final String PREF_KEY_SERVICE_STATUS = "ServiceStatus";
 	private ServiceStatus serviceStatus = null;
+	private ServiceStatus mockServiceStatus = null;
 	private SharedPreferences sharedPreferences;
 	private List<ServiceStatusListener> listeners = new ArrayList<>();
 
@@ -67,6 +68,23 @@ public class ServiceStatusMonitor {
 		loadServiceStatus();
 	}
 
+	public ServiceStatus getMockServiceStatus() {
+		return mockServiceStatus;
+	}
+
+	/**
+	 * Set a mock ServiceStatus for testing purposes
+	 * @param mockServiceStatus a mock ServiceStatus which will override the real one
+	 */
+	public void setMockServiceStatus(ServiceStatus mockServiceStatus) {
+		this.mockServiceStatus = mockServiceStatus;
+		setServiceStatus(mockServiceStatus);
+	}
+
+	public ServiceStatus getServiceStatus() {
+		return serviceStatus;
+	}
+
 	synchronized public void addServiceStatusListener(ServiceStatusListener listener) {
 		listeners.add(listener);
 		listener.onServiceStatusDidChange(serviceStatus);
@@ -77,7 +95,6 @@ public class ServiceStatusMonitor {
 	}
 
 	private void loadServiceStatus() {
-
 		// update serviceStatus from net (if possible)
 		StatusApiConfiguration config = new StatusApiConfiguration();
 		StatusApi statusApi = new StatusApi(config);
@@ -96,22 +113,18 @@ public class ServiceStatusMonitor {
 
 					@Override
 					public void onNext(ServiceStatus serviceStatus) {
-
-						// TODO: Disable this
-						serviceStatus.serverStatus = ServiceStatus.ServerStatus.DOWNTIME.ordinal();
-						serviceStatus.serverStatusMessage = "MrDoodle sync services are paused for the time being. Nothing lasts forever. Go play outside. Wakka wakka wakka.";
-
 						setServiceStatus(serviceStatus);
 					}
 				});
-
 	}
 
-	public ServiceStatus getServiceStatus() {
-		return serviceStatus;
-	}
 
 	synchronized private void setServiceStatus(ServiceStatus status) {
+
+		if (mockServiceStatus != null) {
+			status = mockServiceStatus;
+		}
+
 		this.serviceStatus = status;
 
 		// persist

@@ -597,6 +597,4 @@ public class DoodleDocumentGridFragment extends Fragment
 		setServiceStatus(event.getServiceStatus());
 	}
 
-	///////////////////////////////////////////////////////////////////
-
 }

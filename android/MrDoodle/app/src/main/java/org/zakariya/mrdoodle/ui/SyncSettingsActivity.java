@@ -17,13 +17,13 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
-import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,8 +32,10 @@ import com.squareup.otto.Subscribe;
 import com.squareup.picasso.Picasso;
 
 import org.zakariya.mrdoodle.BuildConfig;
+import org.zakariya.mrdoodle.MrDoodleApplication;
 import org.zakariya.mrdoodle.R;
 import org.zakariya.mrdoodle.events.DoodleDocumentStoreWillBeClearedEvent;
+import org.zakariya.mrdoodle.events.ServiceStatusAvailableEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.net.SyncApi;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
@@ -41,6 +43,7 @@ import org.zakariya.mrdoodle.net.api.SyncApiService;
 import org.zakariya.mrdoodle.net.events.SyncServerConnectionStatusEvent;
 import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.net.transport.RemoteStatus;
+import org.zakariya.mrdoodle.net.transport.ServiceStatus;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.SignInTechnique;
 import org.zakariya.mrdoodle.signin.events.SignInEvent;
@@ -108,17 +111,20 @@ public class SyncSettingsActivity extends BaseActivity {
 	@Bind(R.id.syncHistoryRecyclerView)
 	RecyclerView syncHistoryRecyclerView;
 
-	@Bind(R.id.disconnectedMessageBox)
-	View disconnectedMessageBox;
+	@Bind(R.id.alertBanner)
+	View alertBanner;
 
-	@Bind(R.id.disconnectedTextView)
-	TextView disconnectedTextView;
+	@Bind(R.id.alertBannerTitle)
+	TextView alertBannerTitle;
 
-	@Bind(R.id.disconnectedExplanationTextView)
-	TextView disconnectedExplanationTextView;
+	@Bind(R.id.alertBannerCloseButton)
+	ImageButton alertBannerCloseButton;
 
 	@State
 	boolean connected;
+
+	@State
+	String alertMessage;
 
 	private MenuItem toggleServerConnectionMenuItem;
 	private MenuItem getRemoteStatusMenuItem;
@@ -130,7 +136,9 @@ public class SyncSettingsActivity extends BaseActivity {
 	private Realm realm;
 	private SyncLogAdapter syncLogAdapter;
 	private Subscription syncSubscription;
-	private Debouncer<Pair<Boolean, String>> disconnectionMessageDebouncer;
+	private Debouncer<String> alertBannerDebouncer;
+	private ServiceStatus serviceStatus;
+	private String serverConnectionError;
 
 	public static Intent getIntent(Context context) {
 		return new Intent(context, SyncSettingsActivity.class);
@@ -173,24 +181,28 @@ public class SyncSettingsActivity extends BaseActivity {
 		// only show userId in debug builds - users don't need to see this :)
 		userIdTextView.setVisibility(BuildConfig.DEBUG ? View.VISIBLE : View.GONE);
 
-		// hide disconnection message for now
-		disconnectedMessageBox.setVisibility(View.GONE);
+		// hide disconnection message for now, and hide its close button - we don't want it closing here
+		alertBanner.setVisibility(View.GONE);
+		alertBannerCloseButton.setVisibility(View.GONE);
 
-		// to minimize flicker during reconnect attempts, we will use a debouncer. the first
-		// value, the boolean, is whether to show the message, the second is the error message
-		disconnectionMessageDebouncer = new Debouncer<>(500, new Action1<Pair<Boolean, String>>() {
+		// to minimize flicker (possible during reconnect attempts), we will use a debouncer.
+		// if the string payload is null, hide banner, otherwise show banner with that text
+		alertBannerDebouncer = new Debouncer<>(500, new Action1<String>() {
 			@Override
-			public void call(Pair<Boolean, String> payload) {
-				disconnectedMessageBox.setVisibility(payload.first ? View.VISIBLE : View.GONE);
-				if (!TextUtils.isEmpty(payload.second)) {
-					disconnectedExplanationTextView.setVisibility(View.VISIBLE);
-					disconnectedExplanationTextView.setText(payload.second);
+			public void call(String message) {
+				if (!TextUtils.isEmpty(message)) {
+					alertBanner.setVisibility(View.VISIBLE);
+					alertBannerTitle.setText(message);
 				} else {
-					disconnectedExplanationTextView.setVisibility(View.GONE);
+					alertBanner.setVisibility(View.GONE);
 				}
 			}
 		});
 
+		// restore the previous alert banner if this is a restoration
+		if (!TextUtils.isEmpty(alertMessage)) {
+			alertBannerDebouncer.send(alertMessage);
+		}
 	}
 
 	@Override
@@ -199,8 +211,8 @@ public class SyncSettingsActivity extends BaseActivity {
 			syncSubscription.unsubscribe();
 		}
 
-		if (disconnectionMessageDebouncer != null) {
-			disconnectionMessageDebouncer.destroy();
+		if (alertBannerDebouncer != null) {
+			alertBannerDebouncer.destroy();
 		}
 
 		BusProvider.getMainThreadBus().unregister(this);
@@ -305,6 +317,7 @@ public class SyncSettingsActivity extends BaseActivity {
 		super.onResume();
 		showCurrentSignedInState(false);
 		showCurrentServerConnectionState(false);
+		getServiceStatus();
 	}
 
 	@OnClick(R.id.signInButton)
@@ -513,7 +526,7 @@ public class SyncSettingsActivity extends BaseActivity {
 			case DISCONNECTED: {
 				connected = false;
 				iconRes = R.drawable.ic_sync_disconnected;
-				showDisconnectionMessage(formatDisconnectionError(event.getError()));
+				serverConnectionError = formatDisconnectionError(event.getError());
 				break;
 			}
 
@@ -521,7 +534,7 @@ public class SyncSettingsActivity extends BaseActivity {
 				boolean wasConnected = this.connected;
 				connected = true;
 				iconRes = R.drawable.ic_sync_connected;
-				hideDisconnectionMessage();
+				serverConnectionError = null;
 				if (!wasConnected) {
 					Toast.makeText(SyncSettingsActivity.this, sync_server_connection_status_connected, Toast.LENGTH_SHORT).show();
 				}
@@ -537,7 +550,15 @@ public class SyncSettingsActivity extends BaseActivity {
 			toggleServerConnectionMenuItem.setTitle(connected ? R.string.sync_menu_disconnect : R.string.sync_menu_connect);
 		}
 
+		updateAlertMessage();
 	}
+
+	@Subscribe
+	public void onServiceStatusAvailable(ServiceStatusAvailableEvent event) {
+		serviceStatus = event.getServiceStatus();
+		updateAlertMessage();
+	}
+
 
 	private boolean isSignedIn() {
 		return SignInManager.getInstance().getAccount() != null;
@@ -603,6 +624,11 @@ public class SyncSettingsActivity extends BaseActivity {
 		return connected;
 	}
 
+	private void getServiceStatus(){
+		serviceStatus = MrDoodleApplication.getInstance().getServiceStatusMonitor().getServiceStatus();
+		updateAlertMessage();
+	}
+
 	private void showCurrentServerConnectionState(boolean toastStatus) {
 		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
 		onSyncServerConnectionStatusChanged(new SyncServerConnectionStatusEvent(connection));
@@ -625,12 +651,18 @@ public class SyncSettingsActivity extends BaseActivity {
 		return e != null ? e.toString() : null;
 	}
 
-	void showDisconnectionMessage(String message) {
-		disconnectionMessageDebouncer.send(new Pair<>(true, message));
-	}
+	void updateAlertMessage() {
 
-	void hideDisconnectionMessage() {
-		disconnectionMessageDebouncer.send(new Pair<Boolean, String>(false, null));
+		alertMessage = null;
+		if (serviceStatus != null && (serviceStatus.serviceIsDiscontinued() || serviceStatus.serviceIsInScheduledDowntime())) {
+			alertMessage = serviceStatus.serverStatusMessage;
+		} else if (!TextUtils.isEmpty(serverConnectionError)) {
+			alertMessage = serverConnectionError;
+		} else {
+			alertMessage = null;
+		}
+
+		alertBannerDebouncer.send(alertMessage);
 	}
 
 	///////////////////////////////////////////////////////////////////
