@@ -1,5 +1,6 @@
 package org.zakariya.mrdoodleserver.routes;
 
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zakariya.mrdoodleserver.auth.Authenticator;
@@ -105,7 +106,7 @@ public class DashboardRouter extends Router {
 			userPage.page = 0;
 			userPage.pageCount = 0;
 			userPage.users = new ArrayList<>(userRecordAccess.getUsers());
-			Collections.sort(userPage.users, (o1, o2) -> o1.getAccountId().compareTo(o2.getAccountId()));
+			userPage.users.sort(Comparator.comparing(User::getAccountId));
 		}
 
 		return userPage;
@@ -119,6 +120,7 @@ public class DashboardRouter extends Router {
 		return status;
 	}
 
+	@Nullable
 	private UserConnectionInfo getUserConnectionInfo(Request request, Response response) {
 
 		String userId = request.params("userId");

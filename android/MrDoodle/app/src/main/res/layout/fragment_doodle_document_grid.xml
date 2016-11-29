@@ -3,18 +3,35 @@
 	android:id="@+id/coordinatorLayout"
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
+	android:animateLayoutChanges="true"
 	android:orientation="vertical">
 
-	<android.support.v7.widget.RecyclerView
-		android:id="@+id/recyclerView"
+	<LinearLayout
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:scrollbars="vertical"
-		android:scrollbarStyle="insideOverlay"
-	    android:background="@color/doodleGridBackgroundColor"
-		/>
+		android:animateLayoutChanges="true"
+		android:orientation="vertical">
+
+		<include
+			android:id="@+id/alertBanner"
+			layout="@layout/alert_banner"
+			android:visibility="gone"
+			tools:visibility="visible"/>
+
+		<android.support.v7.widget.RecyclerView
+			android:id="@+id/recyclerView"
+			android:layout_width="match_parent"
+			android:layout_height="0dp"
+			android:layout_weight="1"
+			android:background="@color/doodleGridBackgroundColor"
+			android:scrollbarStyle="insideOverlay"
+			android:scrollbars="vertical"
+			/>
+
+	</LinearLayout>
 
 	<FrameLayout
 		android:id="@+id/emptyView"

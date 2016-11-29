@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:tools="http://schemas.android.com/tools"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:background="@color/alertBannerBackgroundDiscontinued"
+              android:orientation="horizontal"
+              android:paddingLeft="@dimen/activity_horizontal_margin"
+              android:paddingRight="0dp">
+
+	<TextView
+		android:id="@+id/alertBannerTitle"
+		style="@style/AlertBannerText"
+		android:layout_width="0dp"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center_vertical"
+		android:layout_weight="1"
+		android:layout_marginTop="8dp"
+		android:layout_marginBottom="8dp"
+		android:layout_marginRight="@dimen/activity_horizontal_margin"
+		tools:text="Sync services are disabled. This is some extra text because I need to know if it wraps correctly."/>
+
+	<ImageButton
+		android:id="@+id/alertBannerCloseButton"
+		style="@style/Widget.AppCompat.Button.Borderless"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center_vertical"
+		android:paddingLeft="0dp"
+		android:paddingRight="@dimen/activity_horizontal_margin"
+		android:scaleType="fitEnd"
+		android:src="@drawable/ic_clear_alert"
+		/>
+
+</LinearLayout>

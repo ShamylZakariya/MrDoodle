@@ -8,7 +8,7 @@
 	<string name="menu_item_about">About</string>
 	<string name="menu_item_show_model_overview">Model Overview</string>
 	<string name="menu_item_send_sync_log">Send</string>
-	<string name="menu_item_sign_in">Sign In…</string>
+	<string name="menu_item_setup_sync">Set up sync…</string>
 
 	<string name="activity_title_about">About</string>
 	<string name="activity_title_sync">Sync</string>
@@ -58,7 +58,8 @@
 
 	<string name="about_attributions">https://github.com/ShamylZakariya/MrDoodle</string>
 
-	<string name="sign_in_message">Sign in to enable sync</string>
+	<string name="sign_in_message">Please sign in to enable sync</string>
+	<string name="sign_in_explanation">MrDoodle only uses your account for sign-in and identification purposes. It will not touch any of your data.</string>
 	<string name="sync_history">Sync History</string>
 	<string name="sync_history_clear">Clear</string>
 	<string name="sync_history_clear_alert_confirm">Clear sync history?</string>

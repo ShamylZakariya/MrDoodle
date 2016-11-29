@@ -107,7 +107,8 @@ dependencies {
 	compile 'com.android.support:recyclerview-v7:25.0.1'
 	compile 'com.android.support:appcompat-v7:25.0.1'
 
-	compile 'com.google.android.gms:play-services-auth:9.8.0'
+	// old version for emulator compatibility
+	compile 'com.google.android.gms:play-services-auth:9.6.0'
 
 	// networking
 	compile 'com.squareup.retrofit2:retrofit:2.1.0'

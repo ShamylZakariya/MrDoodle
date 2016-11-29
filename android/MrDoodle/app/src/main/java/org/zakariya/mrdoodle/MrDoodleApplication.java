@@ -23,11 +23,12 @@ import org.zakariya.mrdoodle.events.DoodleDocumentStoreWasClearedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.model.DoodleDocumentNotFoundException;
+import org.zakariya.mrdoodle.net.ServiceStatusMonitor;
+import org.zakariya.mrdoodle.net.SyncApiConfiguration;
 import org.zakariya.mrdoodle.net.model.RemoteChangeReport;
 import org.zakariya.mrdoodle.net.model.SyncReport;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.techniques.GoogleSignInTechnique;
-import org.zakariya.mrdoodle.sync.SyncConfiguration;
 import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.util.BusProvider;
 import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
@@ -60,6 +61,7 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	private LocalChangeListener localChangeListener;
 	private Handler handler;
 	private RefWatcher refWatcher;
+	private ServiceStatusMonitor serviceStatusMonitor;
 
 	public static RefWatcher getRefWatcher(Context context) {
 		MrDoodleApplication application = (MrDoodleApplication) context.getApplicationContext();
@@ -101,6 +103,10 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 
 	public BackgroundWatcher getBackgroundWatcher() {
 		return backgroundWatcher;
+	}
+
+	public ServiceStatusMonitor getServiceStatusMonitor() {
+		return serviceStatusMonitor;
 	}
 
 	public String getVersionString() {
@@ -146,13 +152,16 @@ public class MrDoodleApplication extends android.app.Application implements Sync
 	private void initSingletons() {
 		DoodleThumbnailRenderer.init(this);
 
+		serviceStatusMonitor = new ServiceStatusMonitor(this);
+
 		SignInManager.init(new GoogleSignInTechnique(this));
 		//SignInManager.init(new MockSignInTechnique(this));
 
 		// build the sync manager, providing mechanism for serializing/de-serializing our model type
-		SyncConfiguration configuration = new SyncConfiguration();
+		SyncApiConfiguration configuration = new SyncApiConfiguration();
 		configuration.setUserAgent("MrDoodle-" + getVersionString());
-		SyncManager.init(this, configuration, new SyncModelAdapter());
+		SyncManager.init(this, configuration, new SyncModelAdapter(), serviceStatusMonitor);
+
 
 		// set up notifier to let change journal capture model events
 		localChangeListener = new LocalChangeListener(SyncManager.getInstance());

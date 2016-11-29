@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.ColorRes;
 import android.support.annotation.DrawableRes;
 import android.support.annotation.MenuRes;
 import android.support.annotation.Nullable;
@@ -42,9 +43,11 @@ import org.zakariya.mrdoodle.events.DoodleDocumentEditedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentStoreWasClearedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentStoreWillBeClearedEvent;
 import org.zakariya.mrdoodle.events.DoodleDocumentWasDeletedEvent;
+import org.zakariya.mrdoodle.events.ServiceStatusAvailableEvent;
 import org.zakariya.mrdoodle.model.DoodleDocument;
 import org.zakariya.mrdoodle.net.SyncServerConnection;
 import org.zakariya.mrdoodle.net.events.SyncServerConnectionStatusEvent;
+import org.zakariya.mrdoodle.net.transport.ServiceStatus;
 import org.zakariya.mrdoodle.signin.SignInManager;
 import org.zakariya.mrdoodle.signin.events.SignInEvent;
 import org.zakariya.mrdoodle.signin.events.SignOutEvent;
@@ -54,6 +57,7 @@ import org.zakariya.mrdoodle.sync.SyncManager;
 import org.zakariya.mrdoodle.sync.events.LockStateChangedEvent;
 import org.zakariya.mrdoodle.ui.itemdecorators.SeparatorDecoration;
 import org.zakariya.mrdoodle.util.BusProvider;
+import org.zakariya.mrdoodle.util.CollapseAnimation;
 import org.zakariya.mrdoodle.util.DoodleShareHelper;
 import org.zakariya.mrdoodle.util.DoodleThumbnailRenderer;
 import org.zakariya.mrdoodle.util.RecyclerItemClickListener;
@@ -91,6 +95,12 @@ public class DoodleDocumentGridFragment extends Fragment
 	@Bind(R.id.emptyView)
 	View emptyView;
 
+	@Bind(R.id.alertBanner)
+	View alertBanner;
+
+	@Bind(R.id.alertBannerTitle)
+	TextView alertBannerTitle;
+
 	private AppBarLayout appBarLayout;
 
 	private Realm realm;
@@ -100,10 +110,18 @@ public class DoodleDocumentGridFragment extends Fragment
 	private String documentQueuedToDelete;
 
 	private MenuItem connectionStatusMenuItem;
-	private MenuItem signInMenuItem;
+	private MenuItem setupSyncMenuItem;
+
+	private
+	@DrawableRes
+	int connectionStatusMenuItemIcon;
+	private boolean syncServicesDiscontinued;
 
 	@State
 	String selectedDocumentUuid;
+
+	@State
+	boolean alertBannerDismissed = false;
 
 	public DoodleDocumentGridFragment() {
 		setHasOptionsMenu(true);
@@ -150,8 +168,7 @@ public class DoodleDocumentGridFragment extends Fragment
 		super.onResume();
 
 		adapter.reload();
-		showCurrentSignedInState();
-		showCurrentServerConnectionState();
+		checkCurrentServerConnectionState();
 	}
 
 	@Override
@@ -175,6 +192,10 @@ public class DoodleDocumentGridFragment extends Fragment
 				queryDoodleDocumentAction(document);
 			}
 		}
+
+		// load the current service status, but we'll listen for changes too
+		ServiceStatus serviceStatus = MrDoodleApplication.getInstance().getServiceStatusMonitor().getServiceStatus();
+		setServiceStatus(serviceStatus);
 	}
 
 	@Override
@@ -185,17 +206,16 @@ public class DoodleDocumentGridFragment extends Fragment
 		connectionStatusMenuItem = menu.findItem(R.id.menuItemConnectionStatus);
 		connectionStatusMenuItem.setVisible(false);
 
-		signInMenuItem = menu.findItem(R.id.menuItemSignIn);
+		setupSyncMenuItem = menu.findItem(R.id.menuItemSetupSync);
 
-		showCurrentSignedInState();
-		showCurrentServerConnectionState();
+		checkCurrentServerConnectionState();
 	}
 
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 			case R.id.menuItemConnectionStatus:
-			case R.id.menuItemSignIn:
+			case R.id.menuItemSetupSync:
 				showSyncSettings();
 				return true;
 
@@ -435,15 +455,26 @@ public class DoodleDocumentGridFragment extends Fragment
 		startActivity(SyncSettingsActivity.getIntent(getContext()));
 	}
 
-	void showCurrentSignedInState() {
-		if (signInMenuItem != null) {
-			signInMenuItem.setVisible(!isSignedIn());
-		}
-	}
-
-	private void showCurrentServerConnectionState() {
+	private void checkCurrentServerConnectionState() {
 		SyncServerConnection connection = SyncManager.getInstance().getSyncServerConnection();
 		onSyncServerConnectionStatusChanged(new SyncServerConnectionStatusEvent(connection));
+	}
+
+	private void updateMenuItems() {
+		boolean isSignedIn = this.isSignedIn();
+
+		if (connectionStatusMenuItem != null) {
+			connectionStatusMenuItem.setVisible(isSignedIn
+					&& !syncServicesDiscontinued
+					&& connectionStatusMenuItemIcon != 0);
+
+			connectionStatusMenuItem.setIcon(connectionStatusMenuItemIcon);
+		}
+
+		if (setupSyncMenuItem != null) {
+			setupSyncMenuItem.setVisible(!isSignedIn
+					&& !syncServicesDiscontinued);
+		}
 	}
 
 	private boolean isSignedIn() {
@@ -451,38 +482,74 @@ public class DoodleDocumentGridFragment extends Fragment
 		return account != null;
 	}
 
+	private void setServiceStatus(ServiceStatus status) {
+		Log.d(TAG, "setServiceStatus() called with: status = [" + status + "]");
+
+		// show alert banner iff status has discontinued or alert state, and iff
+		// user has not dismissed the alert in this app session (we don't care about
+		// persistence, but duration of app lifetime is good enough
+
+		if (!alertBannerDismissed && (status.hasServerStatusMessage() || status.hasAlertMessage())) {
+			alertBanner.setVisibility(View.VISIBLE);
+
+			@ColorRes int colorRes;
+			String message;
+
+			if (status.hasServerStatusMessage()) {
+				colorRes = R.color.alertBannerBackgroundDiscontinued;
+				message = status.serverStatusMessage;
+			} else {
+				colorRes = R.color.alertBannerBackgroundGeneral;
+				message = status.alertMessage;
+			}
+
+			alertBanner.setBackgroundColor(ContextCompat.getColor(getContext(), colorRes));
+			alertBannerTitle.setText(message);
+
+		} else {
+			alertBanner.setVisibility(View.GONE);
+		}
+
+		// we need to know if the service has been discontinued
+		syncServicesDiscontinued = status.serviceIsDiscontinued();
+
+		// this will show appropriate "Set up Sync" and status menu items based on whether signed in, etc
+		updateMenuItems();
+	}
+
+	@OnClick(R.id.alertBannerCloseButton)
+	public void onAlertBannerCloseButtonTap() {
+		alertBannerDismissed = true;
+
+		int duration = getResources().getInteger(android.R.integer.config_mediumAnimTime);
+		alertBanner.startAnimation(new CollapseAnimation(1, 0, duration, alertBanner, true));
+	}
+
 	///////////////////////////////////////////////////////////////////
 
 	@Subscribe
 	public void onSignedIn(SignInEvent event) {
-		showCurrentSignedInState();
+		updateMenuItems();
 	}
 
 	@Subscribe
 	public void onSignedOut(SignOutEvent event) {
-		showCurrentSignedInState();
+		updateMenuItems();
 	}
 
 	@Subscribe
 	public void onSyncServerConnectionStatusChanged(SyncServerConnectionStatusEvent event) {
-		if (connectionStatusMenuItem != null) {
+		switch (event.getStatus()) {
+			case DISCONNECTED:
+				connectionStatusMenuItemIcon = R.drawable.ic_sync_disconnected;
+				break;
 
-			@DrawableRes int iconRes = 0;
-			switch (event.getStatus()) {
-				case DISCONNECTED:
-					iconRes = R.drawable.ic_sync_disconnected;
-					break;
-
-				case CONNECTED:
-					iconRes = R.drawable.ic_sync_connected;
-					break;
-			}
-
-			if (iconRes != 0) {
-				connectionStatusMenuItem.setVisible(isSignedIn());
-				connectionStatusMenuItem.setIcon(iconRes);
-			}
+			case CONNECTED:
+				connectionStatusMenuItemIcon = R.drawable.ic_sync_connected;
+				break;
 		}
+
+		updateMenuItems();
 	}
 
 	@Subscribe
@@ -525,6 +592,9 @@ public class DoodleDocumentGridFragment extends Fragment
 		adapter.setForeignLockState(event.getForeignLocks());
 	}
 
-	///////////////////////////////////////////////////////////////////
+	@Subscribe
+	public void onServiceStatusAvailable(ServiceStatusAvailableEvent event) {
+		setServiceStatus(event.getServiceStatus());
+	}
 
 }

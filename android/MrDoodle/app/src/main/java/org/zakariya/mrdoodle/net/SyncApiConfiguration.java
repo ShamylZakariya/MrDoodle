@@ -1,4 +1,4 @@
-package org.zakariya.mrdoodle.sync;
+package org.zakariya.mrdoodle.net;
 
 import org.zakariya.mrdoodle.BuildConfig;
 import org.zakariya.mrdoodle.util.EmulatorDetection;
@@ -6,16 +6,16 @@ import org.zakariya.mrdoodle.util.EmulatorDetection;
 /**
  * Created by shamyl on 8/8/16.
  */
-public class SyncConfiguration {
+public class SyncApiConfiguration {
 
 	private boolean isEmulator;
 	private String userAgent;
 
-	public SyncConfiguration() {
+	public SyncApiConfiguration() {
 		this(EmulatorDetection.isEmulator());
 	}
 
-	public SyncConfiguration(boolean isEmulator) {
+	public SyncApiConfiguration(boolean isEmulator) {
 		this.isEmulator = isEmulator;
 	}
 

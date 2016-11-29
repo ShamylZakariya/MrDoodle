@@ -28,4 +28,8 @@
 	<color name="snackbarText">@color/windowBackground</color>
 	<color name="snackbarAction">@color/primary</color>
 
+	<color name="alertBannerBackgroundDiscontinued">@color/trouble</color>
+	<color name="alertBannerBackgroundGeneral">#26a69a</color>
+	<color name="alertBannerText">#FFFFFF</color>
+
 </resources>

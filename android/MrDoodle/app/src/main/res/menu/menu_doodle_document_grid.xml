@@ -8,8 +8,8 @@
 	      android:orderInCategory="100"
 	      app:showAsAction="ifRoom"/>
 
-	<item android:id="@+id/menuItemSignIn"
-	      android:title="@string/menu_item_sign_in"
+	<item android:id="@+id/menuItemSetupSync"
+	      android:title="@string/menu_item_setup_sync"
 	      android:orderInCategory="101"
 	      app:showAsAction="never"/>
 

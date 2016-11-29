@@ -76,6 +76,9 @@
 		<item name="android:textColor">@color/textColor</item>
 	</style>
 
+	<style name="AlertBannerText" parent="@style/Body1">
+		<item name="android:textColor">#FFFFFFFF</item>
+	</style>
 
 	<style name="ImmersiveAppBarEditText" parent="Widget.AppCompat.EditText">
 		<item name="colorControlNormal">@color/primaryDark</item>
